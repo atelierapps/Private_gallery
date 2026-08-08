@@ -15,6 +15,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
+/** Grid ordering options. */
+enum class SortOrder(val label: String) {
+    NEWEST("Newest"),
+    OLDEST("Oldest"),
+    NAME("Name A–Z"),
+}
+
 /** A source-filter chip: an app that media came from, with its total count (spec §7). */
 data class SourceChip(
     val pkg: String,
@@ -35,6 +42,9 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     private val _filter = MutableStateFlow(MediaFilter())
     val filter: StateFlow<MediaFilter> = _filter
 
+    private val _sort = MutableStateFlow(SortOrder.NEWEST)
+    val sort: StateFlow<SortOrder> = _sort
+
     val sourceChips: StateFlow<List<SourceChip>> =
         repo.observeSourceCounts()
             .map { rows ->
@@ -54,13 +64,19 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val media: StateFlow<List<MediaWithTags>> =
-        combine(repo.observeAll(), _filter) { list, f ->
-            if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
+        combine(repo.observeAll(), _filter, _sort) { list, f, s ->
+            val filtered = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
+            when (s) {
+                SortOrder.NEWEST -> filtered.sortedByDescending { it.media.dateTakenMillis }
+                SortOrder.OLDEST -> filtered.sortedBy { it.media.dateTakenMillis }
+                SortOrder.NAME -> filtered.sortedBy { it.media.originalName.lowercase() }
+            }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setType(t: com.atelierapps.vault.filter.MediaTypeFilter) {
         _filter.value = _filter.value.withType(t)
     }
+    fun setSort(s: SortOrder) { _sort.value = s }
     fun toggleSource(pkg: String) { _filter.value = _filter.value.toggleSource(pkg) }
     fun toggleTag(name: String) { _filter.value = _filter.value.toggleTag(name) }
     fun setDate(bucket: DateBucket) { _filter.value = _filter.value.withDate(bucket) }

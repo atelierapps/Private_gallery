@@ -36,10 +36,12 @@ fun FilterBar(
     filter: MediaFilter,
     sources: List<SourceChip>,
     tags: List<TagEntity>,
+    sort: SortOrder,
     onSetType: (MediaTypeFilter) -> Unit,
     onToggleSource: (String) -> Unit,
     onToggleTag: (String) -> Unit,
     onSetDate: (DateBucket) -> Unit,
+    onSetSort: (SortOrder) -> Unit,
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -91,6 +93,27 @@ fun FilterBar(
             )
         }
         item { DateChip(filter.date, onSetDate) }
+        item { SortChip(sort, onSetSort) }
+    }
+}
+
+@Composable
+private fun SortChip(current: SortOrder, onSetSort: (SortOrder) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(Modifier.padding(start = 8.dp)) {
+        FilterChip(
+            selected = current != SortOrder.NEWEST,
+            onClick = { expanded = true },
+            label = { Text("Sort: ${current.label}") },
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SortOrder.entries.forEach { order ->
+                DropdownMenuItem(
+                    text = { Text(order.label) },
+                    onClick = { onSetSort(order); expanded = false },
+                )
+            }
+        }
     }
 }
 

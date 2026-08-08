@@ -2,6 +2,8 @@ package com.atelierapps.vault.ui.grid
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,10 +16,16 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,9 +49,34 @@ fun VaultGridScreen(
         EmptyState(modifier)
         return
     }
+    // Pinch to change column count (2–6). Two-finger only, so single-finger
+    // scrolling is untouched.
+    var columns by remember { mutableIntStateOf(3) }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        modifier = modifier.fillMaxSize().background(Color(0xFF0E1113)),
+        columns = GridCells.Fixed(columns),
+        modifier = modifier.fillMaxSize().background(Color(0xFF0E1113))
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    var lastDistance = 0f
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.size < 2) {
+                            if (pressed.isEmpty()) break else { lastDistance = 0f; continue }
+                        }
+                        val distance = (pressed[0].position - pressed[1].position).getDistance()
+                        if (lastDistance != 0f) {
+                            val delta = distance - lastDistance
+                            if (delta > 80f) { columns = (columns - 1).coerceAtLeast(2); lastDistance = distance }
+                            else if (delta < -80f) { columns = (columns + 1).coerceAtMost(6); lastDistance = distance }
+                        } else {
+                            lastDistance = distance
+                        }
+                        pressed.forEach { it.consume() } // claim the pinch so the grid doesn't scroll
+                    }
+                }
+            },
         contentPadding = PaddingValues(3.dp),
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),

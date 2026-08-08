@@ -2,6 +2,9 @@ package com.atelierapps.vault.ui.viewer
 
 import android.graphics.Color
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -39,17 +42,21 @@ fun VideoPlayer(id: String, modifier: Modifier = Modifier) {
     DisposableEffect(id) {
         onDispose { player.release() }
     }
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                this.player = player
-                useController = true
-                controllerShowTimeoutMs = 2500       // fade controls out after 2.5 s
-                controllerAutoShow = true
-                setShutterBackgroundColor(Color.BLACK) // no white flash before first frame
-                setBackgroundColor(Color.BLACK)        // black behind the nav bar
-            }
-        },
-        modifier = modifier.background(androidx.compose.ui.graphics.Color.Black),
-    )
+    Box(modifier.background(androidx.compose.ui.graphics.Color.Black)) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    this.player = player
+                    useController = true
+                    controllerShowTimeoutMs = 2500       // fade controls out after 2.5 s
+                    controllerAutoShow = true
+                    setShutterBackgroundColor(Color.BLACK)
+                    setBackgroundColor(Color.BLACK)
+                }
+            },
+            // Inset the player (and thus its controls) above the system nav bar,
+            // so the buttons don't sit behind the home/gesture bar.
+            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
+        )
+    }
 }

@@ -33,6 +33,7 @@ fun VaultHome(
     val filter by vm.filter.collectAsState()
     val sources by vm.sourceChips.collectAsState()
     val tags by vm.tagChips.collectAsState()
+    val sort by vm.sort.collectAsState()
     val media by vm.media.collectAsState()
 
     Box(modifier.fillMaxSize().background(Color(0xFF0E1113))) {
@@ -41,10 +42,12 @@ fun VaultHome(
                 filter = filter,
                 sources = sources,
                 tags = tags,
+                sort = sort,
                 onSetType = vm::setType,
                 onToggleSource = vm::toggleSource,
                 onToggleTag = vm::toggleTag,
                 onSetDate = vm::setDate,
+                onSetSort = vm::setSort,
                 onClearAll = vm::clearAll,
                 modifier = Modifier.fillMaxWidth(),
             )

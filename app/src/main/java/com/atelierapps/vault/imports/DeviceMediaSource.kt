@@ -46,6 +46,17 @@ object DeviceMediaSource {
     private val TYPE_VIDEO = MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
 
     /**
+     * Type-specific media URI. `createDeleteRequest` rejects the generic Files
+     * URI (`content://media/external/file/<id>`) with IllegalArgumentException,
+     * so images and videos must use their own collections.
+     */
+    private fun mediaUri(id: Long, isVideo: Boolean): Uri {
+        val base = if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        return ContentUris.withAppendedId(base, id)
+    }
+
+    /**
      * Media newest-first, paginated (spec §4). When [bucketId] is set, restrict
      * to that folder; [origin] tags the resulting items for attribution.
      */
@@ -87,7 +98,7 @@ object DeviceMediaSource {
                 val taken = if (!c.isNull(takenCol)) c.getLong(takenCol) else c.getLong(modCol) * 1000L
                 val isVideo = c.getInt(typeCol) == TYPE_VIDEO
                 out += DeviceMedia(
-                    uri = ContentUris.withAppendedId(collection, id),
+                    uri = mediaUri(id, isVideo),
                     mimeType = mime,
                     displayName = c.getString(nameCol) ?: "IMG_$id",
                     dateTakenMillis = taken,
@@ -101,7 +112,7 @@ object DeviceMediaSource {
 
     /** Folders (buckets) holding image/video, with counts and a cover, newest first. */
     fun queryFolders(context: Context): List<MediaFolder> {
-        val projection = arrayOf(COL_ID, COL_BUCKET_ID, COL_BUCKET_NAME, COL_MODIFIED)
+        val projection = arrayOf(COL_ID, COL_BUCKET_ID, COL_BUCKET_NAME, COL_MODIFIED, COL_TYPE)
         val queryArgs = Bundle().apply {
             putString(ContentResolver.QUERY_ARG_SQL_SELECTION, "$COL_TYPE IN (?, ?)")
             putStringArray(
@@ -116,18 +127,19 @@ object DeviceMediaSource {
         val order = ArrayList<String>()
         val names = HashMap<String, String>()
         val counts = HashMap<String, Int>()
-        val covers = HashMap<String, Long>()
+        val covers = HashMap<String, Uri>()
         context.contentResolver.query(collection, projection, queryArgs, null)?.use { c ->
             val idCol = c.getColumnIndexOrThrow(COL_ID)
             val bidCol = c.getColumnIndexOrThrow(COL_BUCKET_ID)
             val bnameCol = c.getColumnIndexOrThrow(COL_BUCKET_NAME)
+            val typeCol = c.getColumnIndexOrThrow(COL_TYPE)
             while (c.moveToNext()) {
                 if (c.isNull(bidCol)) continue
                 val bid = c.getString(bidCol) ?: continue
                 if (bid !in counts) {
                     order.add(bid)
                     names[bid] = c.getString(bnameCol) ?: "Folder"
-                    covers[bid] = c.getLong(idCol)
+                    covers[bid] = mediaUri(c.getLong(idCol), c.getInt(typeCol) == TYPE_VIDEO)
                     counts[bid] = 0
                 }
                 counts[bid] = counts[bid]!! + 1
@@ -138,7 +150,7 @@ object DeviceMediaSource {
                 bucketId = bid,
                 name = names[bid] ?: "Folder",
                 count = counts[bid] ?: 0,
-                coverUri = ContentUris.withAppendedId(collection, covers[bid] ?: 0L),
+                coverUri = covers[bid] ?: Uri.EMPTY,
             )
         }.sortedByDescending { it.count }
     }
