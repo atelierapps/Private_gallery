@@ -41,6 +41,7 @@ fun VaultHome(
                 filter = filter,
                 sources = sources,
                 tags = tags,
+                onSetType = vm::setType,
                 onToggleSource = vm::toggleSource,
                 onToggleTag = vm::toggleTag,
                 onSetDate = vm::setDate,

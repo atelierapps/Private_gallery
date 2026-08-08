@@ -29,15 +29,26 @@ enum class DateBucket(val label: String, val windowMillis: Long?) {
  * simple and correct; a Room `@RawQuery` path is a later optimization if a
  * library grows large.
  */
+/** Media-type filter (spec §7). */
+enum class MediaTypeFilter { ALL, IMAGE, VIDEO }
+
 data class MediaFilter(
+    val type: MediaTypeFilter = MediaTypeFilter.ALL,
     val sources: Set<String> = emptySet(),   // sourcePackage values
     val tagNames: Set<String> = emptySet(),  // case-insensitive
     val date: DateBucket = DateBucket.ANY,
 ) {
     val isEmpty: Boolean
-        get() = sources.isEmpty() && tagNames.isEmpty() && date == DateBucket.ANY
+        get() = type == MediaTypeFilter.ALL && sources.isEmpty() &&
+            tagNames.isEmpty() && date == DateBucket.ANY
 
     fun matches(item: MediaWithTags, now: Long): Boolean {
+        val isVideo = item.media.mimeType.startsWith("video/")
+        when (type) {
+            MediaTypeFilter.IMAGE -> if (isVideo) return false
+            MediaTypeFilter.VIDEO -> if (!isVideo) return false
+            MediaTypeFilter.ALL -> {}
+        }
         if (sources.isNotEmpty() && item.media.sourcePackage !in sources) return false
         if (tagNames.isNotEmpty()) {
             val itemTags = item.tags.mapTo(HashSet()) { it.name.lowercase() }
@@ -45,6 +56,9 @@ data class MediaFilter(
         }
         return date.matches(item.media.dateTakenMillis, now)
     }
+
+    /** Toggle a type on/off (selecting the active one clears back to ALL). */
+    fun withType(t: MediaTypeFilter) = copy(type = if (type == t) MediaTypeFilter.ALL else t)
 
     fun toggleSource(pkg: String) =
         copy(sources = if (pkg in sources) sources - pkg else sources + pkg)

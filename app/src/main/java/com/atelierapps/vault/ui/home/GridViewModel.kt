@@ -58,6 +58,9 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
             if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    fun setType(t: com.atelierapps.vault.filter.MediaTypeFilter) {
+        _filter.value = _filter.value.withType(t)
+    }
     fun toggleSource(pkg: String) { _filter.value = _filter.value.toggleSource(pkg) }
     fun toggleTag(name: String) { _filter.value = _filter.value.toggleTag(name) }
     fun setDate(bucket: DateBucket) { _filter.value = _filter.value.withDate(bucket) }

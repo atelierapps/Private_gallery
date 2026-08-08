@@ -24,8 +24,13 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 7 · Import pipeline + batched createDeleteRequest (verify-first) | ✅ implemented |
 | §4.1 · Folder import (SAF tree, encrypt-in, clear originals) | ✅ implemented |
 | 8 · Full-screen viewer (swipe, pinch-zoom, metadata, delete) | ✅ implemented |
+| 9 · Encrypted video playback (ExoPlayer + CTR data source) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
-| 9–11 · Video playback, auto-lock, export | ⬜ not started |
+| 10–11 · Auto-lock timer, export | ⬜ not started |
+
+Verified on device (Xiaomi, Android 16): build, unit tests, install, biometric
+unlock, import, **encrypted images render end-to-end** (the OAEP fix). RSA
+unwrap measured at 18.3 ms median — see spec §3.1.
 
 Everything except the crypto is written but **unbuilt** here (no Android SDK in
 this environment). The crypto and the pure-logic pieces (envelope, CTR seek,

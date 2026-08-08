@@ -36,6 +36,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.util.UnstableApi
 import coil3.compose.AsyncImage
 import com.atelierapps.vault.data.entity.MediaWithTags
 import com.atelierapps.vault.ui.image.VaultMediaKey
@@ -75,45 +76,45 @@ fun ViewerScreen(
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun ViewerPage(item: MediaWithTags, onTap: () -> Unit) {
+    if (item.media.mimeType.startsWith("video/")) {
+        VideoPlayer(item.media.id, Modifier.fillMaxSize())
+        return
+    }
+
+    // Image: double-tap toggles zoom; pinch/pan only while zoomed, so a
+    // single-finger horizontal swipe at rest reaches the pager (fixes paging).
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    val transform = rememberTransformableState { zoom, pan, _ ->
+        scale = (scale * zoom).coerceIn(1f, 5f)
+        offset = if (scale > 1f) offset + pan else Offset.Zero
+    }
     Box(
-        Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) },
+        Modifier.fillMaxSize().pointerInput(Unit) {
+            detectTapGestures(
+                onTap = { onTap() },
+                onDoubleTap = {
+                    if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2.5f
+                },
+            )
+        },
         contentAlignment = Alignment.Center,
     ) {
-        if (item.media.durationMillis != null) {
-            AsyncImage(
-                model = VaultMediaKey(item.media.id, full = false),
-                contentDescription = item.media.originalName,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
-            Box(
-                Modifier.size(64.dp).clip(CircleShape).background(Color(0x66000000)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("▶", color = Color.White, fontSize = 26.sp)
-            }
-        } else {
-            var scale by remember { mutableFloatStateOf(1f) }
-            var offset by remember { mutableStateOf(Offset.Zero) }
-            val transform = rememberTransformableState { zoom, pan, _ ->
-                scale = (scale * zoom).coerceIn(1f, 5f)
-                offset = if (scale > 1f) offset + pan else Offset.Zero
-            }
-            AsyncImage(
-                model = VaultMediaKey(item.media.id, full = true),
-                contentDescription = item.media.originalName,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer(
-                        scaleX = scale, scaleY = scale,
-                        translationX = offset.x, translationY = offset.y,
-                    )
-                    .transformable(transform),
-            )
-        }
+        AsyncImage(
+            model = VaultMediaKey(item.media.id, full = true),
+            contentDescription = item.media.originalName,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .transformable(state = transform, enabled = scale > 1f)
+                .graphicsLayer(
+                    scaleX = scale, scaleY = scale,
+                    translationX = offset.x, translationY = offset.y,
+                ),
+        )
     }
 }
 

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.filter.DateBucket
 import com.atelierapps.vault.filter.MediaFilter
+import com.atelierapps.vault.filter.MediaTypeFilter
 
 /**
  * The filter bar (spec §7, §15.2): a horizontal chip row above the grid.
@@ -35,6 +36,7 @@ fun FilterBar(
     filter: MediaFilter,
     sources: List<SourceChip>,
     tags: List<TagEntity>,
+    onSetType: (MediaTypeFilter) -> Unit,
     onToggleSource: (String) -> Unit,
     onToggleTag: (String) -> Unit,
     onSetDate: (DateBucket) -> Unit,
@@ -50,6 +52,22 @@ fun FilterBar(
                 selected = filter.isEmpty,
                 onClick = onClearAll,
                 label = { Text("All") },
+                modifier = Modifier.padding(end = 8.dp),
+            )
+        }
+        item {
+            FilterChip(
+                selected = filter.type == MediaTypeFilter.IMAGE,
+                onClick = { onSetType(MediaTypeFilter.IMAGE) },
+                label = { Text("Photos") },
+                modifier = Modifier.padding(end = 8.dp),
+            )
+        }
+        item {
+            FilterChip(
+                selected = filter.type == MediaTypeFilter.VIDEO,
+                onClick = { onSetType(MediaTypeFilter.VIDEO) },
+                label = { Text("Videos") },
                 modifier = Modifier.padding(end = 8.dp),
             )
         }
