@@ -54,29 +54,40 @@ object EnvelopeCodec {
     }
 
     fun decryptGcm(file: ByteArray, wrapper: KeyWrapper): ByteArray {
+        val dek = wrapper.unwrap(readWrappedDek(file))
+        try {
+            return decryptGcmWithDek(file, dek)
+        } finally {
+            Arrays.fill(dek, 0)
+        }
+    }
+
+    /**
+     * Decrypt a GCM blob with an already-unwrapped [dek] (from [DekCache]). Does
+     * NOT wipe [dek] — the caller owns its lifetime (it stays cached until lock).
+     */
+    fun decryptGcmWithDek(file: ByteArray, dek: ByteArray): ByteArray {
         require(file.size >= EnvelopeFormat.headerLen(EnvelopeFormat.MODE_GCM)) { "truncated GCM blob" }
         require(file[0] == EnvelopeFormat.VERSION) { "unsupported format version ${file[0]}" }
         require(file[1] == EnvelopeFormat.MODE_GCM) { "not a GCM blob (mode ${file[1]})" }
 
         val headerLen = EnvelopeFormat.headerLen(EnvelopeFormat.MODE_GCM)
-        val wrapped = file.copyOfRange(2, 2 + EnvelopeFormat.WRAPPED_DEK_LEN)
         val iv = file.copyOfRange(2 + EnvelopeFormat.WRAPPED_DEK_LEN, headerLen)
         val body = file.copyOfRange(headerLen, file.size)
 
-        val dek = wrapper.unwrap(wrapped)
-        try {
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(
-                Cipher.DECRYPT_MODE,
-                SecretKeySpec(dek, "AES"),
-                GCMParameterSpec(EnvelopeFormat.GCM_TAG_BITS, iv),
-            )
-            cipher.updateAAD(file.copyOfRange(0, headerLen))
-            return cipher.doFinal(body) // throws AEADBadTagException on tamper
-        } finally {
-            Arrays.fill(dek, 0)
-        }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            SecretKeySpec(dek, "AES"),
+            GCMParameterSpec(EnvelopeFormat.GCM_TAG_BITS, iv),
+        )
+        cipher.updateAAD(file.copyOfRange(0, headerLen))
+        return cipher.doFinal(body) // throws AEADBadTagException on tamper
     }
+
+    /** The 256-byte wrapped DEK from a blob's header, for cache-aware decryption. */
+    fun readWrappedDek(file: ByteArray): ByteArray =
+        file.copyOfRange(2, 2 + EnvelopeFormat.WRAPPED_DEK_LEN)
 
     // ---------------- CTR (video) ----------------
 

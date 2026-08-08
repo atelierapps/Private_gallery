@@ -17,8 +17,10 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 1 · Keystore key + biometric read gate | ✅ implemented (device-only) |
 | 2 · Room schema (media + tags + cross-ref) + repository | ✅ implemented |
 | 3 · Share target + save sheet + source capture + encrypt pipeline | ✅ implemented |
+| 4 · Vault grid + decrypting Coil fetcher (DEK-cache read path, §3.1) | ✅ implemented |
+| 4 · Biometric unlock gate + DEK prewarm (partial §9/§10) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
-| 4–11 · Grid, filter bar, importer, viewer, video, lock, export | ⬜ not started |
+| 5–11 · Filter bar, importer, viewer, video, auto-lock, export | ⬜ not started |
 
 Everything except the crypto is written but **unbuilt** here (no Android SDK in
 this environment). The crypto and the pure-logic pieces (envelope, CTR seek,
@@ -72,11 +74,17 @@ inaccessible data (spec §12).
 ```
 app/src/main/java/com/atelierapps/vault/
   crypto/         # step 1 — EnvelopeCodec, KeyWrapper, KeystoreKeyWrapper, CtrReader/CtrCounter
+                  #          + DekCache / MediaCrypto (step 4 §3.1 read path)
   data/           # step 2 — Room entities, DAOs, VaultDatabase, VaultRepository
   storage/        # app-private vault/thumbs/tmp layout
   media/          # save pipeline — MediaSaver, Thumbnailer, MediaProbe
   share/          # step 3 — ShareReceiverActivity, SaveSheet, SaveMediaWorker, SourceAttribution
-  ui/             # main activity (stub)
+  auth/           # step 4 — BiometricAuth (unlock gate)
+  session/        # step 4 — VaultSession lock state
+  ui/grid/        # step 4 — VaultGridScreen (3-col decrypting grid)
+  ui/lock/        # step 4 — LockScreen
+  ui/image/       # step 4 — Coil decrypting fetcher + ImageLoader (disk cache off)
+  ui/             # MainActivity — lock/grid host
 app/src/test/     # EnvelopeCodecTest + SourceAttributionTest (JVM) + SoftwareKeyWrapper
 app/src/androidTest/  # KeystoreRsaLatencyTest (device)
 tools/crypto-verify/  # standalone JDK proof of the envelope + CTR seek

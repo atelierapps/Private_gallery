@@ -30,6 +30,9 @@ interface MediaDao {
     @Query("SELECT EXISTS(SELECT 1 FROM media WHERE contentHash = :hash LIMIT 1)")
     suspend fun existsByHash(hash: String): Boolean
 
+    @Query("SELECT id FROM media")
+    suspend fun allIds(): List<String>
+
     @Query("DELETE FROM media WHERE id = :id")
     suspend fun delete(id: String)
 

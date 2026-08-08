@@ -25,6 +25,9 @@ class VaultRepository(
     suspend fun existsByHash(hash: String): Boolean =
         withContext(Dispatchers.IO) { mediaDao.existsByHash(hash) }
 
+    suspend fun allIds(): List<String> =
+        withContext(Dispatchers.IO) { mediaDao.allIds() }
+
     /**
      * Persist a media row and its tags atomically-ish: the row insert and tag
      * bump happen after the blob is already verified on disk (spec §4 hard rule).
