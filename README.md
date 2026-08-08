@@ -23,8 +23,9 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 6 · MediaStore picker grid + permissions (incl. partial grant) | ✅ implemented |
 | 7 · Import pipeline + batched createDeleteRequest (verify-first) | ✅ implemented |
 | §4.1 · Folder import (SAF tree, encrypt-in, clear originals) | ✅ implemented |
+| 8 · Full-screen viewer (swipe, pinch-zoom, metadata, delete) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
-| 8–11 · Viewer, video playback, auto-lock, export | ⬜ not started |
+| 9–11 · Video playback, auto-lock, export | ⬜ not started |
 
 Everything except the crypto is written but **unbuilt** here (no Android SDK in
 this environment). The crypto and the pure-logic pieces (envelope, CTR seek,
@@ -92,6 +93,7 @@ app/src/main/java/com/atelierapps/vault/
   ui/lock/        # step 4 — LockScreen
   ui/image/       # step 4 — Coil decrypting fetcher + ImageLoader (disk cache off)
   ui/home/        # step 5 — VaultHome, FilterBar, GridViewModel
+  ui/viewer/      # step 8 — ViewerActivity/Screen/ViewModel (swipe, zoom, delete)
   ui/             # MainActivity — lock/grid host
 app/src/test/     # EnvelopeCodecTest + SourceAttributionTest (JVM) + SoftwareKeyWrapper
 app/src/androidTest/  # KeystoreRsaLatencyTest (device)

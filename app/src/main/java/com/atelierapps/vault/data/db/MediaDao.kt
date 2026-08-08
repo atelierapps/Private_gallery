@@ -24,8 +24,15 @@ interface MediaDao {
     fun observeAll(): Flow<List<MediaWithTags>>
 
     @Transaction
+    @Query("SELECT * FROM media ORDER BY importedAtMillis DESC")
+    suspend fun allWithTags(): List<MediaWithTags>
+
+    @Transaction
     @Query("SELECT * FROM media WHERE id = :id")
     suspend fun byId(id: String): MediaWithTags?
+
+    @Query("DELETE FROM media_tag WHERE mediaId = :id")
+    suspend fun deleteCrossRefs(id: String)
 
     @Query("SELECT EXISTS(SELECT 1 FROM media WHERE contentHash = :hash LIMIT 1)")
     suspend fun existsByHash(hash: String): Boolean

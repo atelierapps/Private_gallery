@@ -22,6 +22,12 @@ class VaultStorage(context: Context) {
     fun blob(id: String): File = File(vaultDir, id)
     fun thumb(id: String): File = File(thumbsDir, id)
 
+    /** Remove a media item's encrypted blob and thumbnail from disk. */
+    fun delete(id: String) {
+        blob(id).delete()
+        thumb(id).delete()
+    }
+
     fun newTempFile(): File = File(tmpDir, UUID.randomUUID().toString())
 
     /**

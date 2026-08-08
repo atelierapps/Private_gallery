@@ -20,6 +20,7 @@ import com.atelierapps.vault.imports.ImportActivity
 import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.ui.home.VaultHome
 import com.atelierapps.vault.ui.lock.LockScreen
+import com.atelierapps.vault.ui.viewer.ViewerActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -47,7 +48,7 @@ class MainActivity : FragmentActivity() {
                         LockScreen(onUnlock = ::promptUnlock)
                     } else {
                         VaultHome(
-                            onOpen = { /* TODO step 8: viewer */ },
+                            onOpen = { id -> startActivity(ViewerActivity.intent(this, id)) },
                             onImport = { startActivity(Intent(this, ImportActivity::class.java)) },
                         )
                     }

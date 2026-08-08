@@ -24,6 +24,11 @@ object DekCache {
 
     fun size(): Int = map.size
 
+    /** Drop and zero a single entry (e.g. when its media is deleted). */
+    fun remove(key: String) {
+        map.remove(key)?.let { Arrays.fill(it, 0) }
+    }
+
     /** Zero every cached DEK and drop them (spec §9). */
     fun clear() {
         val values = map.values.toList()

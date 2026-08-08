@@ -40,6 +40,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Full-screen viewer (spec §8). -->
+        <activity
+            android:name=".ui.viewer.ViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Importer: MediaStore picker + folder import (spec §4, §4.1). -->
         <activity
             android:name=".imports.ImportActivity"

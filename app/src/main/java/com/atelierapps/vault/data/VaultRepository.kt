@@ -28,6 +28,15 @@ class VaultRepository(
     suspend fun allIds(): List<String> =
         withContext(Dispatchers.IO) { mediaDao.allIds() }
 
+    suspend fun allMedia() =
+        withContext(Dispatchers.IO) { mediaDao.allWithTags() }
+
+    suspend fun deleteMedia(id: String) =
+        withContext(Dispatchers.IO) {
+            mediaDao.deleteCrossRefs(id)
+            mediaDao.delete(id)
+        }
+
     /**
      * Persist a media row and its tags atomically-ish: the row insert and tag
      * bump happen after the blob is already verified on disk (spec §4 hard rule).
