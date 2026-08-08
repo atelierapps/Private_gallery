@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sharing shortcut / share-target so Vault appears in the top row of the
+     share sheet (spec §5). Paired with a long-lived dynamic shortcut pushed
+     at runtime carrying the same category. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <share-target android:targetClass="com.atelierapps.vault.share.ShareReceiverActivity">
+        <data android:mimeType="image/*" />
+        <data android:mimeType="video/*" />
+        <category android:name="com.atelierapps.vault.category.SAVE_TO_VAULT" />
+    </share-target>
+</shortcuts>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base app theme. Compose owns the real styling; this seeds the window. -->
+    <style name="Theme.Vault" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0E1113</item>
+        <item name="android:navigationBarColor">#0E1113</item>
+        <item name="android:windowBackground">#0E1113</item>
+    </style>
+
+    <!-- Transparent window for the share receiver's bottom sheet (spec §5). -->
+    <style name="Theme.Vault.Transparent" parent="Theme.Vault">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+</resources>
