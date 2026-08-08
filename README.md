@@ -19,8 +19,9 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 3 · Share target + save sheet + source capture + encrypt pipeline | ✅ implemented |
 | 4 · Vault grid + decrypting Coil fetcher (DEK-cache read path, §3.1) | ✅ implemented |
 | 4 · Biometric unlock gate + DEK prewarm (partial §9/§10) | ✅ implemented |
+| 5 · Filter bar (source + tag + date chips, multi-select) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
-| 5–11 · Filter bar, importer, viewer, video, auto-lock, export | ⬜ not started |
+| 6–11 · Importer, viewer, video, auto-lock, export | ⬜ not started |
 
 Everything except the crypto is written but **unbuilt** here (no Android SDK in
 this environment). The crypto and the pure-logic pieces (envelope, CTR seek,
@@ -81,9 +82,11 @@ app/src/main/java/com/atelierapps/vault/
   share/          # step 3 — ShareReceiverActivity, SaveSheet, SaveMediaWorker, SourceAttribution
   auth/           # step 4 — BiometricAuth (unlock gate)
   session/        # step 4 — VaultSession lock state
+  filter/         # step 5 — MediaFilter + DateBucket (AND/OR filter model)
   ui/grid/        # step 4 — VaultGridScreen (3-col decrypting grid)
   ui/lock/        # step 4 — LockScreen
   ui/image/       # step 4 — Coil decrypting fetcher + ImageLoader (disk cache off)
+  ui/home/        # step 5 — VaultHome, FilterBar, GridViewModel
   ui/             # MainActivity — lock/grid host
 app/src/test/     # EnvelopeCodecTest + SourceAttributionTest (JVM) + SoftwareKeyWrapper
 app/src/androidTest/  # KeystoreRsaLatencyTest (device)

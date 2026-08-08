@@ -9,7 +9,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
@@ -17,7 +16,7 @@ import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.auth.BiometricAuth
 import com.atelierapps.vault.crypto.MediaCrypto
 import com.atelierapps.vault.session.VaultSession
-import com.atelierapps.vault.ui.grid.VaultGridScreen
+import com.atelierapps.vault.ui.home.VaultHome
 import com.atelierapps.vault.ui.lock.LockScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,9 +44,7 @@ class MainActivity : FragmentActivity() {
                         LaunchedEffect(Unit) { promptUnlock() }
                         LockScreen(onUnlock = ::promptUnlock)
                     } else {
-                        val media by remember { repository.observeAll() }
-                            .collectAsState(initial = emptyList())
-                        VaultGridScreen(media = media, onOpen = { /* TODO step 8: viewer */ })
+                        VaultHome(onOpen = { /* TODO step 8: viewer */ })
                     }
                 }
             }
