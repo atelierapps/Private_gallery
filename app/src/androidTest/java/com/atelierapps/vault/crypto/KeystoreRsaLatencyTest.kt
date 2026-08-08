@@ -7,10 +7,15 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.SecureRandom
+import java.security.spec.MGF1ParameterSpec
+import java.security.spec.X509EncodedKeySpec
 import javax.crypto.Cipher
+import javax.crypto.spec.OAEPParameterSpec
+import javax.crypto.spec.PSource
 
 /**
  * Spec §3.1 go/no-go: measure a single TEE RSA-OAEP unwrap on real hardware.
@@ -39,24 +44,28 @@ class KeystoreRsaLatencyTest {
 
     @Test fun measureUnwrapLatency() {
         generateBenchKey()
-        val pub = keyStore.getCertificate(benchAlias).publicKey
+        // Re-import the public key so encryption runs in the software provider,
+        // and pin the OAEP params so encrypt/decrypt agree (see KeystoreKeyWrapper).
+        val pub = KeyFactory.getInstance("RSA")
+            .generatePublic(X509EncodedKeySpec(keyStore.getCertificate(benchAlias).publicKey.encoded))
         val priv = keyStore.getKey(benchAlias, null)
+        val oaep = OAEPParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT)
 
         val dek = ByteArray(32).also { SecureRandom().nextBytes(it) }
         val wrapped = Cipher.getInstance(transformation).run {
-            init(Cipher.ENCRYPT_MODE, pub); doFinal(dek)
+            init(Cipher.ENCRYPT_MODE, pub, oaep); doFinal(dek)
         }
 
         // warm up
         repeat(10) {
-            Cipher.getInstance(transformation).run { init(Cipher.DECRYPT_MODE, priv); doFinal(wrapped) }
+            Cipher.getInstance(transformation).run { init(Cipher.DECRYPT_MODE, priv, oaep); doFinal(wrapped) }
         }
 
         val iterations = 100
         val samples = LongArray(iterations)
         for (i in 0 until iterations) {
             val t0 = System.nanoTime()
-            Cipher.getInstance(transformation).run { init(Cipher.DECRYPT_MODE, priv); doFinal(wrapped) }
+            Cipher.getInstance(transformation).run { init(Cipher.DECRYPT_MODE, priv, oaep); doFinal(wrapped) }
             samples[i] = System.nanoTime() - t0
         }
         samples.sort()
@@ -76,7 +85,7 @@ class KeystoreRsaLatencyTest {
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
         )
             .setKeySize(2048)
-            .setDigests(KeyProperties.DIGEST_SHA256)
+            .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA1)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
             .setUserAuthenticationRequired(false) // isolate crypto cost from the auth prompt
             .build()

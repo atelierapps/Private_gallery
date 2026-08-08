@@ -2,9 +2,14 @@ package com.atelierapps.vault.crypto
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.spec.MGF1ParameterSpec
+import java.security.spec.X509EncodedKeySpec
 import javax.crypto.Cipher
+import javax.crypto.spec.OAEPParameterSpec
+import javax.crypto.spec.PSource
 
 /**
  * Production [KeyWrapper] backed by an Android Keystore RSA-2048 key (spec §3).
@@ -16,6 +21,15 @@ import javax.crypto.Cipher
  *  - 300s auth validity so a single unlock authorizes a session of reads
  *  - `setInvalidatedByBiometricEnrollment(false)` so enrolling a new
  *    fingerprint doesn't destroy the vault (accepted trade — spec §3.2)
+ *
+ * ### OAEP parameters must be pinned explicitly
+ * Android Keystore's OAEP uses an **SHA-1 MGF1** regardless of the transformation
+ * string, while the default software provider used for public-key encryption
+ * would otherwise disagree — the mismatch throws `IllegalBlockSizeException` on
+ * unwrap. So both sides init with an explicit [OAEPParameterSpec] (main digest
+ * SHA-256, MGF1 SHA-1), and [wrap] re-imports the public key so encryption runs
+ * in the software provider under our control. The key authorizes both SHA-256
+ * and SHA-1 digests for the same reason.
  *
  * NB: Keystore keys never leave the device and cannot be migrated to a new
  * phone. Export (spec §11) is the only backup.
@@ -32,9 +46,13 @@ class KeystoreKeyWrapper(
     }
 
     override fun wrap(dek: ByteArray): ByteArray {
-        val publicKey = keyStore.getCertificate(alias).publicKey
+        // Re-import the public key so encryption runs in the software provider,
+        // where we fully control the OAEP parameters.
+        val keystorePublic = keyStore.getCertificate(alias).publicKey
+        val publicKey = KeyFactory.getInstance("RSA")
+            .generatePublic(X509EncodedKeySpec(keystorePublic.encoded))
         return Cipher.getInstance(TRANSFORMATION).run {
-            init(Cipher.ENCRYPT_MODE, publicKey)
+            init(Cipher.ENCRYPT_MODE, publicKey, oaepSpec())
             doFinal(dek)
         }
     }
@@ -48,7 +66,7 @@ class KeystoreKeyWrapper(
     override fun unwrap(wrapped: ByteArray): ByteArray {
         val privateKey = keyStore.getKey(alias, null)
         return Cipher.getInstance(TRANSFORMATION).run {
-            init(Cipher.DECRYPT_MODE, privateKey)
+            init(Cipher.DECRYPT_MODE, privateKey, oaepSpec())
             doFinal(wrapped)
         }
     }
@@ -59,7 +77,8 @@ class KeystoreKeyWrapper(
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
         )
             .setKeySize(2048)
-            .setDigests(KeyProperties.DIGEST_SHA256)
+            // SHA-256 is the OAEP digest; SHA-1 is authorized for the MGF1.
+            .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA1)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_OAEP)
             .setUserAuthenticationRequired(true)
             .setUserAuthenticationParameters(
@@ -80,5 +99,9 @@ class KeystoreKeyWrapper(
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
         private const val AUTH_VALIDITY_SECONDS = 300
+
+        /** Main digest SHA-256, MGF1 SHA-1 — the combination Keystore actually uses. */
+        fun oaepSpec(): OAEPParameterSpec =
+            OAEPParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT)
     }
 }
