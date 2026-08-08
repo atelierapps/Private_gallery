@@ -1,0 +1,544 @@
+<title>Vault — UI Mockup for Review</title>
+<style>
+  :root{
+    /* board — light (system default / explicit light) */
+    --board-bg:#E9EBEE;
+    --board-panel:#FFFFFF;
+    --board-ink:#191E23;
+    --board-muted:#59636B;
+    --board-line:#D6DBDF;
+    --board-brass:#9A7526;
+    --board-brass-soft:#F0E6CE;
+    --shadow:0 1px 2px rgba(20,26,31,.06), 0 12px 32px rgba(20,26,31,.10);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --board-bg:#0A0D0F;
+      --board-panel:#14181B;
+      --board-ink:#E7ECEF;
+      --board-muted:#8A959C;
+      --board-line:#252B30;
+      --board-brass:#D4AC5E;
+      --board-brass-soft:#231C0D;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --board-bg:#0A0D0F;
+    --board-panel:#14181B;
+    --board-ink:#E7ECEF;
+    --board-muted:#8A959C;
+    --board-line:#252B30;
+    --board-brass:#D4AC5E;
+    --board-brass-soft:#231C0D;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.5);
+  }
+
+  /* phone screens — always the app's own dark identity, theme-independent */
+  .phone{
+    --bg:#0E1113;
+    --surface:#171C20;
+    --raised:#212930;
+    --ink:#E9EEF0;
+    --muted:#8A969E;
+    --line:#2A3339;
+    --brass:#D8B463;
+    --brass-ink:#1A1509;
+    --dim:rgba(6,8,9,.72);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--board-bg);
+    color:var(--board-ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:clamp(24px,5vw,64px) clamp(18px,4vw,40px) 96px}
+
+  /* masthead */
+  header.top{margin-bottom:clamp(32px,5vw,56px)}
+  .eyebrow{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--board-brass);margin:0 0 14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--board-brass);display:inline-block}
+  h1{
+    font-size:clamp(30px,5.4vw,52px);line-height:1.05;margin:0 0 18px;
+    font-weight:680;letter-spacing:-.02em;text-wrap:balance;max-width:16ch;
+  }
+  .lede{font-size:clamp(16px,1.9vw,19px);color:var(--board-muted);margin:0;max-width:60ch}
+  .lede strong{color:var(--board-ink);font-weight:600}
+
+  .legend{
+    margin-top:26px;display:flex;flex-wrap:wrap;gap:10px 22px;
+    font-size:13px;color:var(--board-muted);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:8px}
+  .swatch{width:26px;height:14px;border-radius:3px;display:inline-block;border:1px solid rgba(128,128,128,.25)}
+  .sw-media{background:linear-gradient(135deg,#3A6B7A,#7A5A82)}
+  .sw-brass{background:#D8B463}
+  .sw-video{background:#212930;position:relative}
+  .sw-video::after{content:"";position:absolute;inset:0;margin:auto;width:0;height:0;border-left:6px solid #D8B463;border-top:4px solid transparent;border-bottom:4px solid transparent}
+
+  /* screen modules */
+  .screens{display:flex;flex-direction:column;gap:clamp(40px,6vw,72px);margin-top:clamp(36px,5vw,64px)}
+  .module{
+    display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);
+    gap:clamp(24px,4vw,52px);align-items:start;
+  }
+  .module:nth-child(even){grid-template-columns:minmax(0,1fr) minmax(0,320px)}
+  .module:nth-child(even) .phone-col{order:2}
+  .module:nth-child(even) .notes{order:1}
+  @media (max-width:760px){
+    .module,.module:nth-child(even){grid-template-columns:1fr;gap:22px}
+    .module:nth-child(even) .phone-col,.module:nth-child(even) .notes{order:initial}
+  }
+  .phone-col{display:flex;justify-content:center;position:sticky;top:24px}
+  @media (max-width:760px){.phone-col{position:static}}
+
+  /* phone frame */
+  .phone{
+    width:300px;flex:0 0 300px;border-radius:38px;
+    background:#000;padding:9px;
+    box-shadow:var(--shadow), 0 0 0 1.5px rgba(140,140,140,.16);
+    position:relative;
+  }
+  .screen{
+    background:var(--bg);color:var(--ink);
+    border-radius:30px;overflow:hidden;height:626px;
+    display:flex;flex-direction:column;position:relative;
+    font-size:14px;
+  }
+  .statusbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px 20px 7px;font-size:12px;color:var(--ink);
+    font-family:ui-monospace,monospace;letter-spacing:.02em;flex:0 0 auto;
+  }
+  .statusbar .right{display:flex;align-items:center;gap:7px;color:var(--muted)}
+  .statusbar svg{display:block}
+
+  /* app bar */
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 12px;flex:0 0 auto}
+  .appbar .title{font-size:19px;font-weight:650;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+  .appbar .acts{display:flex;gap:6px;color:var(--muted)}
+  .iconbtn{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--muted)}
+
+  /* filter bar */
+  .filters{display:flex;gap:7px;padding:0 16px 12px;overflow:hidden;flex:0 0 auto;flex-wrap:wrap}
+  .chip{
+    font-size:12.5px;padding:6px 12px;border-radius:999px;
+    border:1px solid var(--line);color:var(--muted);white-space:nowrap;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .chip.on{background:var(--brass);color:var(--brass-ink);border-color:var(--brass);font-weight:600}
+  .chip .ct{font-family:ui-monospace,monospace;font-size:11px;opacity:.7}
+  .chip.on .ct{opacity:.85}
+  .chip .dot{width:7px;height:7px;border-radius:50%}
+
+  /* media grid */
+  .grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:0 3px;
+    overflow:hidden;flex:1 1 auto;align-content:start;
+  }
+  .tile{position:relative;aspect-ratio:1;border-radius:2px;overflow:hidden}
+  .tile .vid{position:absolute;top:5px;right:5px;width:16px;height:16px;border-radius:5px;background:rgba(6,8,9,.55);display:grid;place-items:center}
+  .tile .vid::after{content:"";width:0;height:0;border-left:6px solid #fff;border-top:4px solid transparent;border-bottom:4px solid transparent;margin-left:1px}
+  .tile .dur{position:absolute;bottom:4px;right:5px;font-family:ui-monospace,monospace;font-size:9px;background:rgba(6,8,9,.6);padding:1px 4px;border-radius:4px;color:#fff}
+  .tile.sel::after{content:"";position:absolute;inset:0;border:2.5px solid var(--brass);border-radius:2px}
+  .tile .selmark{position:absolute;top:5px;left:5px;width:18px;height:18px;border-radius:50%;background:var(--brass);color:var(--brass-ink);display:grid;place-items:center;font-size:11px;font-weight:800}
+
+  /* media placeholder palettes */
+  .g1{background:linear-gradient(135deg,#2E5B6B,#5C7C6E)}
+  .g2{background:linear-gradient(160deg,#6B4E63,#3A3550)}
+  .g3{background:linear-gradient(135deg,#7A6A45,#4A5240)}
+  .g4{background:linear-gradient(145deg,#334A5E,#6E5568)}
+  .g5{background:linear-gradient(135deg,#4E6B5E,#2E3F4A)}
+  .g6{background:linear-gradient(160deg,#7C5A50,#4A3F52)}
+  .g7{background:linear-gradient(135deg,#3E5A72,#725F52)}
+  .g8{background:linear-gradient(150deg,#5A5A72,#3C4A46)}
+  .g9{background:linear-gradient(135deg,#6E6248,#3A4C5A)}
+  .g10{background:linear-gradient(160deg,#455E5A,#5E4A5C)}
+  .g11{background:linear-gradient(135deg,#5C4E68,#40584E)}
+  .g12{background:linear-gradient(145deg,#6A5548,#455A6A)}
+
+  /* bottom bar */
+  .bottombar{
+    display:flex;align-items:center;justify-content:space-around;
+    padding:10px 18px 16px;border-top:1px solid var(--line);
+    background:var(--surface);flex:0 0 auto;color:var(--muted);font-size:11px;
+  }
+  .navitem{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .navitem.on{color:var(--brass)}
+  .fab{
+    position:absolute;right:16px;bottom:74px;width:52px;height:52px;border-radius:17px;
+    background:var(--brass);color:var(--brass-ink);display:grid;place-items:center;
+    box-shadow:0 8px 22px rgba(0,0,0,.45);
+  }
+
+  /* lock screen */
+  .lock{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:30px;text-align:center;background:radial-gradient(120% 80% at 50% 32%,#161B1F 0%,#0E1113 70%)}
+  .lock .ring{width:88px;height:88px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;color:var(--brass);background:var(--surface)}
+  .lock h2{margin:0;font-size:20px;font-weight:640;letter-spacing:-.01em}
+  .lock p{margin:0;color:var(--muted);font-size:13px;max-width:26ch}
+  .lock .pill{margin-top:6px;font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);border:1px solid var(--line);padding:6px 12px;border-radius:999px;display:inline-flex;gap:7px;align-items:center}
+  .lock .credbtn{margin-top:2px;font-size:13px;color:var(--brass);font-weight:600}
+
+  /* share sheet */
+  .sheetbg{position:absolute;inset:0;background:var(--dim);display:flex;flex-direction:column;justify-content:flex-end}
+  .backdrop-hint{flex:1 1 auto;display:flex;align-items:flex-start;justify-content:center;padding-top:54px}
+  .backdrop-hint .fakepage{width:82%;height:150px;border-radius:12px;background:linear-gradient(135deg,#2E5B6B,#5C7C6E);opacity:.5;filter:blur(1px)}
+  .sheet{
+    background:var(--surface);border-radius:26px 26px 0 0;padding:8px 20px 22px;
+    border-top:1px solid var(--line);box-shadow:0 -18px 40px rgba(0,0,0,.5);
+  }
+  .grabber{width:38px;height:4px;border-radius:2px;background:var(--line);margin:6px auto 16px}
+  .sheet h3{margin:0 0 3px;font-size:16px;font-weight:640}
+  .sheet .sub{margin:0 0 16px;font-size:12.5px;color:var(--muted);font-family:ui-monospace,monospace;display:flex;align-items:center;gap:7px}
+  .preview{display:flex;gap:13px;align-items:center;margin-bottom:18px}
+  .preview .thumb{width:60px;height:60px;border-radius:12px;flex:0 0 auto}
+  .preview .meta{min-width:0}
+  .preview .meta .nm{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .preview .meta .dt{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:3px}
+  .srcrow{display:flex;align-items:center;gap:9px;background:var(--raised);border-radius:12px;padding:10px 12px;margin-bottom:16px}
+  .srcrow .ic{width:28px;height:28px;border-radius:8px;background:#3B7A4E;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex:0 0 auto}
+  .srcrow .txt{min-width:0}
+  .srcrow .txt .a{font-size:12.5px;font-weight:600}
+  .srcrow .txt .b{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .taglabel{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,monospace;margin-bottom:9px}
+  .tags{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+  .tag{font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink)}
+  .tag.on{background:var(--brass-soft,#231C0D);border-color:var(--brass);color:var(--brass)}
+  .tag.new{color:var(--muted);border-style:dashed}
+  .savebtn{
+    width:100%;padding:14px;border-radius:15px;background:var(--brass);color:var(--brass-ink);
+    font-size:15px;font-weight:680;text-align:center;letter-spacing:.01em;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+  }
+  .savenote{text-align:center;font-size:11px;color:var(--muted);margin-top:11px;font-family:ui-monospace,monospace}
+
+  /* viewer */
+  .viewer{flex:1 1 auto;position:relative;display:flex;flex-direction:column}
+  .viewer .stage{flex:1 1 auto;background:linear-gradient(150deg,#334A5E,#6E5568);position:relative}
+  .viewer .topgrad{position:absolute;top:0;left:0;right:0;height:80px;background:linear-gradient(180deg,rgba(6,8,9,.6),transparent);display:flex;align-items:flex-start;justify-content:space-between;padding:12px 14px;color:#fff}
+  .viewer .drawer{background:var(--surface);border-top:1px solid var(--line);padding:16px 18px 20px}
+  .viewer .drawer .handle{width:34px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 14px}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .kv:last-of-type{border-bottom:0}
+  .kv .k{color:var(--muted);font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.03em}
+  .kv .v{text-align:right;font-weight:500}
+  .kv .v.mono{font-family:ui-monospace,monospace;font-weight:400;font-size:11.5px}
+  .vtags{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+
+  .segmented{display:flex;background:var(--raised);border-radius:11px;padding:3px;margin:0 16px 12px;flex:0 0 auto}
+  .segmented .seg{flex:1;text-align:center;font-size:12px;padding:6px;border-radius:8px;color:var(--muted)}
+  .segmented .seg.on{background:var(--brass);color:var(--brass-ink);font-weight:600}
+
+  .importbanner{margin:0 16px 12px;background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;gap:10px;align-items:center;flex:0 0 auto}
+  .importbanner .ic{color:var(--brass);flex:0 0 auto}
+  .importbanner .t{font-size:12px;color:var(--ink)}
+  .importbanner .t b{font-weight:650}
+  .importbanner .t span{color:var(--muted)}
+  .importbar{display:flex;gap:10px;padding:12px 16px 16px;border-top:1px solid var(--line);background:var(--surface);flex:0 0 auto}
+  .importbar .ghost{flex:0 0 auto;padding:12px 14px;border-radius:13px;border:1px solid var(--line);color:var(--muted);font-size:13px;font-weight:600}
+  .importbar .go{flex:1;padding:12px;border-radius:13px;background:var(--brass);color:var(--brass-ink);font-size:14px;font-weight:680;text-align:center}
+
+  /* notes column */
+  .notes{padding-top:6px}
+  .notes .kicker{
+    font-family:ui-monospace,monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--board-brass);margin:0 0 6px;display:flex;align-items:center;gap:10px;
+  }
+  .notes .kicker .num{
+    width:24px;height:24px;border-radius:7px;background:var(--board-brass-soft);color:var(--board-brass);
+    display:grid;place-items:center;font-weight:700;font-size:12px;letter-spacing:0;flex:0 0 auto;
+  }
+  .notes h2{font-size:clamp(21px,2.6vw,27px);margin:0 0 8px;font-weight:660;letter-spacing:-.015em;text-wrap:balance}
+  .notes .desc{color:var(--board-muted);margin:0 0 20px;font-size:15px;max-width:46ch}
+  .yourcall{
+    background:var(--board-panel);border:1px solid var(--board-line);border-radius:15px;
+    padding:16px 18px;box-shadow:var(--shadow);
+  }
+  .yourcall .h{
+    font-size:12px;font-family:ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--board-muted);margin:0 0 12px;display:flex;align-items:center;gap:8px;
+  }
+  .yourcall .h::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--board-brass)}
+  .yourcall ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px}
+  .yourcall li{display:grid;grid-template-columns:22px 1fr;gap:11px;font-size:14px}
+  .yourcall li .q{width:20px;height:20px;border-radius:6px;border:1px solid var(--board-line);color:var(--board-brass);display:grid;place-items:center;font-size:11px;font-weight:700;margin-top:1px;font-family:ui-monospace,monospace}
+  .yourcall li b{font-weight:640}
+  .yourcall li .opt{color:var(--board-muted)}
+
+  footer{margin-top:clamp(48px,7vw,88px);padding-top:26px;border-top:1px solid var(--board-line);color:var(--board-muted);font-size:14px;max-width:62ch}
+  footer b{color:var(--board-ink);font-weight:640}
+  .disclaim{margin-top:14px;font-family:ui-monospace,monospace;font-size:12px;color:var(--board-muted)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Vault · UI mockup for review</p>
+    <h1>Five screens to react to, not read.</h1>
+    <p class="lede">Placeholder tiles stand in for your media — <strong>nothing here is a real photo</strong>. The point is the layout, the wording, and the flow. Next to each screen is a short <strong>“your call”</strong> list: the UI decisions the spec left open. Tell me which options you want and I’ll lock them into the build.</p>
+    <div class="legend">
+      <span><i class="swatch sw-media"></i> media placeholder</span>
+      <span><i class="swatch sw-video"></i> video item</span>
+      <span><i class="swatch sw-brass"></i> primary action / active</span>
+      <span class="mono">mono type = metadata &amp; security labels</span>
+    </div>
+  </header>
+
+  <div class="screens">
+
+    <!-- 1 · LOCK -->
+    <section class="module">
+      <div class="phone-col">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><div class="right">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span style="font-family:ui-monospace,monospace;font-size:10px">OFFLINE</span>
+            <svg width="20" height="12" viewBox="0 0 26 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="21" height="11" rx="2.5"/><rect x="3" y="3" width="15" height="7" rx="1" fill="currentColor" stroke="none"/><rect x="23" y="4" width="2" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+          </div></div>
+          <div class="lock">
+            <div class="ring">
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 11c-3 0-5 2-5 5v1M12 11c3 0 5 2 5 5M12 11V7a4 4 0 0 0-4 4M12 4a7 7 0 0 0-7 7"/><path d="M9 20c1 .6 2 .8 3 .8s2-.2 3-.8"/></svg>
+            </div>
+            <h2>Vault is locked</h2>
+            <p>Unlock with your fingerprint or device PIN to see your media.</p>
+            <span class="pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Contents hidden from recents &amp; screenshots</span>
+            <div class="credbtn">Use device PIN instead</div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <p class="kicker"><span class="num">1</span> Lock screen</p>
+        <h2>The gate, every time you re-open</h2>
+        <p class="desc">Auto-locks after your chosen delay. Biometric first, device PIN as fallback — no custom passcode. This is what a snooping bystander hits.</p>
+        <div class="yourcall">
+          <p class="h">Your call</p>
+          <ul>
+            <li><span class="q">A</span><div><b>Auto-prompt biometrics on open, or wait for a tap?</b> <span class="opt">Auto = one less tap daily. Tap = you decide when the sensor fires.</span></div></li>
+            <li><span class="q">B</span><div><b>Behind the lock: full black, or a blurred grid?</b> <span class="opt">Blur hints “there’s content here.” Black gives nothing away — mockup shows black.</span></div></li>
+            <li><span class="q">C</span><div><b>Lock delay default</b> <span class="opt">Spec offers immediate / 15s / 60s. Which is the out-of-box default?</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 · GRID -->
+    <section class="module">
+      <div class="phone-col">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><div class="right"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span style="font-family:ui-monospace,monospace;font-size:10px">OFFLINE</span><svg width="20" height="12" viewBox="0 0 26 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="21" height="11" rx="2.5"/><rect x="3" y="3" width="15" height="7" rx="1" fill="currentColor" stroke="none"/><rect x="23" y="4" width="2" height="5" rx="1" fill="currentColor" stroke="none"/></svg></div></div>
+          <div class="appbar">
+            <div class="title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" stroke-width="1.7"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Vault</div>
+            <div class="acts">
+              <div class="iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+              <div class="iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></div>
+            </div>
+          </div>
+          <div class="filters">
+            <span class="chip on">All <span class="ct">312</span></span>
+            <span class="chip"><span class="dot" style="background:#3B7A4E"></span>WhatsApp <span class="ct">64</span></span>
+            <span class="chip"><span class="dot" style="background:#4A78C4"></span>Chrome <span class="ct">50</span></span>
+            <span class="chip">#keep <span class="ct">28</span></span>
+            <span class="chip">Date</span>
+          </div>
+          <div class="grid">
+            <div class="tile g1"></div>
+            <div class="tile g2"><div class="vid"></div><div class="dur">0:14</div></div>
+            <div class="tile g3"></div>
+            <div class="tile g4"></div>
+            <div class="tile g5"></div>
+            <div class="tile g6"><div class="vid"></div><div class="dur">1:02</div></div>
+            <div class="tile g7"></div>
+            <div class="tile g8"></div>
+            <div class="tile g9"></div>
+            <div class="tile g10"></div>
+            <div class="tile g11"><div class="vid"></div><div class="dur">0:07</div></div>
+            <div class="tile g12"></div>
+          </div>
+          <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="bottombar">
+            <div class="navitem on"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Library</div>
+            <div class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Albums</div>
+            <div class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.3-2.4H9.4l-.3 2.4a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.3 2.4h4.2l.3-2.4a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6a7 7 0 0 0 .1-1Z"/></svg>Settings</div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <p class="kicker"><span class="num">2</span> Vault grid</p>
+        <h2>Home base: everything you’ve saved</h2>
+        <p class="desc">The filter bar is the spine — <span class="mono">All · source · tag · Date</span>, multi-select = AND. Source chips auto-generate from where things came from, with live counts. The <b>+</b> button is where import lives.</p>
+        <div class="yourcall">
+          <p class="h">Your call</p>
+          <ul>
+            <li><span class="q">A</span><div><b>Grid density: 3 columns or 4?</b> <span class="opt">3 = bigger, easier to recognize. 4 = more per screen. Mockup shows 3.</span></div></li>
+            <li><span class="q">B</span><div><b>Source chips: text labels, or app icons?</b> <span class="opt">Icons are faster to scan but need per-app art. Mockup uses a colored dot + name.</span></div></li>
+            <li><span class="q">C</span><div><b>Video badge: corner marker + duration, or just a play dot?</b></div></li>
+            <li><span class="q">D</span><div><b>Bottom nav vs. a hamburger.</b> <span class="opt">Do you want Albums/Settings as tabs at all in v1, or keep it single-screen?</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · SHARE SHEET -->
+    <section class="module">
+      <div class="phone-col">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><div class="right"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span style="font-family:ui-monospace,monospace;font-size:10px">OFFLINE</span><svg width="20" height="12" viewBox="0 0 26 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="21" height="11" rx="2.5"/><rect x="3" y="3" width="15" height="7" rx="1" fill="currentColor" stroke="none"/><rect x="23" y="4" width="2" height="5" rx="1" fill="currentColor" stroke="none"/></svg></div></div>
+          <div class="sheetbg">
+            <div class="backdrop-hint"><div class="fakepage"></div></div>
+            <div class="sheet">
+              <div class="grabber"></div>
+              <h3>Save to Vault</h3>
+              <p class="sub"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Encrypts on save · no unlock needed</p>
+              <div class="preview">
+                <div class="thumb g4"></div>
+                <div class="meta">
+                  <div class="nm">IMG_20260808_0941.jpg</div>
+                  <div class="dt">JPEG · 3.2&nbsp;MB · 4032×3024</div>
+                </div>
+              </div>
+              <div class="srcrow">
+                <div class="ic">W</div>
+                <div class="txt">
+                  <div class="a">From WhatsApp</div>
+                  <div class="b">android-app://com.whatsapp</div>
+                </div>
+              </div>
+              <p class="taglabel">Quick tags</p>
+              <div class="tags">
+                <span class="tag on">#keep</span>
+                <span class="tag">#refs</span>
+                <span class="tag">#funny</span>
+                <span class="tag">#travel</span>
+                <span class="tag">#work</span>
+                <span class="tag new">+ new</span>
+              </div>
+              <div class="savebtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 6"/></svg> Save</div>
+              <p class="savenote">Sheet closes on its own · large videos finish in the background</p>
+            </div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <p class="kicker"><span class="num">3</span> Share sheet <b style="color:var(--board-brass);font-weight:600;font-size:13px;font-family:ui-monospace,monospace;letter-spacing:.1em">· PRIMARY</b></p>
+        <h2>The daily move: “Share → Vault”</h2>
+        <p class="desc">Long-press an image anywhere → Share → Vault. This bottom sheet appears, you optionally tap a tag, hit Save, it’s gone. <b>No biometric prompt</b> — public-key wrapping means saving never needs auth. This is the flow to get perfect.</p>
+        <div class="yourcall">
+          <p class="h">Your call</p>
+          <ul>
+            <li><span class="q">A</span><div><b>How prominent should the source be?</b> <span class="opt">Full row with the raw <span class="mono">android-app://</span> id (shown), or just a quiet “From WhatsApp” line?</span></div></li>
+            <li><span class="q">B</span><div><b>One-tap-save, or always confirm?</b> <span class="opt">Could auto-save on share and show only an undo toast — fastest, but no tag-at-save moment.</span></div></li>
+            <li><span class="q">C</span><div><b>How many quick-tag chips?</b> <span class="opt">Spec says top 6 by use. Fewer = calmer sheet; more = less “+ new” typing.</span></div></li>
+            <li><span class="q">D</span><div><b>Save button wording:</b> <span class="opt">“Save” / “Save to Vault” / “Lock it away”?</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · VIEWER -->
+    <section class="module">
+      <div class="phone-col">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><div class="right"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span style="font-family:ui-monospace,monospace;font-size:10px">OFFLINE</span><svg width="20" height="12" viewBox="0 0 26 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="21" height="11" rx="2.5"/><rect x="3" y="3" width="15" height="7" rx="1" fill="currentColor" stroke="none"/><rect x="23" y="4" width="2" height="5" rx="1" fill="currentColor" stroke="none"/></svg></div></div>
+          <div class="viewer">
+            <div class="stage">
+              <div class="topgrad">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              </div>
+            </div>
+            <div class="drawer">
+              <div class="handle"></div>
+              <div class="kv"><span class="k">SOURCE</span><span class="v">Chrome · nasa.gov</span></div>
+              <div class="kv"><span class="k">SAVED</span><span class="v mono">8 Aug 2026, 09:41</span></div>
+              <div class="kv"><span class="k">FILE</span><span class="v mono">7.8 MB · 6000×4000</span></div>
+              <div class="vtags">
+                <span class="tag on">#keep</span>
+                <span class="tag">#space</span>
+                <span class="tag new">+ tag</span>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <p class="kicker"><span class="num">4</span> Full-screen viewer</p>
+        <h2>One item, decrypted only in memory</h2>
+        <p class="desc">Tap a tile to open it. Swipe between items; pinch to zoom. A pull-up drawer carries the metadata — source, when you saved it, tags. Never written to a temp file, and screenshots are blocked here too.</p>
+        <div class="yourcall">
+          <p class="h">Your call</p>
+          <ul>
+            <li><span class="q">A</span><div><b>Metadata: always-visible drawer, or hidden until you swipe up?</b> <span class="opt">Mockup shows it docked. Hiding it gives the photo the full screen.</span></div></li>
+            <li><span class="q">B</span><div><b>Show the source URL/domain here?</b> <span class="opt">Handy for “where’s this from,” but it’s the most sensitive field — see the spec’s DB-leak note.</span></div></li>
+            <li><span class="q">C</span><div><b>Actions on an item:</b> <span class="opt">which do you want reachable — retag, add to album, export this one, delete?</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · IMPORT -->
+    <section class="module">
+      <div class="phone-col">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><div class="right"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span style="font-family:ui-monospace,monospace;font-size:10px">OFFLINE</span><svg width="20" height="12" viewBox="0 0 26 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="21" height="11" rx="2.5"/><rect x="3" y="3" width="15" height="7" rx="1" fill="currentColor" stroke="none"/><rect x="23" y="4" width="2" height="5" rx="1" fill="currentColor" stroke="none"/></svg></div></div>
+          <div class="appbar">
+            <div class="title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg> <span style="font-size:16px">4 selected</span></div>
+            <div class="acts"><div class="iconbtn" style="color:var(--brass);font-family:ui-monospace,monospace;font-size:12px;width:auto;padding:0 6px">All</div></div>
+          </div>
+          <div class="segmented">
+            <div class="seg on">Photos &amp; videos</div>
+            <div class="seg">From a folder</div>
+          </div>
+          <div class="importbanner">
+            <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></div>
+            <div class="t"><b>Folder import</b> <span>· encrypts a copy in, then offers to clear the originals. Nothing stays in your gallery.</span></div>
+          </div>
+          <div class="grid">
+            <div class="tile g5 sel"><div class="selmark">1</div></div>
+            <div class="tile g6"><div class="vid"></div></div>
+            <div class="tile g7 sel"><div class="selmark">2</div></div>
+            <div class="tile g8"></div>
+            <div class="tile g9 sel"><div class="selmark">3</div></div>
+            <div class="tile g10"></div>
+            <div class="tile g11 sel"><div class="selmark">4</div><div class="vid"></div></div>
+            <div class="tile g12"></div>
+            <div class="tile g1"></div>
+          </div>
+          <div class="importbar">
+            <div class="ghost">Cancel</div>
+            <div class="go">Import 4 &amp; delete originals</div>
+          </div>
+        </div></div>
+      </div>
+      <div class="notes">
+        <p class="kicker"><span class="num">5</span> Import</p>
+        <h2>Pulling media in — and out of your gallery</h2>
+        <p class="desc">Your own picker (not Android’s — the system one can’t delete originals). Multi-select, then one system dialog deletes them all. The second tab is the <b>folder import</b> from your note: point it at a directory, it encrypts copies in, no plaintext left behind for the stock gallery to scan.</p>
+        <div class="yourcall">
+          <p class="h">Your call</p>
+          <ul>
+            <li><span class="q">A</span><div><b>“Photos &amp; videos” and “From a folder” as two tabs, or one merged flow?</b> <span class="opt">Mockup splits them.</span></div></li>
+            <li><span class="q">B</span><div><b>Delete-originals: default on or off?</b> <span class="opt">On = true vault hygiene. Off = safer while you trust it. You always get the final system confirm either way.</span></div></li>
+            <li><span class="q">C</span><div><b>After import, jump to the grid or stay to import more?</b></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <b>These are static mockups — nothing here is wired up.</b> They exist so your UI feedback has something concrete to push against. Reply with the letters (e.g. “2A: 4 columns, 3B: quiet source line, 5B: default off”) or just talk through each screen, and I’ll fold your answers into the spec and the eventual build.
+    <div class="disclaim">Placeholder tiles are gradients, not photographs. Brass = the app’s single accent, used only for the primary action and active state.</div>
+  </footer>
+</div>
