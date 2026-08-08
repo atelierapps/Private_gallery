@@ -64,7 +64,7 @@ class VaultCtrDataSource(private val context: Context) : BaseDataSource(/* isNet
         raf = RandomAccessFile(file, "r").apply { seek(headerLen + position) }
         val dataLength = file.length() - headerLen
         bytesRemaining =
-            if (dataSpec.length != C.LENGTH_UNSET) dataSpec.length else dataLength - position
+            if (dataSpec.length != C.LENGTH_UNSET.toLong()) dataSpec.length else dataLength - position
 
         opened = true
         transferStarted(dataSpec)
