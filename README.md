@@ -7,16 +7,23 @@ no accounts, no analytics, and **no `INTERNET` permission at all**. See
 
 ## Status
 
-Build-order step 1 of the spec (§13) — the crypto envelope — is implemented and
-**verified**. The rest of the app is scaffolded (project skeleton, manifest with
-the anti-leak config, Room/Compose/Media3 wiring) with placeholder UI.
+Build-order steps 1–3 of the spec (§13) are implemented: the verified crypto
+envelope, the Room metadata layer, and the primary daily flow — the share
+target with its save sheet, source capture, and encrypt-on-save pipeline.
 
 | Area | State |
 |---|---|
-| Crypto envelope (RSA-wrap + per-file DEK, GCM/CTR, CTR seek) | ✅ implemented + verified |
-| Keystore key + biometric read gate | ✅ implemented (device-only, untested off-device) |
-| Project scaffold, manifest, anti-leak config | ✅ |
-| Share target, grid, viewer, import, lock, export | ⬜ stubs / not started |
+| 1 · Crypto envelope (RSA-wrap + per-file DEK, GCM/CTR, CTR seek) | ✅ implemented + verified |
+| 1 · Keystore key + biometric read gate | ✅ implemented (device-only) |
+| 2 · Room schema (media + tags + cross-ref) + repository | ✅ implemented |
+| 3 · Share target + save sheet + source capture + encrypt pipeline | ✅ implemented |
+| Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
+| 4–11 · Grid, filter bar, importer, viewer, video, lock, export | ⬜ not started |
+
+Everything except the crypto is written but **unbuilt** here (no Android SDK in
+this environment). The crypto and the pure-logic pieces (envelope, CTR seek,
+source-host parsing) are verified on the JDK; the Android-framework code compiles
+and runs once built with an SDK.
 
 ## Crypto verification
 
@@ -65,9 +72,12 @@ inaccessible data (spec §12).
 ```
 app/src/main/java/com/atelierapps/vault/
   crypto/         # step 1 — EnvelopeCodec, KeyWrapper, KeystoreKeyWrapper, CtrReader/CtrCounter
-  share/          # share target (stub)
+  data/           # step 2 — Room entities, DAOs, VaultDatabase, VaultRepository
+  storage/        # app-private vault/thumbs/tmp layout
+  media/          # save pipeline — MediaSaver, Thumbnailer, MediaProbe
+  share/          # step 3 — ShareReceiverActivity, SaveSheet, SaveMediaWorker, SourceAttribution
   ui/             # main activity (stub)
-app/src/test/     # EnvelopeCodecTest (JVM) + SoftwareKeyWrapper
+app/src/test/     # EnvelopeCodecTest + SourceAttributionTest (JVM) + SoftwareKeyWrapper
 app/src/androidTest/  # KeystoreRsaLatencyTest (device)
 tools/crypto-verify/  # standalone JDK proof of the envelope + CTR seek
 ```

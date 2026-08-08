@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon foreground: a brass padlock, centered in the 108x108 safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#D8B463"
+        android:pathData="M54,30 c-9.4,0 -17,7.6 -17,17 l0,8 l-4,0 c-2.2,0 -4,1.8 -4,4 l0,20 c0,2.2 1.8,4 4,4 l42,0 c2.2,0 4,-1.8 4,-4 l0,-20 c0,-2.2 -1.8,-4 -4,-4 l-4,0 l0,-8 c0,-9.4 -7.6,-17 -17,-17 z M45,55 l0,-8 c0,-5 4,-9 9,-9 c5,0 9,4 9,9 l0,8 z" />
+    <path
+        android:fillColor="#0E1113"
+        android:pathData="M54,62 c-2.2,0 -4,1.8 -4,4 c0,1.5 0.8,2.8 2,3.5 l0,4.5 c0,1.1 0.9,2 2,2 c1.1,0 2,-0.9 2,-2 l0,-4.5 c1.2,-0.7 2,-2 2,-3.5 c0,-2.2 -1.8,-4 -4,-4 z" />
+</vector>
