@@ -357,6 +357,39 @@ Decoy PIN, break-in photo capture, cloud sync, filename obfuscation beyond UUIDs
 
 ---
 
+## 15. `[v1.2]` UI decisions — locked for v1
+
+Resolved from the visual mockup (`ui-mockup.html`). Each is a starting default, reversible in one line if it doesn't survive real use. Rationale kept short; the mockup shows the result.
+
+### 15.1 Lock (§9)
+- **Auto-prompt biometrics on open.** One less tap on the daily path; a cancel drops to a tap-to-retry state.
+- **Full black behind the lock, not a blurred grid.** Gives a bystander nothing — no hint that content exists. Consistent with the threat model.
+- **Default auto-lock delay: 15s.** Immediate punishes quick app-switches (share from another app and back); 60s is too loose for "someone picks up my phone." Immediate/15s/60s remain user-configurable.
+
+### 15.2 Vault grid (§8)
+- **3 columns.** Recognition beats density for a personal library. (Pinch-to-resize is a v2 nicety, not v1.)
+- **Source chips = colored dot + cached label** (not per-app icons). The label is already cached at save time (§6); icons add per-app art for no real scan-speed win at this size.
+- **Video tiles: corner play marker + duration badge.**
+- **No bottom navigation in v1.** Albums are v2 (§12), so an Albums tab would be dead weight. The library is the single screen; **Settings lives in the top-bar ⋮ overflow**; import is the **+** button.
+
+### 15.3 Share sheet (§5) — the primary flow
+- **Source shown as a quiet "From WhatsApp" line**, icon + cached label only. The raw `android-app://…` id is dev-facing and stays out of the sheet.
+- **Keep the confirm sheet; do not auto-save.** The tap-to-save moment *is* the tag-at-save moment (§7), which is the only tagging path that actually happens. Save is the default focus, so it's still effectively one tap when you don't tag.
+- **Six quick-tag chips**, highest `useCount` first, plus "+ new" (per §7).
+- **Primary button reads "Save to Vault."** It's invoked from *another app's* context where a bare "Save" is ambiguous.
+
+### 15.4 Viewer (§8)
+- **Metadata hidden until swipe-up.** The photo gets the full screen; a slim peek bar + swipe reveals source/date/tags. Tap toggles chrome.
+- **Show `sourceDomain` (host) only, never the full `sourceUrl`.** Directly implements the §2.1/§6.1 leak mitigation at the surface a shoulder-surfer actually sees.
+- **Per-item actions in v1: retag, export-this-one, delete.** Add-to-album is v2; no share-*out* (it would decrypt to hand to another app — reintroduces the exact leak the app removes).
+
+### 15.5 Import (§4 / §4.1)
+- **Two tabs: "Photos & videos" and "From a folder."** Same pipeline underneath; the split keeps each entry point's affordances (multi-select grid vs. pick-a-directory) clear.
+- **"Delete originals after import" defaults OFF.** Deletion here is irreversible and the vault has no recovery path (§11) — earn trust before making destruction the default. The user still gets Android's own delete confirmation when it's on. Revisit once export (§11) is proven end-to-end.
+- **Return to the grid after import**, scrolled to the newly added items, rather than staying in the picker.
+
+---
+
 ## Appendix A — `[v1.2]` Step-1 crypto & performance test plan
 
 Step 1 is not "get encryption working" — it's "prove the format is correct *and* the read path is fast enough," because both are baked into the file layout and are expensive to change after step 4. Write these as instrumented (on-device) tests; the RSA-latency numbers only mean anything on real TEE hardware, not the emulator.
