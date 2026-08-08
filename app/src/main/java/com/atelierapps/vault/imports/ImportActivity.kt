@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -95,10 +96,12 @@ class ImportActivity : ComponentActivity() {
     private fun launchDeleteRequest(uris: List<android.net.Uri>?) {
         val toDelete = uris ?: return
         try {
+            Toast.makeText(this, "Requesting deletion of ${toDelete.size} original(s)…", Toast.LENGTH_SHORT).show()
             Log.i("VaultImport", "launching createDeleteRequest for ${toDelete.size} uris: ${toDelete.take(3)}")
             val request = MediaStore.createDeleteRequest(contentResolver, toDelete)
             deleteLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
         } catch (t: Throwable) {
+            Toast.makeText(this, "Delete blocked: ${t.javaClass.simpleName}", Toast.LENGTH_LONG).show()
             Log.e("VaultImport", "createDeleteRequest failed; keeping originals", t)
             vm.onDeviceDeleteFinished()
         }
