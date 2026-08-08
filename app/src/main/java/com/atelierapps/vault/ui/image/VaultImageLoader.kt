@@ -16,7 +16,10 @@ import coil3.request.CachePolicy
 object VaultImageLoader {
     fun build(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
-            .components { add(VaultThumbFetcher.Factory(context), VaultMediaKey::class) }
+            .components {
+                add(VaultThumbFetcher.Factory(context), VaultMediaKey::class)
+                add(DeviceThumbFetcher.Factory(context), DeviceThumb::class)
+            }
             .memoryCachePolicy(CachePolicy.ENABLED) // enabled by default; explicit for intent
             .diskCachePolicy(CachePolicy.DISABLED)  // would write plaintext (§8)
             .build()

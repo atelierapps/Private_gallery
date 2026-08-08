@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.atelierapps.vault.filter.MediaTypeFilter
+import com.atelierapps.vault.ui.image.DeviceThumb
 
 private val Bg = Color(0xFF0E1113)
 private val Surface = Color(0xFF171C20)
@@ -188,7 +189,7 @@ private fun FolderGrid(folders: List<MediaFolder>, onOpen: (MediaFolder) -> Unit
         items(folders, key = { it.bucketId }) { folder ->
             Column(Modifier.clickable { onOpen(folder) }) {
                 AsyncImage(
-                    model = folder.coverUri,
+                    model = DeviceThumb(folder.coverUri),
                     contentDescription = folder.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
@@ -232,7 +233,7 @@ private fun PickTile(item: DeviceMedia, selected: Boolean, onToggle: (Uri) -> Un
             .then(if (selected) Modifier.border(2.5.dp, Brass, RoundedCornerShape(2.dp)) else Modifier),
     ) {
         AsyncImage(
-            model = item.uri,
+            model = DeviceThumb(item.uri),
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),

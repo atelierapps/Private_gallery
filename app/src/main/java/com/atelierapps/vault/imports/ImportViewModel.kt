@@ -2,6 +2,7 @@ package com.atelierapps.vault.imports
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.atelierapps.vault.VaultGraph
@@ -128,8 +129,10 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
                 done++
                 progress.value = ImportProgress(done, chosen.size)
             }
+            Log.i(TAG, "imported ${succeeded.size}/${chosen.size}, deleteOriginals=${deleteOriginals.value}")
             // All originals are MediaStore items → one batched createDeleteRequest.
             if (deleteOriginals.value && succeeded.isNotEmpty()) {
+                Log.i(TAG, "requesting delete of ${succeeded.size} originals")
                 pendingDeviceDelete.value = succeeded
             } else {
                 finished.value = true
@@ -163,5 +166,9 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
     fun onDeviceDeleteFinished() {
         pendingDeviceDelete.value = null
         finished.value = true
+    }
+
+    private companion object {
+        const val TAG = "VaultImport"
     }
 }

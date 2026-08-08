@@ -31,8 +31,8 @@ class ImportActivity : ComponentActivity() {
         }
 
     private val deleteLauncher =
-        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
-            // ok or cancel — either way the import is done; vault copies are kept.
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            Log.i("VaultImport", "delete dialog result=${result.resultCode}") // -1 = OK, 0 = cancelled
             vm.onDeviceDeleteFinished()
         }
 
@@ -95,10 +95,11 @@ class ImportActivity : ComponentActivity() {
     private fun launchDeleteRequest(uris: List<android.net.Uri>?) {
         val toDelete = uris ?: return
         try {
+            Log.i("VaultImport", "launching createDeleteRequest for ${toDelete.size} uris: ${toDelete.take(3)}")
             val request = MediaStore.createDeleteRequest(contentResolver, toDelete)
             deleteLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
         } catch (t: Throwable) {
-            Log.e("ImportActivity", "createDeleteRequest failed; keeping originals", t)
+            Log.e("VaultImport", "createDeleteRequest failed; keeping originals", t)
             vm.onDeviceDeleteFinished()
         }
     }

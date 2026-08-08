@@ -1,5 +1,7 @@
 package com.atelierapps.vault.ui.viewer
 
+import android.graphics.Color
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -17,7 +19,8 @@ import com.atelierapps.vault.crypto.VaultCtrDataSource
  * Plays an encrypted vault video (spec §9) through ExoPlayer, decrypting via
  * [VaultCtrDataSource] so no plaintext touches disk. Standard Media3 controls
  * (play/pause, scrub) are provided by [PlayerView]; scrubbing works because the
- * CTR data source is seekable.
+ * CTR data source is seekable. The surface is black end-to-end and controls
+ * auto-hide after 2.5 s.
  */
 @UnstableApi
 @Composable
@@ -41,8 +44,12 @@ fun VideoPlayer(id: String, modifier: Modifier = Modifier) {
             PlayerView(ctx).apply {
                 this.player = player
                 useController = true
+                controllerShowTimeoutMs = 2500       // fade controls out after 2.5 s
+                controllerAutoShow = true
+                setShutterBackgroundColor(Color.BLACK) // no white flash before first frame
+                setBackgroundColor(Color.BLACK)        // black behind the nav bar
             }
         },
-        modifier = modifier,
+        modifier = modifier.background(androidx.compose.ui.graphics.Color.Black),
     )
 }
