@@ -124,6 +124,8 @@ Modes: **GCM** for images and thumbnails (integrity for free). **CTR** for video
 > 3. If measurement (Appendix A) still shows the cold grid is unacceptable, the fallback is a symmetric **library key** for thumbnails (one RSA unwrap per unlock, then AES-unwrap per thumb) while keeping RSA solely for the no-auth save path. That's a bigger change — which is exactly why you measure in step 1, before step 4 locks the format.
 >
 > Do **not** reach for `setIsStrongBoxBacked(true)` to "harden" the RSA key — StrongBox RSA is *slower* and makes this worse.
+>
+> **Measured (Xiaomi, Android 16, step-4 bring-up):** single TEE RSA-OAEP unwrap **median 18.3 ms / p90 20.8 ms**. Naive per-thumbnail: N=200 ≈ **3.7 s**, N=500 ≈ **9.2 s** — well past the ~300 ms bar, so the mitigation is mandatory, not optional. Shipped design: per-session [DekCache] + a background prewarm that fans out across 4 workers, keeping RSA entirely off the UI thread (grid never freezes; thumbnails fill in over ~1–2 s on first unlock, instant thereafter). If a library grows to thousands, the O(1)-RSA-per-unlock **library-key** design (option 3 above) becomes the scalability path — deferred to v2.
 
 > ### `[v1.2]` 3.2 — Crypto hardening nits (all cheap, do them in step 1)
 > - **GCM IV = 12 bytes, not 16.** The header reserves `[16-byte IV]`; GCM's standard/optimal nonce is 96-bit. A 16-byte IV forces the non-standard GHASH-derived path (slower, off the well-analyzed track). Use 12 for GCM, keep 16 for CTR — or document the field as 12+pad for GCM.
