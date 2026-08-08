@@ -40,6 +40,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Importer: MediaStore picker + folder import (spec §4, §4.1). -->
+        <activity
+            android:name=".imports.ImportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Save-from-anywhere share target (spec §5). Transparent, no auth to save. -->
         <activity
             android:name=".share.ShareReceiverActivity"

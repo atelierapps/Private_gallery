@@ -20,8 +20,11 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 4 · Vault grid + decrypting Coil fetcher (DEK-cache read path, §3.1) | ✅ implemented |
 | 4 · Biometric unlock gate + DEK prewarm (partial §9/§10) | ✅ implemented |
 | 5 · Filter bar (source + tag + date chips, multi-select) | ✅ implemented |
+| 6 · MediaStore picker grid + permissions (incl. partial grant) | ✅ implemented |
+| 7 · Import pipeline + batched createDeleteRequest (verify-first) | ✅ implemented |
+| §4.1 · Folder import (SAF tree, encrypt-in, clear originals) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
-| 6–11 · Importer, viewer, video, auto-lock, export | ⬜ not started |
+| 8–11 · Viewer, video playback, auto-lock, export | ⬜ not started |
 
 Everything except the crypto is written but **unbuilt** here (no Android SDK in
 this environment). The crypto and the pure-logic pieces (envelope, CTR seek,
@@ -83,6 +86,8 @@ app/src/main/java/com/atelierapps/vault/
   auth/           # step 4 — BiometricAuth (unlock gate)
   session/        # step 4 — VaultSession lock state
   filter/         # step 5 — MediaFilter + DateBucket (AND/OR filter model)
+  imports/        # steps 6-7 + §4.1 — MediaStore/SAF picker, ImportViewModel/Activity, delete
+  media/          # + reused by the importer (MediaSaver pipeline)
   ui/grid/        # step 4 — VaultGridScreen (3-col decrypting grid)
   ui/lock/        # step 4 — LockScreen
   ui/image/       # step 4 — Coil decrypting fetcher + ImageLoader (disk cache off)

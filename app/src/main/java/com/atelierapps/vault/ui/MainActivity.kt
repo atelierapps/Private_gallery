@@ -1,5 +1,6 @@
 package com.atelierapps.vault.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
@@ -15,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.auth.BiometricAuth
 import com.atelierapps.vault.crypto.MediaCrypto
+import com.atelierapps.vault.imports.ImportActivity
 import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.ui.home.VaultHome
 import com.atelierapps.vault.ui.lock.LockScreen
@@ -44,7 +46,10 @@ class MainActivity : FragmentActivity() {
                         LaunchedEffect(Unit) { promptUnlock() }
                         LockScreen(onUnlock = ::promptUnlock)
                     } else {
-                        VaultHome(onOpen = { /* TODO step 8: viewer */ })
+                        VaultHome(
+                            onOpen = { /* TODO step 8: viewer */ },
+                            onImport = { startActivity(Intent(this, ImportActivity::class.java)) },
+                        )
                     }
                 }
             }
