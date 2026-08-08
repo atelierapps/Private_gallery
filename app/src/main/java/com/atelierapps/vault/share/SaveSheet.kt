@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -81,7 +82,7 @@ fun SaveSheet(
                 color = Color(0xFF171C20),
                 shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
             ) {
-                Column(Modifier.padding(20.dp)) {
+                Column(Modifier.navigationBarsPadding().padding(20.dp)) {
                     Text(
                         "Save to Vault",
                         color = Color(0xFFE9EEF0),

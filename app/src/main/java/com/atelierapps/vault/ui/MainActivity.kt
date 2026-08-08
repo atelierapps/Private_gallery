@@ -4,6 +4,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
@@ -41,21 +45,28 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
-                Surface(Modifier) {
-                    val locked by VaultSession.locked.collectAsState()
-                    if (locked) {
-                        // Auto-prompt biometrics on open (spec §15.1). Re-runs if we re-lock.
-                        LaunchedEffect(Unit) { promptUnlock() }
-                        LockScreen(onUnlock = ::promptUnlock)
-                    } else {
-                        VaultHome(
-                            onOpen = { id -> startActivity(ViewerActivity.intent(this, id)) },
-                            onImport = { startActivity(Intent(this, ImportActivity::class.java)) },
-                        )
+                Surface(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                        val locked by VaultSession.locked.collectAsState()
+                        if (locked) {
+                            // Auto-prompt biometrics on open (spec §15.1). Re-runs if we re-lock.
+                            LaunchedEffect(Unit) { promptUnlock() }
+                            LockScreen(onUnlock = ::promptUnlock)
+                        } else {
+                            VaultHome(
+                                onOpen = { id ->
+                                    startActivity(ViewerActivity.intent(this@MainActivity, id))
+                                },
+                                onImport = {
+                                    startActivity(Intent(this@MainActivity, ImportActivity::class.java))
+                                },
+                            )
+                        }
                     }
                 }
             }

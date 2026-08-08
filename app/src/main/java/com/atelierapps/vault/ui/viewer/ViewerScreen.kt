@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -118,7 +120,8 @@ private fun ViewerPage(item: MediaWithTags, onTap: () -> Unit) {
 @Composable
 private fun TopBar(onBack: () -> Unit, onDelete: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().background(Color(0x99000000)).padding(horizontal = 6.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().background(Color(0x99000000)).statusBarsPadding()
+            .padding(horizontal = 6.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onBack) { Text("‹ Back", color = Ink) }
@@ -130,7 +133,7 @@ private fun TopBar(onBack: () -> Unit, onDelete: () -> Unit) {
 @Composable
 private fun MetadataPanel(item: MediaWithTags, modifier: Modifier) {
     Column(
-        modifier.fillMaxWidth().background(Color(0xCC06080A)).padding(18.dp),
+        modifier.fillMaxWidth().background(Color(0xCC06080A)).navigationBarsPadding().padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         source(item)?.let { Text(it, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
