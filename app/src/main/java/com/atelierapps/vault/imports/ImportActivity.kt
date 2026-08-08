@@ -1,8 +1,8 @@
 package com.atelierapps.vault.imports
 
-import android.content.Intent
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,10 +17,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
 /**
- * Hosts the importer (spec §4, §4.1). Owns the three system interactions the
- * pipeline needs: the read-media permission request, the SAF folder picker
- * (persisted read/write grant), and — after verified imports — the batched
- * `createDeleteRequest` dialog for device originals.
+ * Hosts the importer (spec §4, §4.1). Owns the read-media permission request and
+ * — after verified imports — the batched `createDeleteRequest` dialog. Folder
+ * browsing is MediaStore-based (no SAF), so there's no tree-picker to block.
  */
 class ImportActivity : ComponentActivity() {
 
@@ -29,16 +28,6 @@ class ImportActivity : ComponentActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             if (MediaPermissions.canQuery(this)) vm.selectDeviceTab()
-        }
-
-    private val folderLauncher =
-        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            uri ?: return@registerForActivityResult
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-            vm.onFolderPicked(uri)
         }
 
     private val deleteLauncher =
@@ -59,7 +48,10 @@ class ImportActivity : ComponentActivity() {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 val tab by vm.tab.collectAsState()
                 val items by vm.items.collectAsState()
+                val folders by vm.folders.collectAsState()
+                val currentFolder by vm.currentFolder.collectAsState()
                 val selected by vm.selected.collectAsState()
+                val typeFilter by vm.typeFilter.collectAsState()
                 val deleteOriginals by vm.deleteOriginals.collectAsState()
                 val importing by vm.importing.collectAsState()
                 val progress by vm.progress.collectAsState()
@@ -67,17 +59,15 @@ class ImportActivity : ComponentActivity() {
                 val pendingDelete by vm.pendingDeviceDelete.collectAsState()
 
                 LaunchedEffect(finished) { if (finished) finish() }
-                LaunchedEffect(pendingDelete) {
-                    pendingDelete?.let { uris ->
-                        val request = MediaStore.createDeleteRequest(contentResolver, uris)
-                        deleteLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
-                    }
-                }
+                LaunchedEffect(pendingDelete) { launchDeleteRequest(pendingDelete) }
 
                 ImportScreen(
                     tab = tab,
                     items = items,
+                    folders = folders,
+                    currentFolder = currentFolder,
                     selected = selected,
+                    typeFilter = typeFilter,
                     deleteOriginals = deleteOriginals,
                     importing = importing,
                     progress = progress,
@@ -85,13 +75,31 @@ class ImportActivity : ComponentActivity() {
                         if (MediaPermissions.canQuery(this)) vm.selectDeviceTab()
                         else permissionLauncher.launch(MediaPermissions.required())
                     },
-                    onPickFolder = { folderLauncher.launch(null) },
+                    onSelectFolderTab = {
+                        if (MediaPermissions.canQuery(this)) vm.selectFolderTab()
+                        else permissionLauncher.launch(MediaPermissions.required())
+                    },
+                    onOpenFolder = vm::openFolder,
+                    onBackToFolders = vm::backToFolders,
                     onToggle = vm::toggle,
+                    onSetType = vm::setType,
                     onSetDelete = vm::setDeleteOriginals,
                     onImport = vm::startImport,
                     onCancel = { finish() },
                 )
             }
+        }
+    }
+
+    /** Launch the system delete confirmation. Crash-proof: on any failure, keep originals and finish. */
+    private fun launchDeleteRequest(uris: List<android.net.Uri>?) {
+        val toDelete = uris ?: return
+        try {
+            val request = MediaStore.createDeleteRequest(contentResolver, toDelete)
+            deleteLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
+        } catch (t: Throwable) {
+            Log.e("ImportActivity", "createDeleteRequest failed; keeping originals", t)
+            vm.onDeviceDeleteFinished()
         }
     }
 }

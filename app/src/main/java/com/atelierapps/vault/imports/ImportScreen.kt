@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,52 +36,56 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.atelierapps.vault.filter.MediaTypeFilter
 
 private val Bg = Color(0xFF0E1113)
 private val Surface = Color(0xFF171C20)
 private val Brass = Color(0xFFD8B463)
+private val BrassInk = Color(0xFF1A1509)
 private val Muted = Color(0xFF8A969E)
 private val Ink = Color(0xFFE9EEF0)
 
 /**
- * The importer UI (spec §4, §4.1, §15.5): two tabs (device gallery / folder), a
- * multi-select grid, and a bottom bar with the delete-originals switch (default
- * OFF) and the import action. A progress overlay covers the encrypt pass.
+ * The importer UI (spec §4, §4.1, §15.5): tabs (all media / by folder), a
+ * Photos·Videos type filter, a multi-select grid, and a bottom bar with the
+ * delete-originals switch (default OFF) and the import action.
  */
 @Composable
 fun ImportScreen(
     tab: ImportTab,
     items: List<DeviceMedia>,
+    folders: List<MediaFolder>,
+    currentFolder: MediaFolder?,
     selected: Set<Uri>,
+    typeFilter: MediaTypeFilter,
     deleteOriginals: Boolean,
     importing: Boolean,
     progress: ImportProgress,
     onSelectDeviceTab: () -> Unit,
-    onPickFolder: () -> Unit,
+    onSelectFolderTab: () -> Unit,
+    onOpenFolder: (MediaFolder) -> Unit,
+    onBackToFolders: () -> Unit,
     onToggle: (Uri) -> Unit,
+    onSetType: (MediaTypeFilter) -> Unit,
     onSetDelete: (Boolean) -> Unit,
     onImport: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val browsingFolders = tab == ImportTab.FOLDER && currentFolder == null
+
     Box(Modifier.fillMaxSize().background(Bg).safeDrawingPadding()) {
         Column(Modifier.fillMaxSize()) {
             TopBar(count = selected.size, onCancel = onCancel)
-            Tabs(tab, onSelectDeviceTab, onPickFolder)
+            Tabs(tab, onSelectDeviceTab, onSelectFolderTab)
 
-            if (tab == ImportTab.FOLDER && items.isEmpty()) {
-                FolderEmpty(onPickFolder, Modifier.weight(1f))
+            if (browsingFolders) {
+                FolderGrid(folders, onOpenFolder, Modifier.weight(1f))
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(3.dp),
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                    items(items, key = { it.uri.toString() }) { item ->
-                        PickTile(item, item.uri in selected, onToggle)
-                    }
+                if (tab == ImportTab.FOLDER && currentFolder != null) {
+                    FolderHeader(currentFolder, onBackToFolders)
                 }
+                TypeFilterRow(typeFilter, onSetType)
+                MediaGrid(items, selected, onToggle, Modifier.weight(1f))
             }
 
             BottomBar(
@@ -114,11 +119,11 @@ private fun TopBar(count: Int, onCancel: () -> Unit) {
 @Composable
 private fun Tabs(tab: ImportTab, onDevice: () -> Unit, onFolder: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).clip(RoundedCornerShape(11.dp))
-            .background(Surface),
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(11.dp)).background(Surface),
     ) {
-        TabButton("Photos & videos", tab == ImportTab.DEVICE, Modifier.weight(1f), onDevice)
-        TabButton("From a folder", tab == ImportTab.FOLDER, Modifier.weight(1f), onFolder)
+        TabButton("All media", tab == ImportTab.DEVICE, Modifier.weight(1f), onDevice)
+        TabButton("By folder", tab == ImportTab.FOLDER, Modifier.weight(1f), onFolder)
     }
 }
 
@@ -130,7 +135,92 @@ private fun TabButton(label: String, selected: Boolean, modifier: Modifier, onCl
             .clickable(onClick = onClick).padding(vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (selected) Color(0xFF1A1509) else Muted, fontSize = 13.sp)
+        Text(label, color = if (selected) BrassInk else Muted, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun TypeFilterRow(current: MediaTypeFilter, onSetType: (MediaTypeFilter) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TypeChip("All", current == MediaTypeFilter.ALL) { onSetType(MediaTypeFilter.ALL) }
+        TypeChip("Photos", current == MediaTypeFilter.IMAGE) { onSetType(MediaTypeFilter.IMAGE) }
+        TypeChip("Videos", current == MediaTypeFilter.VIDEO) { onSetType(MediaTypeFilter.VIDEO) }
+    }
+}
+
+@Composable
+private fun TypeChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(selected = selected, onClick = onClick, label = { Text(label) })
+}
+
+@Composable
+private fun FolderHeader(folder: MediaFolder, onBack: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onBack).padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("‹ Folders", color = Brass, fontSize = 13.sp)
+        Text(
+            "  ·  ${folder.name} (${folder.count})",
+            color = Muted, fontSize = 13.sp,
+        )
+    }
+}
+
+@Composable
+private fun FolderGrid(folders: List<MediaFolder>, onOpen: (MediaFolder) -> Unit, modifier: Modifier) {
+    if (folders.isEmpty()) {
+        Box(modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+            Text("No folders found.", color = Muted, fontSize = 14.sp)
+        }
+        return
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = modifier,
+        contentPadding = PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(folders, key = { it.bucketId }) { folder ->
+            Column(Modifier.clickable { onOpen(folder) }) {
+                AsyncImage(
+                    model = folder.coverUri,
+                    contentDescription = folder.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                        .clip(RoundedCornerShape(8.dp)).background(Color(0xFF1B2126)),
+                )
+                Text(
+                    folder.name, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    maxLines = 1, modifier = Modifier.padding(top = 6.dp),
+                )
+                Text("${folder.count} items", color = Muted, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaGrid(
+    items: List<DeviceMedia>,
+    selected: Set<Uri>,
+    onToggle: (Uri) -> Unit,
+    modifier: Modifier,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = modifier,
+        contentPadding = PaddingValues(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        items(items, key = { it.uri.toString() }) { item ->
+            PickTile(item, item.uri in selected, onToggle)
+        }
     }
 }
 
@@ -147,27 +237,20 @@ private fun PickTile(item: DeviceMedia, selected: Boolean, onToggle: (Uri) -> Un
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
+        if (item.isVideo) {
+            Text(
+                "▶", color = Color.White, fontSize = 12.sp,
+                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp),
+            )
+        }
         if (selected) {
             Box(
                 Modifier.align(Alignment.TopStart).padding(4.dp).size(18.dp).clip(CircleShape)
                     .background(Brass),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✓", color = Color(0xFF1A1509), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("✓", color = BrassInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
-        }
-    }
-}
-
-@Composable
-private fun FolderEmpty(onPickFolder: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                "Pick a folder to import from.\nCopies are encrypted in; nothing is left in your gallery.",
-                color = Muted, fontSize = 14.sp,
-            )
-            Button(onClick = onPickFolder) { Text("Choose folder") }
         }
     }
 }
