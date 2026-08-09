@@ -55,6 +55,9 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     private val _sort = MutableStateFlow(SortOrder.NEWEST)
     val sort: StateFlow<SortOrder> = _sort
 
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query
+
     val sourceChips: StateFlow<List<SourceChip>> =
         repo.observeSourceCounts()
             .map { rows ->
@@ -74,19 +77,30 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val media: StateFlow<List<MediaWithTags>> =
-        combine(repo.observeAll(), _filter, _sort) { list, f, s ->
-            val filtered = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
+        combine(repo.observeAll(), _filter, _sort, _query) { list, f, s, q ->
+            var out = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
+            if (q.isNotBlank()) {
+                val ql = q.trim().lowercase()
+                out = out.filter { matchesQuery(it, ql) }
+            }
             when (s) {
-                SortOrder.NEWEST -> filtered.sortedByDescending { it.media.dateTakenMillis }
-                SortOrder.OLDEST -> filtered.sortedBy { it.media.dateTakenMillis }
-                SortOrder.NAME -> filtered.sortedBy { it.media.originalName.lowercase() }
+                SortOrder.NEWEST -> out.sortedByDescending { it.media.dateTakenMillis }
+                SortOrder.OLDEST -> out.sortedBy { it.media.dateTakenMillis }
+                SortOrder.NAME -> out.sortedBy { it.media.originalName.lowercase() }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private fun matchesQuery(item: MediaWithTags, ql: String): Boolean =
+        item.media.originalName.lowercase().contains(ql) ||
+            item.media.sourceLabel?.lowercase()?.contains(ql) == true ||
+            item.media.sourceDomain?.lowercase()?.contains(ql) == true ||
+            item.tags.any { it.name.lowercase().contains(ql) }
 
     fun setType(t: com.atelierapps.vault.filter.MediaTypeFilter) {
         _filter.value = _filter.value.withType(t)
     }
     fun setSort(s: SortOrder) { _sort.value = s }
+    fun setQuery(q: String) { _query.value = q }
 
     // ---- selection actions ----
 
@@ -105,6 +119,28 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun clearSelection() {
         selectedIds.value = emptySet()
         selectionMode.value = false
+    }
+
+    /** Select every currently-visible item. */
+    fun selectAll() {
+        val all = media.value.map { it.media.id }.toSet()
+        if (all.isNotEmpty()) {
+            selectionMode.value = true
+            selectedIds.value = all
+        }
+    }
+
+    /** Apply tags to every selected item (retroactive/bulk tagging, spec §7 v2). */
+    fun tagSelected(tagNames: List<String>) {
+        val ids = selectedIds.value
+        val clean = tagNames.map { it.trim() }.filter { it.isNotEmpty() }
+        if (ids.isEmpty() || clean.isEmpty()) return
+        working.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            ids.forEach { repo.addTags(it, clean) }
+            working.value = false
+            clearSelection()
+        }
     }
 
     /** Permanently delete the selected items from the vault (row + blobs + DEKs). */

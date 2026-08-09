@@ -19,6 +19,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,6 +50,7 @@ fun VaultHome(
     onOpen: (id: String) -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
+    onRestore: () -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
 ) {
@@ -60,9 +63,12 @@ fun VaultHome(
     val selectionMode by vm.selectionMode.collectAsState()
     val selectedIds by vm.selectedIds.collectAsState()
     val working by vm.working.collectAsState()
+    val query by vm.query.collectAsState()
 
     var confirmDelete by remember { mutableStateOf(false) }
     var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
+    var searchOpen by remember { mutableStateOf(false) }
+    var showTagDialog by remember { mutableStateOf(false) }
 
     Box(modifier.fillMaxSize().background(Color(0xFF0E1113))) {
         Column(Modifier.fillMaxSize()) {
@@ -70,12 +76,16 @@ fun VaultHome(
                 SelectionBar(
                     count = selectedIds.size,
                     onClose = vm::clearSelection,
+                    onSelectAll = vm::selectAll,
+                    onTag = { showTagDialog = true },
                     onMove = vm::moveSelectedToGallery,
                     onDelete = { confirmDelete = true },
                 )
             } else {
                 TopAppRow(
                     onExport = onExport,
+                    onRestore = onRestore,
+                    onToggleSearch = { searchOpen = !searchOpen; if (!searchOpen) vm.setQuery("") },
                     onLockNow = {
                         VaultSession.lock()
                         runCatching { SingletonImageLoader.get(context).memoryCache?.clear() }
@@ -83,6 +93,9 @@ fun VaultHome(
                     delay = lockDelay,
                     onSetDelay = { LockPrefs.set(context, it); lockDelay = it },
                 )
+                if (searchOpen) {
+                    SearchField(query = query, onQueryChange = vm::setQuery)
+                }
                 FilterBar(
                     filter = filter,
                     sources = sources,
@@ -144,11 +157,79 @@ fun VaultHome(
             },
         )
     }
+
+    if (showTagDialog) {
+        TagDialog(
+            existingTags = tags,
+            onApply = { names -> vm.tagSelected(names); showTagDialog = false },
+            onDismiss = { showTagDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+    androidx.compose.material3.OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text("Search name, tag, or source", color = Muted) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagDialog(
+    existingTags: List<com.atelierapps.vault.data.entity.TagEntity>,
+    onApply: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val picked = remember { mutableStateListOf<String>() }
+    var newTag by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add tags") },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                if (existingTags.isNotEmpty()) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        existingTags.take(12).forEach { tag ->
+                            val on = picked.contains(tag.name)
+                            androidx.compose.material3.FilterChip(
+                                selected = on,
+                                onClick = { if (on) picked.remove(tag.name) else picked.add(tag.name) },
+                                label = { Text("#${tag.name}") },
+                            )
+                        }
+                    }
+                }
+                androidx.compose.material3.OutlinedTextField(
+                    value = newTag,
+                    onValueChange = { newTag = it },
+                    placeholder = { Text("New tag") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val all = (picked + newTag.split(",")).map { it.trim() }.filter { it.isNotEmpty() }
+                onApply(all)
+            }) { Text("Apply", color = Brass) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
 private fun TopAppRow(
     onExport: () -> Unit,
+    onRestore: () -> Unit,
+    onToggleSearch: () -> Unit,
     onLockNow: () -> Unit,
     delay: LockPrefs.Delay,
     onSetDelay: (LockPrefs.Delay) -> Unit,
@@ -159,10 +240,12 @@ private fun TopAppRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("Vault", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        TextButton(onClick = onToggleSearch) { Text("🔍", fontSize = 15.sp) }
         Box {
             TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 20.sp) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Export / back up") }, onClick = { menu = false; onExport() })
+                DropdownMenuItem(text = { Text("Restore from backup") }, onClick = { menu = false; onRestore() })
                 DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })
                 HorizontalDivider()
                 Text(
@@ -187,20 +270,24 @@ private val Muted = Color(0xFF8A969E)
 private fun SelectionBar(
     count: Int,
     onClose: () -> Unit,
+    onSelectAll: () -> Unit,
+    onTag: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().background(Color(0xFF171C20)).padding(horizontal = 6.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth().background(Color(0xFF171C20)).padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onClose) { Text("✕", color = Ink, fontSize = 16.sp) }
         Text(
-            "$count selected",
+            "$count",
             color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.weight(1f).padding(start = 6.dp),
+            modifier = Modifier.weight(1f).padding(start = 4.dp),
         )
-        TextButton(onClick = onMove, enabled = count > 0) { Text("Move to gallery", color = Brass) }
+        TextButton(onClick = onSelectAll) { Text("All", color = Ink) }
+        TextButton(onClick = onTag, enabled = count > 0) { Text("Tag", color = Ink) }
+        TextButton(onClick = onMove, enabled = count > 0) { Text("Move", color = Brass) }
         TextButton(onClick = onDelete, enabled = count > 0) { Text("Delete", color = Color(0xFFE08A7A)) }
     }
 }

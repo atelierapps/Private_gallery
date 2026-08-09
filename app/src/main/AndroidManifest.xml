@@ -40,9 +40,13 @@
             </intent-filter>
         </activity>
 
-        <!-- Export / backup (spec §11). -->
+        <!-- Export / backup + restore (spec §11). -->
         <activity
             android:name=".ui.export.ExportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+        <activity
+            android:name=".ui.restore.RestoreActivity"
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 

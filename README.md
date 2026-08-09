@@ -28,6 +28,8 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 10 · Auto-lock on background (configurable delay) + lock now | ✅ implemented |
 | 11 · Export/backup to a folder + manifest.json | ✅ implemented |
 | Multi-select (delete + move back to gallery) | ✅ implemented |
+| Restore from backup (re-import manifest.json) | ✅ implemented |
+| Organization: search, bulk/retroactive tagging, select-all | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
 
 All of build-order steps 1–11 are implemented. Verified end-to-end on device

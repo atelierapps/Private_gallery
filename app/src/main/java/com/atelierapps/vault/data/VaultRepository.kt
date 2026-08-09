@@ -37,6 +37,15 @@ class VaultRepository(
             mediaDao.delete(id)
         }
 
+    /** Add tags to an existing item (retroactive/bulk tagging, spec §7 v2). */
+    suspend fun addTags(mediaId: String, tagNames: List<String>) =
+        withContext(Dispatchers.IO) {
+            if (tagNames.isEmpty()) return@withContext
+            val tagIds = tagNames.map { resolveTag(it) }
+            mediaDao.insertCrossRefs(tagIds.map { MediaTagCrossRef(mediaId, it) })
+            tagIds.forEach { tagDao.incrementUse(it) }
+        }
+
     /**
      * Persist a media row and its tags atomically-ish: the row insert and tag
      * bump happen after the blob is already verified on disk (spec §4 hard rule).
