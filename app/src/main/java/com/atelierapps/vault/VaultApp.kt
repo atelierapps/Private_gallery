@@ -4,6 +4,9 @@ import android.app.Application
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import com.atelierapps.vault.crypto.DekCache
+import com.atelierapps.vault.storage.VaultStorage
+import com.atelierapps.vault.ui.trash.TrashViewModel
 import com.atelierapps.vault.session.LockPrefs
 import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.share.ShareShortcut
@@ -17,6 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
 
 /**
@@ -35,7 +39,9 @@ class VaultApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         thread(name = "vault-startup") {
-            VaultGraph.storage(this).sweepTemp(now = System.currentTimeMillis())
+            val storage = VaultGraph.storage(this)
+            storage.sweepTemp(now = System.currentTimeMillis())
+            purgeExpiredTrash(storage)
         }
         ShareShortcut.publish(this)
         registerAutoLock()
@@ -65,5 +71,25 @@ class VaultApp : Application(), SingletonImageLoader.Factory {
     private fun lockNow() {
         VaultSession.lock() // zeroes cached DEKs
         runCatching { SingletonImageLoader.get(this).memoryCache?.clear() }
+    }
+
+    /**
+     * Permanently purge recycle-bin items past the retention window (spec §8).
+     * Runs off the main thread at launch; the blob is the only copy, so this is
+     * the single place trashed media actually leaves the disk on its own.
+     */
+    private fun purgeExpiredTrash(storage: VaultStorage) {
+        runCatching {
+            runBlocking {
+                val repo = VaultGraph.repository(this@VaultApp)
+                val cutoff = System.currentTimeMillis() - TrashViewModel.RETENTION_MS
+                repo.expiredTrashIds(cutoff).forEach { id ->
+                    repo.purgeMedia(id)
+                    DekCache.remove(storage.thumb(id).absolutePath)
+                    DekCache.remove(storage.blob(id).absolutePath)
+                    storage.delete(id)
+                }
+            }
+        }
     }
 }

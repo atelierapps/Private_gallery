@@ -76,6 +76,10 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
         repo.observeTags()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val trashCount: StateFlow<Int> =
+        repo.observeTrashCount()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     val media: StateFlow<List<MediaWithTags>> =
         combine(repo.observeAll(), _filter, _sort, _query) { list, f, s, q ->
             var out = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
@@ -145,13 +149,14 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Permanently delete the selected items from the vault (row + blobs + DEKs). */
+    /** Move the selected items to the recycle bin (soft delete; blobs kept). */
     fun deleteSelected() {
         val ids = selectedIds.value
         if (ids.isEmpty()) return
         working.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            ids.forEach { id -> removeFromVault(id) }
+            val now = System.currentTimeMillis()
+            ids.forEach { id -> repo.trashMedia(id, now) }
             working.value = false
             clearSelection()
         }
@@ -166,15 +171,17 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             ids.forEach { id ->
                 val entity = byId[id]?.media ?: return@forEach
-                if (MediaExporter.toGallery(getApplication(), entity)) removeFromVault(id)
+                // Moving out of the vault is a real removal, not a recycle-bin
+                // trip — the media now lives in the gallery, so purge the blobs.
+                if (MediaExporter.toGallery(getApplication(), entity)) purgeFromVault(id)
             }
             working.value = false
             clearSelection()
         }
     }
 
-    private suspend fun removeFromVault(id: String) {
-        repo.deleteMedia(id)
+    private suspend fun purgeFromVault(id: String) {
+        repo.purgeMedia(id)
         DekCache.remove(storage.thumb(id).absolutePath)
         DekCache.remove(storage.blob(id).absolutePath)
         storage.delete(id)

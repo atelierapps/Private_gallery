@@ -16,8 +16,12 @@ class VaultRepository(
     private val tagDao: TagDao,
 ) {
     fun observeAll() = mediaDao.observeAll()
+    fun observeTrash() = mediaDao.observeTrash()
+    fun observeTrashCount() = mediaDao.observeTrashCount()
     fun observeSourceCounts() = mediaDao.observeSourceCounts()
     fun observeTags(): Flow<List<TagEntity>> = tagDao.observeAll()
+
+    suspend fun allTrash() = withContext(Dispatchers.IO) { mediaDao.allTrash() }
 
     suspend fun topTags(limit: Int = 6): List<TagEntity> =
         withContext(Dispatchers.IO) { tagDao.topByUse(limit) }
@@ -31,11 +35,24 @@ class VaultRepository(
     suspend fun allMedia() =
         withContext(Dispatchers.IO) { mediaDao.allWithTags() }
 
-    suspend fun deleteMedia(id: String) =
+    /** Move an item to the recycle bin (soft delete). Blob + thumbnail stay. */
+    suspend fun trashMedia(id: String, now: Long = System.currentTimeMillis()) =
+        withContext(Dispatchers.IO) { mediaDao.softDelete(id, now) }
+
+    /** Bring an item back out of the recycle bin. */
+    suspend fun restoreMedia(id: String) =
+        withContext(Dispatchers.IO) { mediaDao.restore(id) }
+
+    /** Permanently drop the row + tag links (caller deletes the blobs). */
+    suspend fun purgeMedia(id: String) =
         withContext(Dispatchers.IO) {
             mediaDao.deleteCrossRefs(id)
             mediaDao.delete(id)
         }
+
+    /** Ids whose retention window has lapsed — ready for permanent purge. */
+    suspend fun expiredTrashIds(cutoff: Long): List<String> =
+        withContext(Dispatchers.IO) { mediaDao.expiredTrashIds(cutoff) }
 
     suspend fun setPinned(id: String, pinned: Boolean) =
         withContext(Dispatchers.IO) { mediaDao.setPinned(id, pinned) }

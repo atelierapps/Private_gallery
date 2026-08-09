@@ -61,6 +61,12 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Recycle bin (spec §8). -->
+        <activity
+            android:name=".ui.trash.TrashActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- In-app camera: capture straight into the vault. -->
         <activity
             android:name=".ui.camera.CameraActivity"

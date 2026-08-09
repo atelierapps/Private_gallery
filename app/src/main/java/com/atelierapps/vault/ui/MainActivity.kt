@@ -25,6 +25,7 @@ import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.ui.camera.CameraActivity
 import com.atelierapps.vault.ui.export.ExportActivity
 import com.atelierapps.vault.ui.restore.RestoreActivity
+import com.atelierapps.vault.ui.trash.TrashActivity
 import com.atelierapps.vault.ui.home.VaultHome
 import com.atelierapps.vault.ui.lock.LockScreen
 import com.atelierapps.vault.ui.viewer.ViewerActivity
@@ -76,6 +77,9 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onCamera = {
                                     startActivity(Intent(this@MainActivity, CameraActivity::class.java))
+                                },
+                                onTrash = {
+                                    startActivity(Intent(this@MainActivity, TrashActivity::class.java))
                                 },
                             )
                         }

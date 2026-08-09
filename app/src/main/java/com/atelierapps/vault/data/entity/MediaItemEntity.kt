@@ -21,6 +21,7 @@ import androidx.room.PrimaryKey
         Index("sourceDomain"),
         Index("importedAtMillis"),
         Index("contentHash"),
+        Index("deletedAtMillis"),
     ],
 )
 data class MediaItemEntity(
@@ -47,4 +48,11 @@ data class MediaItemEntity(
 
     @ColumnInfo(defaultValue = "0")
     val isPinned: Boolean = false,         // pinned items sort to the top
+
+    // Recycle bin: null == live; a timestamp == soft-deleted, blob kept on disk
+    // until the retention window lapses and it's purged (§8). Indexed so the
+    // "live only" filter on every grid query stays cheap. No DB defaultValue —
+    // nullable columns need none, and declaring DEFAULT NULL risks a Room
+    // schema-validation mismatch against what PRAGMA reports.
+    val deletedAtMillis: Long? = null,
 )

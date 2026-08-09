@@ -31,6 +31,7 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | Restore from backup (re-import manifest.json) | ✅ implemented |
 | Organization: search, bulk/retroactive tagging, select-all | ✅ implemented |
 | In-app camera (capture photos/videos straight into the vault) | ✅ implemented |
+| Recycle bin (soft delete, restore, 30-day auto-purge) | ✅ implemented |
 | Pin-to-top, immersive viewer, playback/slideshow | ✅ implemented |
 | Disguised as "Link" (neutral name + icon) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |

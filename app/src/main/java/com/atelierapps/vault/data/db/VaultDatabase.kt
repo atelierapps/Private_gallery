@@ -18,7 +18,7 @@ import com.atelierapps.vault.data.entity.TagEntity
  */
 @Database(
     entities = [MediaItemEntity::class, TagEntity::class, MediaTagCrossRef::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -35,13 +35,21 @@ abstract class VaultDatabase : RoomDatabase() {
             }
         }
 
+        // Recycle bin: nullable soft-delete timestamp + supporting index.
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE media ADD COLUMN deletedAtMillis INTEGER")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_media_deletedAtMillis ON media(deletedAtMillis)")
+            }
+        }
+
         fun get(context: Context): VaultDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     VaultDatabase::class.java,
                     "vault.db",
-                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
             }
     }
 }

@@ -52,6 +52,7 @@ fun VaultHome(
     onExport: () -> Unit,
     onRestore: () -> Unit,
     onCamera: () -> Unit,
+    onTrash: () -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
 ) {
@@ -65,6 +66,7 @@ fun VaultHome(
     val selectedIds by vm.selectedIds.collectAsState()
     val working by vm.working.collectAsState()
     val query by vm.query.collectAsState()
+    val trashCount by vm.trashCount.collectAsState()
 
     var confirmDelete by remember { mutableStateOf(false) }
     var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
@@ -87,6 +89,8 @@ fun VaultHome(
                     onExport = onExport,
                     onRestore = onRestore,
                     onCamera = onCamera,
+                    onTrash = onTrash,
+                    trashCount = trashCount,
                     onToggleSearch = { searchOpen = !searchOpen; if (!searchOpen) vm.setQuery("") },
                     onLockNow = {
                         VaultSession.lock()
@@ -237,6 +241,8 @@ private fun TopAppRow(
     onExport: () -> Unit,
     onRestore: () -> Unit,
     onCamera: () -> Unit,
+    onTrash: () -> Unit,
+    trashCount: Int,
     onToggleSearch: () -> Unit,
     onLockNow: () -> Unit,
     delay: LockPrefs.Delay,
@@ -253,6 +259,10 @@ private fun TopAppRow(
         Box {
             TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 20.sp) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Recently deleted" + if (trashCount > 0) "  ($trashCount)" else "") },
+                    onClick = { menu = false; onTrash() },
+                )
                 DropdownMenuItem(text = { Text("Export / back up") }, onClick = { menu = false; onExport() })
                 DropdownMenuItem(text = { Text("Restore from backup") }, onClick = { menu = false; onRestore() })
                 DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })
