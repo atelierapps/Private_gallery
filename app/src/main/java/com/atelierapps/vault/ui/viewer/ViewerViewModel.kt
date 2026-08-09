@@ -25,7 +25,14 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun load() {
         viewModelScope.launch {
-            media.value = repo.allMedia()
+            val all = repo.allMedia()
+            val ids = ViewerSession.orderedIds
+            media.value = if (ids != null) {
+                val byId = all.associateBy { it.media.id }
+                ids.mapNotNull { byId[it] } // preserve the grid's exact order/context
+            } else {
+                all
+            }
             loaded.value = true
         }
     }

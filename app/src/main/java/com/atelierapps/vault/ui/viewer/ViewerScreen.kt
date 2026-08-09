@@ -1,6 +1,7 @@
 package com.atelierapps.vault.ui.viewer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -17,15 +18,21 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,9 +73,33 @@ fun ViewerScreen(
     var chromeVisible by remember { mutableStateOf(false) }
     var videoControls by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<String?>(null) }
+    var playMode by remember { mutableStateOf(false) }
+    var intervalSec by remember { mutableIntStateOf(5) }
+    var loop by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
 
-    // Reset the video-controls flag when moving to another page.
-    androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) { videoControls = false }
+    val current = media.getOrNull(pagerState.currentPage)
+    val currentIsVideo = current?.media?.mimeType?.startsWith("video/") == true
+
+    val advance: () -> Unit = {
+        scope.launch {
+            val next = pagerState.currentPage + 1
+            when {
+                next < media.size -> pagerState.animateScrollToPage(next)
+                loop && media.isNotEmpty() -> pagerState.animateScrollToPage(0)
+                else -> playMode = false
+            }
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) { videoControls = false }
+    // Slideshow: images advance after the interval; videos advance when they end.
+    LaunchedEffect(pagerState.currentPage, playMode, intervalSec, currentIsVideo) {
+        if (playMode && current != null && !currentIsVideo) {
+            delay(intervalSec * 1000L)
+            advance()
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
@@ -76,18 +107,19 @@ fun ViewerScreen(
                 item = media[page],
                 onTap = { chromeVisible = !chromeVisible },
                 onVideoControls = { videoControls = it },
+                autoPlay = playMode && page == pagerState.currentPage,
+                onEnded = { if (playMode) advance() },
             )
         }
 
-        val current = media.getOrNull(pagerState.currentPage)
         if (current != null) {
-            val isVideo = current.media.mimeType.startsWith("video/")
-            // On video the bar follows the player's controls (fades with them);
-            // on images it toggles on tap.
+            val isVideo = currentIsVideo
             if (if (isVideo) videoControls else chromeVisible) {
                 TopBar(
                     onBack = onBack,
                     isPinned = current.media.isPinned,
+                    playMode = playMode,
+                    onTogglePlay = { playMode = !playMode },
                     onTogglePin = { onTogglePin(current.media.id) },
                     onDelete = { pendingDelete = current.media.id },
                 )
@@ -95,6 +127,17 @@ fun ViewerScreen(
             if (chromeVisible && !isVideo) {
                 MetadataPanel(current, Modifier.align(Alignment.BottomStart))
             }
+        }
+
+        if (playMode) {
+            PlayControls(
+                intervalSec = intervalSec,
+                onInterval = { intervalSec = it },
+                loop = loop,
+                onToggleLoop = { loop = !loop },
+                onStop = { playMode = false },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 
@@ -115,9 +158,21 @@ fun ViewerScreen(
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun ViewerPage(item: MediaWithTags, onTap: () -> Unit, onVideoControls: (Boolean) -> Unit) {
+private fun ViewerPage(
+    item: MediaWithTags,
+    onTap: () -> Unit,
+    onVideoControls: (Boolean) -> Unit,
+    autoPlay: Boolean,
+    onEnded: () -> Unit,
+) {
     if (item.media.mimeType.startsWith("video/")) {
-        VideoPlayer(item.media.id, Modifier.fillMaxSize(), onControlsVisible = onVideoControls)
+        VideoPlayer(
+            id = item.media.id,
+            modifier = Modifier.fillMaxSize(),
+            autoPlay = autoPlay,
+            onControlsVisible = onVideoControls,
+            onEnded = onEnded,
+        )
         return
     }
 
@@ -167,20 +222,67 @@ private fun ViewerPage(item: MediaWithTags, onTap: () -> Unit, onVideoControls: 
 private fun TopBar(
     onBack: () -> Unit,
     isPinned: Boolean,
+    playMode: Boolean,
+    onTogglePlay: () -> Unit,
     onTogglePin: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().background(Color(0x99000000)).statusBarsPadding()
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onBack) { Text("‹ Back", color = Ink) }
         Box(Modifier.weight(1f))
+        TextButton(onClick = onTogglePlay) {
+            Text(if (playMode) "⏸" else "▶ Play", color = Brass)
+        }
         TextButton(onClick = onTogglePin) {
-            Text(if (isPinned) "📌 Pinned" else "📌 Pin", color = if (isPinned) Brass else Ink)
+            Text(if (isPinned) "📌" else "📌 Pin", color = if (isPinned) Brass else Ink)
         }
         TextButton(onClick = onDelete) { Text("Delete", color = Color(0xFFE08A7A)) }
+    }
+}
+
+@Composable
+private fun PlayControls(
+    intervalSec: Int,
+    onInterval: (Int) -> Unit,
+    loop: Boolean,
+    onToggleLoop: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier.fillMaxWidth().background(Color(0xCC06080A)).navigationBarsPadding()
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text("Every", color = Muted, fontSize = 12.sp)
+        listOf(3, 5, 10, 15).forEach { sec ->
+            val on = sec == intervalSec
+            Text(
+                "${sec}s",
+                color = if (on) Color(0xFF1A1509) else Ink,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (on) Brass else Color(0x22FFFFFF))
+                    .clickable { onInterval(sec) }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+        Box(Modifier.weight(1f))
+        Text(
+            if (loop) "Loop ✓" else "Loop",
+            color = if (loop) Brass else Ink, fontSize = 12.sp,
+            modifier = Modifier.clickable { onToggleLoop() }.padding(6.dp),
+        )
+        Text(
+            "Stop", color = Color(0xFFE08A7A), fontSize = 13.sp,
+            modifier = Modifier.clickable { onStop() }.padding(6.dp),
+        )
     }
 }
 

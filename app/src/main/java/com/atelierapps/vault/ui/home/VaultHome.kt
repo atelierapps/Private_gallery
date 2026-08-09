@@ -114,7 +114,12 @@ fun VaultHome(
                 media = media,
                 selectionMode = selectionMode,
                 selectedIds = selectedIds,
-                onOpen = onOpen,
+                onOpen = { id ->
+                    // Give the viewer the current visible order (filter/tag/sort/pin)
+                    // so paging and slideshow stay in this context.
+                    com.atelierapps.vault.ui.viewer.ViewerSession.orderedIds = media.map { it.media.id }
+                    onOpen(id)
+                },
                 onLongPress = vm::startSelection,
                 onToggleSelect = vm::toggleSelection,
                 modifier = Modifier.weight(1f),
