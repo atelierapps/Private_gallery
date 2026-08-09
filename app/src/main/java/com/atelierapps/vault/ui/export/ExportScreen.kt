@@ -26,6 +26,34 @@ private val Ink = Color(0xFFE9EEF0)
 private val Muted = Color(0xFF8A969E)
 private val Brass = Color(0xFFD8B463)
 
+/** Biometric gate shown before the export flow (spec §11). */
+@Composable
+fun ExportAuthGate(
+    error: String?,
+    onAuthenticate: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxSize().background(Bg).padding(28.dp), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text("Confirm it's you", color = Ink, fontSize = 20.sp)
+            Text(
+                "Exporting decrypts your entire library to a folder in the clear. " +
+                    "Confirm with your fingerprint or device PIN to continue.",
+                color = Muted, fontSize = 14.sp, textAlign = TextAlign.Center,
+            )
+            if (error != null) {
+                Text(error, color = Color(0xFFE08A7A), fontSize = 13.sp, textAlign = TextAlign.Center)
+            }
+            Button(onClick = onAuthenticate) { Text(if (error == null) "Confirm" else "Try again") }
+            TextButton(onClick = onCancel) { Text("Cancel", color = Muted) }
+        }
+    }
+}
+
 /** Export UI (spec §11): pick a destination, watch progress, see the verified count. */
 @Composable
 fun ExportScreen(

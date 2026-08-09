@@ -23,6 +23,8 @@ object BiometricAuth {
         activity: FragmentActivity,
         onSuccess: () -> Unit,
         onError: (CharSequence) -> Unit = {},
+        title: String = "Unlock Vault",
+        subtitle: String = "Your media is encrypted on this device",
     ) {
         val prompt = BiometricPrompt(
             activity,
@@ -38,8 +40,8 @@ object BiometricAuth {
             },
         )
         val info = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock Vault")
-            .setSubtitle("Your media is encrypted on this device")
+            .setTitle(title)
+            .setSubtitle(subtitle)
             .setAllowedAuthenticators(Authenticators.BIOMETRIC_STRONG or Authenticators.DEVICE_CREDENTIAL)
             .build()
         prompt.authenticate(info)

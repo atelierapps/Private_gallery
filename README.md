@@ -26,7 +26,7 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 8 · Full-screen viewer (swipe, pinch-zoom, metadata, delete) | ✅ implemented |
 | 9 · Encrypted video playback (ExoPlayer + CTR data source) | ✅ implemented |
 | 10 · Auto-lock on background (configurable delay) + lock now | ✅ implemented |
-| 11 · Export/backup to a folder + manifest.json | ✅ implemented |
+| 11 · Export/backup to a folder + manifest.json (biometric-gated) | ✅ implemented |
 | Multi-select (delete + move back to gallery) | ✅ implemented |
 | Restore from backup (re-import manifest.json) | ✅ implemented |
 | Organization: search, bulk/retroactive tagging, select-all | ✅ implemented |
