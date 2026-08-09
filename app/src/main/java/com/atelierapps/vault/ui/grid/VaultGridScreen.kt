@@ -1,7 +1,9 @@
 package com.atelierapps.vault.ui.grid
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -10,9 +12,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,7 +46,11 @@ import com.atelierapps.vault.ui.image.VaultMediaKey
 @Composable
 fun VaultGridScreen(
     media: List<MediaWithTags>,
+    selectionMode: Boolean,
+    selectedIds: Set<String>,
     onOpen: (id: String) -> Unit,
+    onLongPress: (id: String) -> Unit,
+    onToggleSelect: (id: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (media.isEmpty()) {
@@ -82,22 +90,42 @@ fun VaultGridScreen(
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         items(media, key = { it.media.id }) { item ->
-            MediaTile(item, onOpen)
+            MediaTile(
+                item = item,
+                selectionMode = selectionMode,
+                selected = item.media.id in selectedIds,
+                onOpen = onOpen,
+                onLongPress = onLongPress,
+                onToggleSelect = onToggleSelect,
+            )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MediaTile(item: MediaWithTags, onOpen: (String) -> Unit) {
+private fun MediaTile(
+    item: MediaWithTags,
+    selectionMode: Boolean,
+    selected: Boolean,
+    onOpen: (String) -> Unit,
+    onLongPress: (String) -> Unit,
+    onToggleSelect: (String) -> Unit,
+) {
+    val id = item.media.id
     Box(
         Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(2.dp))
             .background(Color(0xFF1B2126))
-            .clickable { onOpen(item.media.id) },
+            .combinedClickable(
+                onClick = { if (selectionMode) onToggleSelect(id) else onOpen(id) },
+                onLongClick = { onLongPress(id) },
+            )
+            .then(if (selected) Modifier.border(2.5.dp, Color(0xFFD8B463), RoundedCornerShape(2.dp)) else Modifier),
     ) {
         AsyncImage(
-            model = VaultMediaKey(item.media.id, full = false),
+            model = VaultMediaKey(id, full = false),
             contentDescription = item.media.originalName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -114,6 +142,15 @@ private fun MediaTile(item: MediaWithTags, onOpen: (String) -> Unit) {
                     .background(Color(0x9906080A))
                     .padding(horizontal = 4.dp, vertical = 1.dp),
             )
+        }
+        if (selectionMode) {
+            Box(
+                Modifier.align(Alignment.TopStart).padding(4.dp).size(18.dp).clip(CircleShape)
+                    .background(if (selected) Color(0xFFD8B463) else Color(0x8806080A)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected) Text("✓", color = Color(0xFF1A1509), fontSize = 12.sp)
+            }
         }
     }
 }

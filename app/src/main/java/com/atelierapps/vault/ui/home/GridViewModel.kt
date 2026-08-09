@@ -4,16 +4,20 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.atelierapps.vault.VaultGraph
+import com.atelierapps.vault.crypto.DekCache
 import com.atelierapps.vault.data.entity.MediaWithTags
 import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.filter.DateBucket
 import com.atelierapps.vault.filter.MediaFilter
+import com.atelierapps.vault.media.MediaExporter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** Grid ordering options. */
 enum class SortOrder(val label: String) {
@@ -38,6 +42,12 @@ data class SourceChip(
 class GridViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = VaultGraph.repository(app)
+    private val storage = VaultGraph.storage(app)
+
+    // ---- multi-select ----
+    val selectionMode = MutableStateFlow(false)
+    val selectedIds = MutableStateFlow<Set<String>>(emptySet())
+    val working = MutableStateFlow(false) // true during a bulk delete/move
 
     private val _filter = MutableStateFlow(MediaFilter())
     val filter: StateFlow<MediaFilter> = _filter
@@ -77,6 +87,60 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
         _filter.value = _filter.value.withType(t)
     }
     fun setSort(s: SortOrder) { _sort.value = s }
+
+    // ---- selection actions ----
+
+    fun startSelection(id: String) {
+        selectionMode.value = true
+        selectedIds.value = setOf(id)
+    }
+
+    fun toggleSelection(id: String) {
+        val cur = selectedIds.value
+        val next = if (id in cur) cur - id else cur + id
+        selectedIds.value = next
+        if (next.isEmpty()) selectionMode.value = false
+    }
+
+    fun clearSelection() {
+        selectedIds.value = emptySet()
+        selectionMode.value = false
+    }
+
+    /** Permanently delete the selected items from the vault (row + blobs + DEKs). */
+    fun deleteSelected() {
+        val ids = selectedIds.value
+        if (ids.isEmpty()) return
+        working.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            ids.forEach { id -> removeFromVault(id) }
+            working.value = false
+            clearSelection()
+        }
+    }
+
+    /** Decrypt the selected items back into the device gallery, then remove from the vault. */
+    fun moveSelectedToGallery() {
+        val ids = selectedIds.value
+        if (ids.isEmpty()) return
+        val byId = media.value.associateBy { it.media.id }
+        working.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            ids.forEach { id ->
+                val entity = byId[id]?.media ?: return@forEach
+                if (MediaExporter.toGallery(getApplication(), entity)) removeFromVault(id)
+            }
+            working.value = false
+            clearSelection()
+        }
+    }
+
+    private suspend fun removeFromVault(id: String) {
+        repo.deleteMedia(id)
+        DekCache.remove(storage.thumb(id).absolutePath)
+        DekCache.remove(storage.blob(id).absolutePath)
+        storage.delete(id)
+    }
     fun toggleSource(pkg: String) { _filter.value = _filter.value.toggleSource(pkg) }
     fun toggleTag(name: String) { _filter.value = _filter.value.toggleTag(name) }
     fun setDate(bucket: DateBucket) { _filter.value = _filter.value.withDate(bucket) }

@@ -69,9 +69,16 @@ fun ViewerScreen(
         }
 
         val current = media.getOrNull(pagerState.currentPage)
-        if (chromeVisible && current != null) {
-            TopBar(onBack = onBack, onDelete = { onDelete(current.media.id) })
-            MetadataPanel(current, Modifier.align(Alignment.BottomStart))
+        if (current != null) {
+            val isVideo = current.media.mimeType.startsWith("video/")
+            // Video pages hand taps to the player's own controls, so our chrome
+            // never toggles — keep the top bar (with Delete) always visible there.
+            if (chromeVisible || isVideo) {
+                TopBar(onBack = onBack, onDelete = { onDelete(current.media.id) })
+            }
+            if (chromeVisible && !isVideo) {
+                MetadataPanel(current, Modifier.align(Alignment.BottomStart))
+            }
         }
     }
 }
