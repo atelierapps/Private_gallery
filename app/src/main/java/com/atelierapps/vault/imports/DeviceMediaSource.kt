@@ -67,7 +67,8 @@ object DeviceMediaSource {
         bucketId: String? = null,
         origin: SourceType = SourceType.LOCAL_IMPORT,
     ): List<DeviceMedia> {
-        val projection = arrayOf(COL_ID, COL_NAME, COL_MIME, COL_TAKEN, COL_MODIFIED, COL_DURATION, COL_TYPE)
+        val projection =
+            arrayOf(COL_ID, COL_NAME, COL_MIME, COL_TAKEN, COL_MODIFIED, COL_DURATION, COL_TYPE, COL_BUCKET_NAME)
         val selection = StringBuilder("$COL_TYPE IN (?, ?)")
         val args = arrayListOf(TYPE_IMAGE.toString(), TYPE_VIDEO.toString())
         if (bucketId != null) {
@@ -92,6 +93,7 @@ object DeviceMediaSource {
             val modCol = c.getColumnIndexOrThrow(COL_MODIFIED)
             val durCol = c.getColumnIndexOrThrow(COL_DURATION)
             val typeCol = c.getColumnIndexOrThrow(COL_TYPE)
+            val bnameCol = c.getColumnIndexOrThrow(COL_BUCKET_NAME)
             while (c.moveToNext()) {
                 val id = c.getLong(idCol)
                 val mime = c.getString(mimeCol) ?: continue
@@ -104,6 +106,7 @@ object DeviceMediaSource {
                     dateTakenMillis = taken,
                     durationMillis = if (isVideo && !c.isNull(durCol)) c.getLong(durCol) else null,
                     origin = origin,
+                    bucketName = if (!c.isNull(bnameCol)) c.getString(bnameCol) else null,
                 )
             }
         }

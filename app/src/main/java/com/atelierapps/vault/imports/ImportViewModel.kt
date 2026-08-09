@@ -117,14 +117,13 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
 
         importing.value = true
         progress.value = ImportProgress(0, chosen.size)
-        val folderName = currentFolder.value?.name
 
         viewModelScope.launch(Dispatchers.IO) {
             val saver = MediaSaver(getApplication())
             val succeeded = ArrayList<Uri>()
             var done = 0
             for (item in chosen) {
-                runCatching { importOne(saver, item, folderName) }
+                runCatching { importOne(saver, item) }
                     .onSuccess { if (it) succeeded += item.uri }
                 done++
                 progress.value = ImportProgress(done, chosen.size)
@@ -140,9 +139,10 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private suspend fun importOne(saver: MediaSaver, item: DeviceMedia, folderName: String?): Boolean {
+    private suspend fun importOne(saver: MediaSaver, item: DeviceMedia): Boolean {
         val temp = spool(item.uri)
-        val label = if (item.origin == SourceType.FOLDER_IMPORT) folderName else null
+        // The item's own folder is its provenance — carried for both the "all
+        // media" tab and folder browsing, so imports are never source-less.
         return saver.save(
             SaveRequest(
                 tempPath = temp.absolutePath,
@@ -150,7 +150,7 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
                 originalName = item.displayName,
                 dateTakenMillis = item.dateTakenMillis,
                 tagNames = emptyList(),
-                source = SourceInfo(item.origin, null, label, null),
+                source = SourceInfo(item.origin, null, item.bucketName, null),
             ),
         ).isSuccess
     }
