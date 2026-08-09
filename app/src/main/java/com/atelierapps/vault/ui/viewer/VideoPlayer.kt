@@ -1,6 +1,7 @@
 package com.atelierapps.vault.ui.viewer
 
 import android.graphics.Color
+import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +28,11 @@ import com.atelierapps.vault.crypto.VaultCtrDataSource
  */
 @UnstableApi
 @Composable
-fun VideoPlayer(id: String, modifier: Modifier = Modifier) {
+fun VideoPlayer(
+    id: String,
+    modifier: Modifier = Modifier,
+    onControlsVisible: (Boolean) -> Unit = {},
+) {
     val context = LocalContext.current
     val player = remember(id) {
         ExoPlayer.Builder(context)
@@ -52,6 +57,13 @@ fun VideoPlayer(id: String, modifier: Modifier = Modifier) {
                     controllerAutoShow = true
                     setShutterBackgroundColor(Color.BLACK)
                     setBackgroundColor(Color.BLACK)
+                    // Report controller visibility so the viewer's Back/Delete bar
+                    // fades in and out with the player controls (no persistent strip).
+                    setControllerVisibilityListener(
+                        PlayerView.ControllerVisibilityListener { visibility ->
+                            onControlsVisible(visibility == View.VISIBLE)
+                        },
+                    )
                 }
             },
             // Inset the player (and thus its controls) above the system nav bar,

@@ -62,18 +62,26 @@ fun ViewerScreen(
 ) {
     val pagerState = rememberPagerState(initialPage = startIndex) { media.size }
     var chromeVisible by remember { mutableStateOf(false) }
+    var videoControls by remember { mutableStateOf(false) }
+
+    // Reset the video-controls flag when moving to another page.
+    androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) { videoControls = false }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            ViewerPage(media[page], onTap = { chromeVisible = !chromeVisible })
+            ViewerPage(
+                item = media[page],
+                onTap = { chromeVisible = !chromeVisible },
+                onVideoControls = { videoControls = it },
+            )
         }
 
         val current = media.getOrNull(pagerState.currentPage)
         if (current != null) {
             val isVideo = current.media.mimeType.startsWith("video/")
-            // Video pages hand taps to the player's own controls, so our chrome
-            // never toggles — keep the top bar (with Delete) always visible there.
-            if (chromeVisible || isVideo) {
+            // On video the bar follows the player's controls (fades with them);
+            // on images it toggles on tap.
+            if (if (isVideo) videoControls else chromeVisible) {
                 TopBar(onBack = onBack, onDelete = { onDelete(current.media.id) })
             }
             if (chromeVisible && !isVideo) {
@@ -85,9 +93,9 @@ fun ViewerScreen(
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun ViewerPage(item: MediaWithTags, onTap: () -> Unit) {
+private fun ViewerPage(item: MediaWithTags, onTap: () -> Unit, onVideoControls: (Boolean) -> Unit) {
     if (item.media.mimeType.startsWith("video/")) {
-        VideoPlayer(item.media.id, Modifier.fillMaxSize())
+        VideoPlayer(item.media.id, Modifier.fillMaxSize(), onControlsVisible = onVideoControls)
         return
     }
 
