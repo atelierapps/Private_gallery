@@ -34,7 +34,7 @@ enum class MediaTypeFilter { ALL, IMAGE, VIDEO }
 
 data class MediaFilter(
     val type: MediaTypeFilter = MediaTypeFilter.ALL,
-    val sources: Set<String> = emptySet(),   // sourcePackage values
+    val sources: Set<String> = emptySet(),   // source keys: sourcePackage, or sourceLabel for imports
     val tagNames: Set<String> = emptySet(),  // case-insensitive
     val date: DateBucket = DateBucket.ANY,
 ) {
@@ -49,7 +49,10 @@ data class MediaFilter(
             MediaTypeFilter.VIDEO -> if (!isVideo) return false
             MediaTypeFilter.ALL -> {}
         }
-        if (sources.isNotEmpty() && item.media.sourcePackage !in sources) return false
+        if (sources.isNotEmpty()) {
+            val sourceKey = item.media.sourcePackage ?: item.media.sourceLabel
+            if (sourceKey !in sources) return false
+        }
         if (tagNames.isNotEmpty()) {
             val itemTags = item.tags.mapTo(HashSet()) { it.name.lowercase() }
             if (tagNames.any { it.lowercase() !in itemTags }) return false

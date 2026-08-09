@@ -74,11 +74,16 @@ interface MediaDao {
     @Query("DELETE FROM media WHERE id = :id")
     suspend fun delete(id: String)
 
-    /** Distinct source apps with counts — the "By source" filter chips (§7). */
+    /**
+     * Distinct sources with counts — the "By source" filter chips (§7). Keyed by
+     * the app package when known (share path) and otherwise by the source label,
+     * so imported gallery folders ("Instagram", "Download", …) appear as sources
+     * too, not just share-sheet apps.
+     */
     @Query(
-        "SELECT sourcePackage AS pkg, sourceLabel AS label, COUNT(*) AS count " +
-            "FROM media WHERE sourcePackage IS NOT NULL AND deletedAtMillis IS NULL " +
-            "GROUP BY sourcePackage ORDER BY count DESC",
+        "SELECT COALESCE(sourcePackage, sourceLabel) AS pkg, sourceLabel AS label, COUNT(*) AS count " +
+            "FROM media WHERE COALESCE(sourcePackage, sourceLabel) IS NOT NULL AND deletedAtMillis IS NULL " +
+            "GROUP BY COALESCE(sourcePackage, sourceLabel) ORDER BY count DESC",
     )
     fun observeSourceCounts(): Flow<List<SourceCount>>
 
