@@ -3,10 +3,14 @@ package com.atelierapps.vault.ui.viewer
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
 import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.data.entity.MediaWithTags
+import com.atelierapps.vault.media.MediaSharer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Backs the full-screen viewer (spec §8). Loads a one-shot ordered snapshot so
@@ -51,6 +55,20 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repo.trashMedia(id)
             onDone()
+        }
+    }
+
+    /**
+     * Decrypt one item to the share spool (off the UI thread) and hand back a
+     * grantable content URI + mime for the activity to launch a share chooser.
+     */
+    fun share(id: String, onReady: (Uri, String) -> Unit, onError: () -> Unit) {
+        val item = media.value.firstOrNull { it.media.id == id }?.media ?: return onError()
+        viewModelScope.launch {
+            val uri = withContext(Dispatchers.IO) {
+                runCatching { MediaSharer.decryptForShare(getApplication(), item) }.getOrNull()
+            }
+            if (uri != null) onReady(uri, item.mimeType) else onError()
         }
     }
 }

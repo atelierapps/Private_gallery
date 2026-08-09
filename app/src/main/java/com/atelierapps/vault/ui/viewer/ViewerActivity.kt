@@ -3,8 +3,10 @@ package com.atelierapps.vault.ui.viewer
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -59,10 +61,32 @@ class ViewerActivity : ComponentActivity() {
                         onBack = { finish() },
                         onDelete = { id -> vm.delete(id) { finish() } },
                         onTogglePin = { id -> vm.togglePin(id) },
+                        onShare = { id ->
+                            vm.share(
+                                id,
+                                onReady = { uri, mime -> startShareChooser(uri, mime) },
+                                onError = {
+                                    Toast.makeText(this, "Couldn't prepare share", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        },
                     )
                 }
             }
         }
+    }
+
+    private fun startShareChooser(uri: Uri, mime: String) {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(
+            Intent.createChooser(send, "Share").apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            },
+        )
     }
 
     companion object {

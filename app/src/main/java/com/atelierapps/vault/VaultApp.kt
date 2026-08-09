@@ -5,6 +5,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.atelierapps.vault.crypto.DekCache
+import com.atelierapps.vault.media.MediaSharer
 import com.atelierapps.vault.storage.VaultStorage
 import com.atelierapps.vault.ui.trash.TrashViewModel
 import com.atelierapps.vault.session.LockPrefs
@@ -42,6 +43,7 @@ class VaultApp : Application(), SingletonImageLoader.Factory {
             val storage = VaultGraph.storage(this)
             storage.sweepTemp(now = System.currentTimeMillis())
             purgeExpiredTrash(storage)
+            runCatching { MediaSharer.sweep(this) } // drop leftover share spools
         }
         ShareShortcut.publish(this)
         registerAutoLock()

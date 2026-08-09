@@ -68,6 +68,7 @@ fun ViewerScreen(
     onBack: () -> Unit,
     onDelete: (id: String) -> Unit,
     onTogglePin: (id: String) -> Unit,
+    onShare: (id: String) -> Unit,
 ) {
     val pagerState = rememberPagerState(initialPage = startIndex) { media.size }
     var chromeVisible by remember { mutableStateOf(false) }
@@ -121,6 +122,7 @@ fun ViewerScreen(
                     playMode = playMode,
                     onTogglePlay = { playMode = !playMode },
                     onTogglePin = { onTogglePin(current.media.id) },
+                    onShare = { onShare(current.media.id) },
                     onDelete = { pendingDelete = current.media.id },
                 )
             }
@@ -225,20 +227,22 @@ private fun TopBar(
     playMode: Boolean,
     onTogglePlay: () -> Unit,
     onTogglePin: () -> Unit,
+    onShare: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().background(Color(0x99000000)).statusBarsPadding()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 2.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextButton(onClick = onBack) { Text("‹ Back", color = Ink) }
+        TextButton(onClick = onBack) { Text("‹", color = Ink, fontSize = 20.sp) }
         Box(Modifier.weight(1f))
         TextButton(onClick = onTogglePlay) {
-            Text(if (playMode) "⏸" else "▶ Play", color = Brass)
+            Text(if (playMode) "⏸" else "▶", color = Brass, fontSize = 16.sp)
         }
+        TextButton(onClick = onShare) { Text("Share", color = Ink) }
         TextButton(onClick = onTogglePin) {
-            Text(if (isPinned) "📌" else "📌 Pin", color = if (isPinned) Brass else Ink)
+            Text(if (isPinned) "📌" else "Pin", color = if (isPinned) Brass else Ink)
         }
         TextButton(onClick = onDelete) { Text("Delete", color = Color(0xFFE08A7A)) }
     }

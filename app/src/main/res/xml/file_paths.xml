@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Only the transient share spool under cacheDir/share is exposed, and only via a
+  per-share content URI with a temporary read grant. Nothing in vault/ or thumbs/
+  is ever reachable through this provider.
+-->
+<paths>
+    <cache-path name="shared" path="share/" />
+</paths>

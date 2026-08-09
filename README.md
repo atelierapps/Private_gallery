@@ -32,6 +32,7 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | Organization: search, bulk/retroactive tagging, select-all | ✅ implemented |
 | In-app camera (capture photos/videos straight into the vault) | ✅ implemented |
 | Recycle bin (soft delete, restore, 30-day auto-purge) | ✅ implemented |
+| Share-out (decrypt one item to another app via FileProvider) | ✅ implemented |
 | Pin-to-top, immersive viewer, playback/slideshow | ✅ implemented |
 | Disguised as "Link" (neutral name + icon) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
