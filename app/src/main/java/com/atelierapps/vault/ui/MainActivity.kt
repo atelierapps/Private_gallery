@@ -25,6 +25,7 @@ import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.ui.camera.CameraActivity
 import com.atelierapps.vault.ui.export.ExportActivity
 import com.atelierapps.vault.ui.restore.RestoreActivity
+import com.atelierapps.vault.ui.rules.RulesActivity
 import com.atelierapps.vault.ui.trash.TrashActivity
 import com.atelierapps.vault.ui.home.VaultHome
 import com.atelierapps.vault.ui.lock.LockScreen
@@ -80,6 +81,9 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onTrash = {
                                     startActivity(Intent(this@MainActivity, TrashActivity::class.java))
+                                },
+                                onRules = {
+                                    startActivity(Intent(this@MainActivity, RulesActivity::class.java))
                                 },
                             )
                         }

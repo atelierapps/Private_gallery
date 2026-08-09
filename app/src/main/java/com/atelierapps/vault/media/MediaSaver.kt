@@ -86,7 +86,15 @@ class MediaSaver(
                 sourceDomain = request.source.sourceDomain,
                 cryptoMode = mode.toInt(),
             )
-            repository.saveMedia(entity, request.tagNames)
+            // Merge any auto-tag rules that match this item's source (§7) with the
+            // tags the user picked on the save sheet.
+            val autoTags = repository.autoTagsFor(
+                request.source.sourceType,
+                request.source.sourcePackage,
+                request.source.sourceLabel,
+                request.source.sourceDomain,
+            )
+            repository.saveMedia(entity, (request.tagNames + autoTags).distinct())
 
             // 5. Only now is the spool disposable.
             temp.delete()

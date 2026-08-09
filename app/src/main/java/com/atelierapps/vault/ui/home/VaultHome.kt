@@ -53,6 +53,7 @@ fun VaultHome(
     onRestore: () -> Unit,
     onCamera: () -> Unit,
     onTrash: () -> Unit,
+    onRules: () -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
 ) {
@@ -90,6 +91,7 @@ fun VaultHome(
                     onRestore = onRestore,
                     onCamera = onCamera,
                     onTrash = onTrash,
+                    onRules = onRules,
                     trashCount = trashCount,
                     onToggleSearch = { searchOpen = !searchOpen; if (!searchOpen) vm.setQuery("") },
                     onLockNow = {
@@ -242,6 +244,7 @@ private fun TopAppRow(
     onRestore: () -> Unit,
     onCamera: () -> Unit,
     onTrash: () -> Unit,
+    onRules: () -> Unit,
     trashCount: Int,
     onToggleSearch: () -> Unit,
     onLockNow: () -> Unit,
@@ -263,6 +266,7 @@ private fun TopAppRow(
                     text = { Text("Recently deleted" + if (trashCount > 0) "  ($trashCount)" else "") },
                     onClick = { menu = false; onTrash() },
                 )
+                DropdownMenuItem(text = { Text("Auto-tag rules") }, onClick = { menu = false; onRules() })
                 DropdownMenuItem(text = { Text("Export / back up") }, onClick = { menu = false; onExport() })
                 DropdownMenuItem(text = { Text("Restore from backup") }, onClick = { menu = false; onRestore() })
                 DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })

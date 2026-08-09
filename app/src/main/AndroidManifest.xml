@@ -67,6 +67,12 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Auto-tag rules manager (spec §7). -->
+        <activity
+            android:name=".ui.rules.RulesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- In-app camera: capture straight into the vault. -->
         <activity
             android:name=".ui.camera.CameraActivity"

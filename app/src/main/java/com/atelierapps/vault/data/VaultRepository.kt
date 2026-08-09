@@ -1,19 +1,23 @@
 package com.atelierapps.vault.data
 
+import com.atelierapps.vault.data.db.AutoTagRuleDao
 import com.atelierapps.vault.data.db.MediaDao
 import com.atelierapps.vault.data.db.TagDao
+import com.atelierapps.vault.data.entity.AutoTagRuleEntity
 import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.data.entity.MediaTagCrossRef
+import com.atelierapps.vault.data.entity.SourceType
 import com.atelierapps.vault.data.entity.TagEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-/** Coordinates the media + tag DAOs (spec §2, §7). */
+/** Coordinates the media + tag + auto-tag-rule DAOs (spec §2, §7). */
 class VaultRepository(
     private val mediaDao: MediaDao,
     private val tagDao: TagDao,
+    private val ruleDao: AutoTagRuleDao,
 ) {
     fun observeAll() = mediaDao.observeAll()
     fun observeTrash() = mediaDao.observeTrash()
@@ -94,6 +98,32 @@ class VaultRepository(
         return runCatching { tagDao.insert(tag); tag.id }
             // lost a race on the unique index — re-read the winner
             .getOrElse { tagDao.byName(name)?.id ?: throw it }
+    }
+
+    // ---- auto-tag rules (§7) ----
+
+    fun observeRules(): Flow<List<AutoTagRuleEntity>> = ruleDao.observeAll()
+
+    suspend fun upsertRule(rule: AutoTagRuleEntity) =
+        withContext(Dispatchers.IO) { ruleDao.upsert(rule) }
+
+    suspend fun setRuleEnabled(id: String, enabled: Boolean) =
+        withContext(Dispatchers.IO) { ruleDao.setEnabled(id, enabled) }
+
+    suspend fun deleteRule(id: String) =
+        withContext(Dispatchers.IO) { ruleDao.delete(id) }
+
+    /** Tags to auto-apply to an item with this source, from all enabled rules. */
+    suspend fun autoTagsFor(
+        type: SourceType,
+        pkg: String?,
+        label: String?,
+        domain: String?,
+    ): List<String> = withContext(Dispatchers.IO) {
+        ruleDao.allEnabled()
+            .filter { it.matches(type, pkg, label, domain) }
+            .flatMap { it.tags() }
+            .distinct()
     }
 
     private fun defaultColorFor(name: String): String {
