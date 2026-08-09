@@ -40,6 +40,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Export / backup (spec §11). -->
+        <activity
+            android:name=".ui.export.ExportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Full-screen viewer (spec §8). -->
         <activity
             android:name=".ui.viewer.ViewerActivity"

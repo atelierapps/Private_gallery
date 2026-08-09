@@ -1,0 +1,79 @@
+package com.atelierapps.vault.ui.export
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import com.atelierapps.vault.media.ExportProgress
+import com.atelierapps.vault.media.ExportResult
+
+private val Bg = Color(0xFF0E1113)
+private val Ink = Color(0xFFE9EEF0)
+private val Muted = Color(0xFF8A969E)
+private val Brass = Color(0xFFD8B463)
+
+/** Export UI (spec §11): pick a destination, watch progress, see the verified count. */
+@Composable
+fun ExportScreen(
+    phase: ExportPhase,
+    progress: ExportProgress,
+    result: ExportResult?,
+    onPickFolder: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxSize().background(Bg).padding(28.dp), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize().padding(top = 40.dp),
+        ) {
+            Text("Export vault", color = Ink, fontSize = 22.sp)
+            when (phase) {
+                ExportPhase.PICK -> {
+                    Text(
+                        "Choose a folder to back up to. Everything is decrypted to its " +
+                            "original files, plus a manifest.json that can restore tags and " +
+                            "sources on re-import.\n\nThis backup is unencrypted — keep it somewhere safe.",
+                        color = Muted, fontSize = 14.sp, textAlign = TextAlign.Center,
+                    )
+                    Button(onClick = onPickFolder) { Text("Choose folder") }
+                    TextButton(onClick = onClose) { Text("Cancel", color = Muted) }
+                }
+                ExportPhase.RUNNING -> {
+                    Text("Exporting ${progress.done} / ${progress.total}", color = Ink, fontSize = 15.sp)
+                    LinearProgressIndicator(
+                        progress = { if (progress.total == 0) 0f else progress.done.toFloat() / progress.total },
+                        color = Brass,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    )
+                    if (progress.failed > 0) Text("${progress.failed} failed", color = Color(0xFFE08A7A), fontSize = 12.sp)
+                }
+                ExportPhase.DONE -> {
+                    val r = result
+                    Text(
+                        if (r == null) "Done" else "Exported ${r.exported} of ${r.total}" +
+                            if (r.failed > 0) " · ${r.failed} failed" else "",
+                        color = Ink, fontSize = 16.sp, textAlign = TextAlign.Center,
+                    )
+                    Text("A manifest.json was written alongside your files.", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    Button(onClick = onClose) { Text("Done") }
+                }
+            }
+        }
+    }
+}

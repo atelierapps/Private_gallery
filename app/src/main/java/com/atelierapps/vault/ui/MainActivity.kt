@@ -22,6 +22,7 @@ import com.atelierapps.vault.auth.BiometricAuth
 import com.atelierapps.vault.crypto.MediaCrypto
 import com.atelierapps.vault.imports.ImportActivity
 import com.atelierapps.vault.session.VaultSession
+import com.atelierapps.vault.ui.export.ExportActivity
 import com.atelierapps.vault.ui.home.VaultHome
 import com.atelierapps.vault.ui.lock.LockScreen
 import com.atelierapps.vault.ui.viewer.ViewerActivity
@@ -64,6 +65,9 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onImport = {
                                     startActivity(Intent(this@MainActivity, ImportActivity::class.java))
+                                },
+                                onExport = {
+                                    startActivity(Intent(this@MainActivity, ExportActivity::class.java))
                                 },
                             )
                         }

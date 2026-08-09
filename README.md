@@ -25,8 +25,14 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | §4.1 · Folder import (SAF tree, encrypt-in, clear originals) | ✅ implemented |
 | 8 · Full-screen viewer (swipe, pinch-zoom, metadata, delete) | ✅ implemented |
 | 9 · Encrypted video playback (ExoPlayer + CTR data source) | ✅ implemented |
+| 10 · Auto-lock on background (configurable delay) + lock now | ✅ implemented |
+| 11 · Export/backup to a folder + manifest.json | ✅ implemented |
+| Multi-select (delete + move back to gallery) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
-| 10–11 · Auto-lock timer, export | ⬜ not started |
+
+All of build-order steps 1–11 are implemented. Verified end-to-end on device
+through step 9 (import, view, video, delete, move); steps 10–11 pending a
+device pass.
 
 Verified on device (Xiaomi, Android 16): build, unit tests, install, biometric
 unlock, import, **encrypted images render end-to-end** (the OAEP fix). RSA

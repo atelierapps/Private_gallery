@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,10 +25,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.SingletonImageLoader
+import com.atelierapps.vault.session.LockPrefs
+import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.ui.grid.VaultGridScreen
 
 private val Ink = Color(0xFFE9EEF0)
@@ -40,9 +47,11 @@ private val Brass = Color(0xFFD8B463)
 fun VaultHome(
     onOpen: (id: String) -> Unit,
     onImport: () -> Unit,
+    onExport: () -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
     val filter by vm.filter.collectAsState()
     val sources by vm.sourceChips.collectAsState()
     val tags by vm.tagChips.collectAsState()
@@ -53,6 +62,7 @@ fun VaultHome(
     val working by vm.working.collectAsState()
 
     var confirmDelete by remember { mutableStateOf(false) }
+    var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
 
     Box(modifier.fillMaxSize().background(Color(0xFF0E1113))) {
         Column(Modifier.fillMaxSize()) {
@@ -64,6 +74,15 @@ fun VaultHome(
                     onDelete = { confirmDelete = true },
                 )
             } else {
+                TopAppRow(
+                    onExport = onExport,
+                    onLockNow = {
+                        VaultSession.lock()
+                        runCatching { SingletonImageLoader.get(context).memoryCache?.clear() }
+                    },
+                    delay = lockDelay,
+                    onSetDelay = { LockPrefs.set(context, it); lockDelay = it },
+                )
                 FilterBar(
                     filter = filter,
                     sources = sources,
@@ -126,6 +145,43 @@ fun VaultHome(
         )
     }
 }
+
+@Composable
+private fun TopAppRow(
+    onExport: () -> Unit,
+    onLockNow: () -> Unit,
+    delay: LockPrefs.Delay,
+    onSetDelay: (LockPrefs.Delay) -> Unit,
+) {
+    var menu by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Vault", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Box {
+            TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 20.sp) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text("Export / back up") }, onClick = { menu = false; onExport() })
+                DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })
+                HorizontalDivider()
+                Text(
+                    "Auto-lock",
+                    color = Muted, fontSize = 11.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
+                )
+                LockPrefs.Delay.entries.forEach { d ->
+                    DropdownMenuItem(
+                        text = { Text((if (d == delay) "✓  " else "     ") + d.label) },
+                        onClick = { onSetDelay(d); menu = false },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val Muted = Color(0xFF8A969E)
 
 @Composable
 private fun SelectionBar(
