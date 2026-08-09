@@ -168,7 +168,7 @@ private fun EmptyState(modifier: Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            "Nothing saved yet.\nShare a photo or video to Vault to get started.",
+            "Nothing saved yet.\nShare a photo or video to Link to get started.",
             color = Color(0xFF8A969E),
             fontSize = 15.sp,
             textAlign = TextAlign.Center,

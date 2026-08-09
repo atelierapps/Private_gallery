@@ -129,8 +129,8 @@ private fun RestoreBody(
                 RestorePhase.PICK -> {
                     Text(
                         "Choose the folder that contains your manifest.json. Every file it " +
-                            "lists is re-encrypted back into the vault with its tags and source. " +
-                            "Items already in the vault are skipped.",
+                            "lists is re-encrypted and saved back in with its tags and source. " +
+                            "Items already saved are skipped.",
                         color = Muted, fontSize = 14.sp, textAlign = TextAlign.Center,
                     )
                     Button(onClick = onPick) { Text("Choose backup folder") }

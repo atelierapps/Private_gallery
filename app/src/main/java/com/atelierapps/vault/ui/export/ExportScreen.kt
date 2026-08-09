@@ -42,7 +42,7 @@ fun ExportScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize().padding(top = 40.dp),
         ) {
-            Text("Export vault", color = Ink, fontSize = 22.sp)
+            Text("Export library", color = Ink, fontSize = 22.sp)
             when (phase) {
                 ExportPhase.PICK -> {
                     Text(

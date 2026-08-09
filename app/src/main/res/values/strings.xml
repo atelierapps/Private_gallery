@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Vault</string>
+    <!-- Public-facing name (launcher, share sheet). Kept inconspicuous.
+         The package id stays com.atelierapps.vault so the Keystore key/data survive. -->
+    <string name="app_name">Link</string>
 </resources>

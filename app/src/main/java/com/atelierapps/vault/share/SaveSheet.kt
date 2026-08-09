@@ -84,7 +84,7 @@ fun SaveSheet(
             ) {
                 Column(Modifier.navigationBarsPadding().padding(20.dp)) {
                     Text(
-                        "Save to Vault",
+                        "Save to Link",
                         color = Color(0xFFE9EEF0),
                         fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -155,7 +155,7 @@ fun SaveSheet(
                             )
                             Text("  Saving…")
                         } else {
-                            Text("Save to Vault")
+                            Text("Save to Link")
                         }
                     }
                 }

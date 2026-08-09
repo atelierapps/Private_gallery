@@ -32,8 +32,8 @@ object MediaExporter {
             put(MediaStore.MediaColumns.MIME_TYPE, item.mimeType)
             put(
                 MediaStore.MediaColumns.RELATIVE_PATH,
-                if (isVideo) "${android.os.Environment.DIRECTORY_MOVIES}/Vault"
-                else "${android.os.Environment.DIRECTORY_PICTURES}/Vault",
+                if (isVideo) "${android.os.Environment.DIRECTORY_MOVIES}/Link"
+                else "${android.os.Environment.DIRECTORY_PICTURES}/Link",
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) put(MediaStore.MediaColumns.IS_PENDING, 1)
         }

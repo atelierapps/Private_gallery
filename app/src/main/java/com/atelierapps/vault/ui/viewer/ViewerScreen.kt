@@ -145,7 +145,7 @@ fun ViewerScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("Delete this item?") },
-            text = { Text("It'll be permanently removed from the vault. This can't be undone.") },
+            text = { Text("It'll be permanently removed. This can't be undone.") },
             confirmButton = {
                 TextButton(onClick = { pendingDelete = null; onDelete(id) }) {
                     Text("Delete", color = Color(0xFFE08A7A))

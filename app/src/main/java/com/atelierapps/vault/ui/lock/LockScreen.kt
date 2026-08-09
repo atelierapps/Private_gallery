@@ -40,7 +40,7 @@ fun LockScreen(onUnlock: () -> Unit, modifier: Modifier = Modifier) {
             ) {
                 Text("🔒", fontSize = 34.sp)
             }
-            Text("Vault is locked", color = Color(0xFFE9EEF0), fontSize = 20.sp)
+            Text("Locked", color = Color(0xFFE9EEF0), fontSize = 20.sp)
             Text(
                 "Unlock with your fingerprint or device PIN.",
                 color = Color(0xFF8A969E),

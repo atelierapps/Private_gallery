@@ -56,11 +56,11 @@ class SaveMediaWorker(
         val nm = applicationContext.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
-                NotificationChannel(channelId, "Saving to Vault", NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel(channelId, "Saving to Link", NotificationManager.IMPORTANCE_LOW),
             )
         }
         val notification: Notification = Notification.Builder(applicationContext, channelId)
-            .setContentTitle("Saving to Vault")
+            .setContentTitle("Saving to Link")
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setOngoing(true)
             .build()

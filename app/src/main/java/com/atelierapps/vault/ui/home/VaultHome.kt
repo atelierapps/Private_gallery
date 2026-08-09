@@ -151,7 +151,7 @@ fun VaultHome(
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Delete ${selectedIds.size} item(s)?") },
-            text = { Text("They'll be permanently removed from the vault. This can't be undone.") },
+            text = { Text("They'll be permanently removed. This can't be undone.") },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; vm.deleteSelected() }) {
                     Text("Delete", color = Color(0xFFE08A7A))
@@ -244,7 +244,7 @@ private fun TopAppRow(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Vault", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text("Link", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         TextButton(onClick = onToggleSearch) { Text("🔍", fontSize = 15.sp) }
         Box {
             TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 20.sp) }
