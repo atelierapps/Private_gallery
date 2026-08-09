@@ -80,6 +80,10 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
         repo.observeTrashCount()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    val albums: StateFlow<List<com.atelierapps.vault.data.entity.AlbumEntity>> =
+        repo.observeAlbums()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val media: StateFlow<List<MediaWithTags>> =
         combine(repo.observeAll(), _filter, _sort, _query) { list, f, s, q ->
             var out = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
@@ -144,6 +148,32 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
         working.value = true
         viewModelScope.launch(Dispatchers.IO) {
             ids.forEach { repo.addTags(it, clean) }
+            working.value = false
+            clearSelection()
+        }
+    }
+
+    /** Add the selected items to an existing album (retroactive, spec §7). */
+    fun addSelectedToAlbum(albumId: String) {
+        val ids = selectedIds.value
+        if (ids.isEmpty()) return
+        working.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            repo.setAlbumForItems(ids, albumId)
+            working.value = false
+            clearSelection()
+        }
+    }
+
+    /** Create a new album and drop the current selection into it. */
+    fun addSelectedToNewAlbum(name: String) {
+        val ids = selectedIds.value
+        val clean = name.trim()
+        if (ids.isEmpty() || clean.isEmpty()) return
+        working.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val albumId = repo.createAlbum(clean)
+            repo.setAlbumForItems(ids, albumId)
             working.value = false
             clearSelection()
         }

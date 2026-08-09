@@ -16,7 +16,8 @@ object VaultGraph {
         repo ?: synchronized(this) {
             repo ?: run {
                 val db = VaultDatabase.get(context)
-                VaultRepository(db.mediaDao(), db.tagDao(), db.autoTagRuleDao()).also { repo = it }
+                VaultRepository(db.mediaDao(), db.tagDao(), db.autoTagRuleDao(), db.albumDao())
+                    .also { repo = it }
             }
         }
 

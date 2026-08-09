@@ -22,6 +22,7 @@ import com.atelierapps.vault.auth.BiometricAuth
 import com.atelierapps.vault.crypto.MediaCrypto
 import com.atelierapps.vault.imports.ImportActivity
 import com.atelierapps.vault.session.VaultSession
+import com.atelierapps.vault.ui.albums.AlbumsActivity
 import com.atelierapps.vault.ui.camera.CameraActivity
 import com.atelierapps.vault.ui.export.ExportActivity
 import com.atelierapps.vault.ui.restore.RestoreActivity
@@ -84,6 +85,9 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onRules = {
                                     startActivity(Intent(this@MainActivity, RulesActivity::class.java))
+                                },
+                                onAlbums = {
+                                    startActivity(Intent(this@MainActivity, AlbumsActivity::class.java))
                                 },
                             )
                         }

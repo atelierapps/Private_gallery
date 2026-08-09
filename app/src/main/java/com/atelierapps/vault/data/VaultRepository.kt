@@ -1,8 +1,10 @@
 package com.atelierapps.vault.data
 
+import com.atelierapps.vault.data.db.AlbumDao
 import com.atelierapps.vault.data.db.AutoTagRuleDao
 import com.atelierapps.vault.data.db.MediaDao
 import com.atelierapps.vault.data.db.TagDao
+import com.atelierapps.vault.data.entity.AlbumEntity
 import com.atelierapps.vault.data.entity.AutoTagRuleEntity
 import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.data.entity.MediaTagCrossRef
@@ -13,11 +15,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-/** Coordinates the media + tag + auto-tag-rule DAOs (spec §2, §7). */
+/** Coordinates the media + tag + auto-tag-rule + album DAOs (spec §2, §7). */
 class VaultRepository(
     private val mediaDao: MediaDao,
     private val tagDao: TagDao,
     private val ruleDao: AutoTagRuleDao,
+    private val albumDao: AlbumDao,
 ) {
     fun observeAll() = mediaDao.observeAll()
     fun observeTrash() = mediaDao.observeTrash()
@@ -125,6 +128,28 @@ class VaultRepository(
             .flatMap { it.tags() }
             .distinct()
     }
+
+    // ---- albums (§7) ----
+
+    fun observeAlbums(): Flow<List<AlbumEntity>> = albumDao.observeAll()
+
+    suspend fun createAlbum(name: String): String = withContext(Dispatchers.IO) {
+        val id = UUID.randomUUID().toString()
+        albumDao.upsert(AlbumEntity(id, name.trim(), System.currentTimeMillis()))
+        id
+    }
+
+    suspend fun renameAlbum(id: String, name: String) =
+        withContext(Dispatchers.IO) { albumDao.rename(id, name.trim()) }
+
+    /** Delete the album but keep its items (their albumId is cleared). */
+    suspend fun deleteAlbum(id: String) = withContext(Dispatchers.IO) {
+        albumDao.clearMembers(id)
+        albumDao.delete(id)
+    }
+
+    suspend fun setAlbumForItems(ids: Collection<String>, albumId: String?) =
+        withContext(Dispatchers.IO) { albumDao.setAlbumForIds(ids.toList(), albumId) }
 
     private fun defaultColorFor(name: String): String {
         val palette = listOf("#D8B463", "#7FA88B", "#C08A6E", "#8091C0", "#B07FA8", "#6EA8B0")

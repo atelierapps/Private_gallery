@@ -73,6 +73,16 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Albums (spec §7). -->
+        <activity
+            android:name=".ui.albums.AlbumsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+        <activity
+            android:name=".ui.albums.AlbumActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- In-app camera: capture straight into the vault. -->
         <activity
             android:name=".ui.camera.CameraActivity"

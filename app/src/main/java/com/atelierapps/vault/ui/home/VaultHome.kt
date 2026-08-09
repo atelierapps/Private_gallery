@@ -1,6 +1,7 @@
 package com.atelierapps.vault.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +55,7 @@ fun VaultHome(
     onCamera: () -> Unit,
     onTrash: () -> Unit,
     onRules: () -> Unit,
+    onAlbums: () -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
 ) {
@@ -68,11 +70,13 @@ fun VaultHome(
     val working by vm.working.collectAsState()
     val query by vm.query.collectAsState()
     val trashCount by vm.trashCount.collectAsState()
+    val albums by vm.albums.collectAsState()
 
     var confirmDelete by remember { mutableStateOf(false) }
     var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
     var searchOpen by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
+    var showAlbumDialog by remember { mutableStateOf(false) }
 
     Box(modifier.fillMaxSize().background(Color(0xFF0E1113))) {
         Column(Modifier.fillMaxSize()) {
@@ -82,6 +86,7 @@ fun VaultHome(
                     onClose = vm::clearSelection,
                     onSelectAll = vm::selectAll,
                     onTag = { showTagDialog = true },
+                    onAlbum = { showAlbumDialog = true },
                     onMove = vm::moveSelectedToGallery,
                     onDelete = { confirmDelete = true },
                 )
@@ -92,6 +97,7 @@ fun VaultHome(
                     onCamera = onCamera,
                     onTrash = onTrash,
                     onRules = onRules,
+                    onAlbums = onAlbums,
                     trashCount = trashCount,
                     onToggleSearch = { searchOpen = !searchOpen; if (!searchOpen) vm.setQuery("") },
                     onLockNow = {
@@ -178,6 +184,61 @@ fun VaultHome(
             onDismiss = { showTagDialog = false },
         )
     }
+
+    if (showAlbumDialog) {
+        AlbumPickerDialog(
+            albums = albums,
+            onPick = { id -> vm.addSelectedToAlbum(id); showAlbumDialog = false },
+            onCreate = { name -> vm.addSelectedToNewAlbum(name); showAlbumDialog = false },
+            onDismiss = { showAlbumDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun AlbumPickerDialog(
+    albums: List<com.atelierapps.vault.data.entity.AlbumEntity>,
+    onPick: (String) -> Unit,
+    onCreate: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var newAlbum by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to album") },
+        text = {
+            Column {
+                if (albums.isEmpty()) {
+                    Text("No albums yet — name one below.", color = Muted, fontSize = 13.sp)
+                } else {
+                    albums.forEach { album ->
+                        Text(
+                            album.name,
+                            color = Ink, fontSize = 15.sp,
+                            modifier = Modifier.fillMaxWidth()
+                                .clickable { onPick(album.id) }
+                                .padding(vertical = 10.dp),
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                }
+                androidx.compose.material3.OutlinedTextField(
+                    value = newAlbum,
+                    onValueChange = { newAlbum = it },
+                    placeholder = { Text("New album name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreate(newAlbum) },
+                enabled = newAlbum.isNotBlank(),
+            ) { Text("Create & add", color = Brass) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -245,6 +306,7 @@ private fun TopAppRow(
     onCamera: () -> Unit,
     onTrash: () -> Unit,
     onRules: () -> Unit,
+    onAlbums: () -> Unit,
     trashCount: Int,
     onToggleSearch: () -> Unit,
     onLockNow: () -> Unit,
@@ -266,6 +328,7 @@ private fun TopAppRow(
                     text = { Text("Recently deleted" + if (trashCount > 0) "  ($trashCount)" else "") },
                     onClick = { menu = false; onTrash() },
                 )
+                DropdownMenuItem(text = { Text("Albums") }, onClick = { menu = false; onAlbums() })
                 DropdownMenuItem(text = { Text("Auto-tag rules") }, onClick = { menu = false; onRules() })
                 DropdownMenuItem(text = { Text("Export / back up") }, onClick = { menu = false; onExport() })
                 DropdownMenuItem(text = { Text("Restore from backup") }, onClick = { menu = false; onRestore() })
@@ -295,11 +358,12 @@ private fun SelectionBar(
     onClose: () -> Unit,
     onSelectAll: () -> Unit,
     onTag: () -> Unit,
+    onAlbum: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().background(Color(0xFF171C20)).padding(horizontal = 4.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth().background(Color(0xFF171C20)).padding(horizontal = 2.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onClose) { Text("✕", color = Ink, fontSize = 16.sp) }
@@ -310,6 +374,7 @@ private fun SelectionBar(
         )
         TextButton(onClick = onSelectAll) { Text("All", color = Ink) }
         TextButton(onClick = onTag, enabled = count > 0) { Text("Tag", color = Ink) }
+        TextButton(onClick = onAlbum, enabled = count > 0) { Text("Album", color = Ink) }
         TextButton(onClick = onMove, enabled = count > 0) { Text("Move", color = Brass) }
         TextButton(onClick = onDelete, enabled = count > 0) { Text("Delete", color = Color(0xFFE08A7A)) }
     }

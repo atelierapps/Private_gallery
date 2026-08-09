@@ -34,6 +34,7 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | Recycle bin (soft delete, restore, 30-day auto-purge) | ✅ implemented |
 | Share-out (decrypt one item to another app via FileProvider) | ✅ implemented |
 | Auto-tag rules (tag on save by source/capture type) | ✅ implemented |
+| Albums (curated collections, cover + count, add/remove) | ✅ implemented |
 | Pin-to-top, immersive viewer, playback/slideshow | ✅ implemented |
 | Disguised as "Link" (neutral name + icon) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |

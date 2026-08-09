@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.atelierapps.vault.data.entity.AlbumEntity
 import com.atelierapps.vault.data.entity.AutoTagRuleEntity
 import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.data.entity.MediaTagCrossRef
@@ -18,8 +19,11 @@ import com.atelierapps.vault.data.entity.TagEntity
  * trade-off is documented in §2.1.
  */
 @Database(
-    entities = [MediaItemEntity::class, TagEntity::class, MediaTagCrossRef::class, AutoTagRuleEntity::class],
-    version = 4,
+    entities = [
+        MediaItemEntity::class, TagEntity::class, MediaTagCrossRef::class,
+        AutoTagRuleEntity::class, AlbumEntity::class,
+    ],
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -27,6 +31,7 @@ abstract class VaultDatabase : RoomDatabase() {
     abstract fun mediaDao(): MediaDao
     abstract fun tagDao(): TagDao
     abstract fun autoTagRuleDao(): AutoTagRuleDao
+    abstract fun albumDao(): AlbumDao
 
     companion object {
         @Volatile private var instance: VaultDatabase? = null
@@ -62,13 +67,28 @@ abstract class VaultDatabase : RoomDatabase() {
             }
         }
 
+        // Albums. The media.albumId column already exists from v1, so only the
+        // album table is new. Column defs must match AlbumEntity.
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `album` (" +
+                        "`id` TEXT NOT NULL, " +
+                        "`name` TEXT NOT NULL, " +
+                        "`createdAtMillis` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))",
+                )
+            }
+        }
+
         fun get(context: Context): VaultDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     VaultDatabase::class.java,
                     "vault.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .build().also { instance = it }
             }
     }
 }
