@@ -35,7 +35,9 @@ class VaultThumbFetcher(
                 source = Buffer().apply { write(plain) },
                 fileSystem = FileSystem.SYSTEM,
             ),
-            mimeType = "image/jpeg",
+            // Thumbnails are always re-encoded JPEG; full blobs keep their original
+            // format (HEIC/PNG/…), so let Coil sniff those from the bytes.
+            mimeType = if (key.full) null else "image/jpeg",
             dataSource = DataSource.DISK,
         )
     }

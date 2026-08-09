@@ -140,6 +140,14 @@ private fun ViewerPage(item: MediaWithTags, onTap: () -> Unit, onVideoControls: 
         },
         contentAlignment = Alignment.Center,
     ) {
+        // Cached thumbnail shows instantly (no blank screen while the full-res
+        // image decrypts + decodes); the full image draws over it when ready.
+        AsyncImage(
+            model = VaultMediaKey(item.media.id, full = false),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+        )
         AsyncImage(
             model = VaultMediaKey(item.media.id, full = true),
             contentDescription = item.media.originalName,
