@@ -30,6 +30,9 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | Multi-select (delete + move back to gallery) | ✅ implemented |
 | Restore from backup (re-import manifest.json) | ✅ implemented |
 | Organization: search, bulk/retroactive tagging, select-all | ✅ implemented |
+| In-app camera (capture photos/videos straight into the vault) | ✅ implemented |
+| Pin-to-top, immersive viewer, playback/slideshow | ✅ implemented |
+| Disguised as "Link" (neutral name + icon) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
 
 All of build-order steps 1–11 are implemented. Verified end-to-end on device

@@ -51,6 +51,7 @@ fun VaultHome(
     onImport: () -> Unit,
     onExport: () -> Unit,
     onRestore: () -> Unit,
+    onCamera: () -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
 ) {
@@ -85,6 +86,7 @@ fun VaultHome(
                 TopAppRow(
                     onExport = onExport,
                     onRestore = onRestore,
+                    onCamera = onCamera,
                     onToggleSearch = { searchOpen = !searchOpen; if (!searchOpen) vm.setQuery("") },
                     onLockNow = {
                         VaultSession.lock()
@@ -234,6 +236,7 @@ private fun TagDialog(
 private fun TopAppRow(
     onExport: () -> Unit,
     onRestore: () -> Unit,
+    onCamera: () -> Unit,
     onToggleSearch: () -> Unit,
     onLockNow: () -> Unit,
     delay: LockPrefs.Delay,
@@ -245,6 +248,7 @@ private fun TopAppRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("Link", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        TextButton(onClick = onCamera) { Text("📷", fontSize = 15.sp) }
         TextButton(onClick = onToggleSearch) { Text("🔍", fontSize = 15.sp) }
         Box {
             TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 20.sp) }

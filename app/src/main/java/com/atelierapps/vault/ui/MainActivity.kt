@@ -22,6 +22,7 @@ import com.atelierapps.vault.auth.BiometricAuth
 import com.atelierapps.vault.crypto.MediaCrypto
 import com.atelierapps.vault.imports.ImportActivity
 import com.atelierapps.vault.session.VaultSession
+import com.atelierapps.vault.ui.camera.CameraActivity
 import com.atelierapps.vault.ui.export.ExportActivity
 import com.atelierapps.vault.ui.restore.RestoreActivity
 import com.atelierapps.vault.ui.home.VaultHome
@@ -72,6 +73,9 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onRestore = {
                                     startActivity(Intent(this@MainActivity, RestoreActivity::class.java))
+                                },
+                                onCamera = {
+                                    startActivity(Intent(this@MainActivity, CameraActivity::class.java))
                                 },
                             )
                         }
