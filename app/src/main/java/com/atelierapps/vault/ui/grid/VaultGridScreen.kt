@@ -143,6 +143,12 @@ private fun MediaTile(
                     .padding(horizontal = 4.dp, vertical = 1.dp),
             )
         }
+        if (item.media.isPinned) {
+            Text(
+                "📌", fontSize = 11.sp,
+                modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
+            )
+        }
         if (selectionMode) {
             Box(
                 Modifier.align(Alignment.TopStart).padding(4.dp).size(18.dp).clip(CircleShape)

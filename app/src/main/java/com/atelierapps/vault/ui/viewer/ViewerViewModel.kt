@@ -30,6 +30,19 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun togglePin(id: String) {
+        viewModelScope.launch {
+            val list = media.value
+            val idx = list.indexOfFirst { it.media.id == id }
+            if (idx < 0) return@launch
+            val pinned = !list[idx].media.isPinned
+            repo.setPinned(id, pinned)
+            media.value = list.toMutableList().also {
+                it[idx] = it[idx].copy(media = it[idx].media.copy(isPinned = pinned))
+            }
+        }
+    }
+
     fun delete(id: String, onDone: () -> Unit) {
         viewModelScope.launch {
             repo.deleteMedia(id)

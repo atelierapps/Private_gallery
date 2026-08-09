@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,10 +60,12 @@ fun ViewerScreen(
     startIndex: Int,
     onBack: () -> Unit,
     onDelete: (id: String) -> Unit,
+    onTogglePin: (id: String) -> Unit,
 ) {
     val pagerState = rememberPagerState(initialPage = startIndex) { media.size }
     var chromeVisible by remember { mutableStateOf(false) }
     var videoControls by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<String?>(null) }
 
     // Reset the video-controls flag when moving to another page.
     androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) { videoControls = false }
@@ -82,12 +85,31 @@ fun ViewerScreen(
             // On video the bar follows the player's controls (fades with them);
             // on images it toggles on tap.
             if (if (isVideo) videoControls else chromeVisible) {
-                TopBar(onBack = onBack, onDelete = { onDelete(current.media.id) })
+                TopBar(
+                    onBack = onBack,
+                    isPinned = current.media.isPinned,
+                    onTogglePin = { onTogglePin(current.media.id) },
+                    onDelete = { pendingDelete = current.media.id },
+                )
             }
             if (chromeVisible && !isVideo) {
                 MetadataPanel(current, Modifier.align(Alignment.BottomStart))
             }
         }
+    }
+
+    pendingDelete?.let { id ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete this item?") },
+            text = { Text("It'll be permanently removed from the vault. This can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = { pendingDelete = null; onDelete(id) }) {
+                    Text("Delete", color = Color(0xFFE08A7A))
+                }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -134,7 +156,12 @@ private fun ViewerPage(item: MediaWithTags, onTap: () -> Unit, onVideoControls: 
 }
 
 @Composable
-private fun TopBar(onBack: () -> Unit, onDelete: () -> Unit) {
+private fun TopBar(
+    onBack: () -> Unit,
+    isPinned: Boolean,
+    onTogglePin: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().background(Color(0x99000000)).statusBarsPadding()
             .padding(horizontal = 6.dp, vertical = 4.dp),
@@ -142,6 +169,9 @@ private fun TopBar(onBack: () -> Unit, onDelete: () -> Unit) {
     ) {
         TextButton(onClick = onBack) { Text("‹ Back", color = Ink) }
         Box(Modifier.weight(1f))
+        TextButton(onClick = onTogglePin) {
+            Text(if (isPinned) "📌 Pinned" else "📌 Pin", color = if (isPinned) Brass else Ink)
+        }
         TextButton(onClick = onDelete) { Text("Delete", color = Color(0xFFE08A7A)) }
     }
 }

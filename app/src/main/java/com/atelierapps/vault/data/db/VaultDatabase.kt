@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.data.entity.MediaTagCrossRef
 import com.atelierapps.vault.data.entity.TagEntity
@@ -16,7 +18,7 @@ import com.atelierapps.vault.data.entity.TagEntity
  */
 @Database(
     entities = [MediaItemEntity::class, TagEntity::class, MediaTagCrossRef::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -27,13 +29,19 @@ abstract class VaultDatabase : RoomDatabase() {
     companion object {
         @Volatile private var instance: VaultDatabase? = null
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE media ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun get(context: Context): VaultDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     VaultDatabase::class.java,
                     "vault.db",
-                ).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
             }
     }
 }

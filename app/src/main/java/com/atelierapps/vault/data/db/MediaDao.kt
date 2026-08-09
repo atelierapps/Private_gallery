@@ -34,6 +34,9 @@ interface MediaDao {
     @Query("DELETE FROM media_tag WHERE mediaId = :id")
     suspend fun deleteCrossRefs(id: String)
 
+    @Query("UPDATE media SET isPinned = :pinned WHERE id = :id")
+    suspend fun setPinned(id: String, pinned: Boolean)
+
     @Query("SELECT EXISTS(SELECT 1 FROM media WHERE contentHash = :hash LIMIT 1)")
     suspend fun existsByHash(hash: String): Boolean
 

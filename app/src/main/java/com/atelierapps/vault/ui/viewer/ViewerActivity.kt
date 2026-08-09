@@ -14,6 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * Hosts the full-screen viewer (spec §8). FLAG_SECURE blocks screenshots here
@@ -34,6 +37,13 @@ class ViewerActivity : ComponentActivity() {
         )
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 
+        // Immersive: hide the status/nav bars (clock, signal) during viewing;
+        // a swipe from the edge brings them back transiently.
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+
         val startId = intent.getStringExtra(EXTRA_ID)
         vm.load()
 
@@ -48,6 +58,7 @@ class ViewerActivity : ComponentActivity() {
                         startIndex = startIndex,
                         onBack = { finish() },
                         onDelete = { id -> vm.delete(id) { finish() } },
+                        onTogglePin = { id -> vm.togglePin(id) },
                     )
                 }
             }

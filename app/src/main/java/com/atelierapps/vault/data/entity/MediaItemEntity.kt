@@ -44,4 +44,7 @@ data class MediaItemEntity(
 
     @ColumnInfo(defaultValue = "0")
     val cryptoMode: Int,                   // EnvelopeFormat.MODE_GCM / MODE_CTR
+
+    @ColumnInfo(defaultValue = "0")
+    val isPinned: Boolean = false,         // pinned items sort to the top
 )

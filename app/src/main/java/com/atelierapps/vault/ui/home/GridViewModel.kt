@@ -83,11 +83,13 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
                 val ql = q.trim().lowercase()
                 out = out.filter { matchesQuery(it, ql) }
             }
-            when (s) {
+            val sorted = when (s) {
                 SortOrder.NEWEST -> out.sortedByDescending { it.media.dateTakenMillis }
                 SortOrder.OLDEST -> out.sortedBy { it.media.dateTakenMillis }
                 SortOrder.NAME -> out.sortedBy { it.media.originalName.lowercase() }
             }
+            // Pinned items float to the top (stable — keeps sort order within groups).
+            sorted.sortedByDescending { it.media.isPinned }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private fun matchesQuery(item: MediaWithTags, ql: String): Boolean =

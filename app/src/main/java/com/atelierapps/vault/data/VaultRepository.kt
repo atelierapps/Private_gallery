@@ -37,6 +37,9 @@ class VaultRepository(
             mediaDao.delete(id)
         }
 
+    suspend fun setPinned(id: String, pinned: Boolean) =
+        withContext(Dispatchers.IO) { mediaDao.setPinned(id, pinned) }
+
     /** Add tags to an existing item (retroactive/bulk tagging, spec §7 v2). */
     suspend fun addTags(mediaId: String, tagNames: List<String>) =
         withContext(Dispatchers.IO) {
