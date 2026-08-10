@@ -131,7 +131,9 @@ fun ViewerScreen(
             }
         }
 
-        if (playMode) {
+        // Slideshow controls (interval/loop) are image-only; videos have their
+        // own scrubber + loop, so don't double up the bottom bar for them.
+        if (playMode && !currentIsVideo) {
             PlayControls(
                 intervalSec = intervalSec,
                 onInterval = { intervalSec = it },

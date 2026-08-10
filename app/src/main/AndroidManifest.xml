@@ -55,10 +55,13 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
-        <!-- Full-screen viewer (spec §8). -->
+        <!-- Full-screen viewer (spec §8). configChanges keeps the activity alive
+             across rotation so video playback position, loop, and play state are
+             preserved instead of restarting from the beginning. -->
         <activity
             android:name=".ui.viewer.ViewerActivity"
             android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:theme="@style/Theme.Vault" />
 
         <!-- Recycle bin (spec §8). -->
