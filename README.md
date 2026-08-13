@@ -36,6 +36,8 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | Auto-tag rules (tag on save by source/capture type) | ✅ implemented |
 | Albums (curated collections, cover + count, add/remove) | ✅ implemented |
 | Pin-to-top, immersive viewer, playback/slideshow | ✅ implemented |
+| Video: zoom, drag-seek, speed, vol/brightness, resume, skip, autoplay | ✅ implemented |
+| Grid date section headers (Today / This week / …) | ✅ implemented |
 | Disguised as "Link" (neutral name + icon) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
 

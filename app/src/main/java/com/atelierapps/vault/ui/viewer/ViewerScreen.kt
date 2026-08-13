@@ -71,6 +71,8 @@ fun ViewerScreen(
     onTogglePin: (id: String) -> Unit,
     onShare: (id: String) -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val autoplayPref = remember { com.atelierapps.vault.session.VideoPrefs.autoplay(context) }
     val pagerState = rememberPagerState(initialPage = startIndex) { media.size }
     var chromeVisible by remember { mutableStateOf(false) }
     var videoControls by remember { mutableStateOf(false) }
@@ -110,7 +112,7 @@ fun ViewerScreen(
                 active = page == pagerState.currentPage,
                 onTap = { chromeVisible = !chromeVisible },
                 onVideoControls = { videoControls = it },
-                autoPlay = playMode && page == pagerState.currentPage,
+                autoPlay = (playMode || autoplayPref) && page == pagerState.currentPage,
                 onEnded = { if (playMode) advance() },
             )
         }

@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -52,6 +54,7 @@ fun VaultGridScreen(
     onLongPress: (id: String) -> Unit,
     onToggleSelect: (id: String) -> Unit,
     modifier: Modifier = Modifier,
+    showSectionHeaders: Boolean = false,
 ) {
     if (media.isEmpty()) {
         EmptyState(modifier)
@@ -89,7 +92,7 @@ fun VaultGridScreen(
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        items(media, key = { it.media.id }) { item ->
+        val tile: @Composable (MediaWithTags) -> Unit = { item ->
             MediaTile(
                 item = item,
                 selectionMode = selectionMode,
@@ -99,7 +102,62 @@ fun VaultGridScreen(
                 onToggleSelect = onToggleSelect,
             )
         }
+        if (showSectionHeaders) {
+            val now = System.currentTimeMillis()
+            sectionize(media, now).forEachIndexed { idx, section ->
+                item(span = { GridItemSpan(maxLineSpan) }, key = "hdr:$idx:${section.title}") {
+                    SectionHeader(section.title)
+                }
+                items(section.items, key = { it.media.id }) { tile(it) }
+            }
+        } else {
+            items(media, key = { it.media.id }) { tile(it) }
+        }
     }
+}
+
+private data class GridSection(val title: String, val items: List<MediaWithTags>)
+
+/** Group the already-sorted list into a Pinned run + rolling date buckets. */
+private fun sectionize(media: List<MediaWithTags>, now: Long): List<GridSection> {
+    val out = ArrayList<GridSection>()
+    var key: String? = null
+    var cur = ArrayList<MediaWithTags>()
+    for (m in media) {
+        val k = if (m.media.isPinned) "Pinned" else dateBucket(m.media.dateTakenMillis, now)
+        if (k != key) {
+            if (cur.isNotEmpty()) out.add(GridSection(key!!, cur))
+            cur = ArrayList()
+            key = k
+        }
+        cur.add(m)
+    }
+    if (cur.isNotEmpty()) out.add(GridSection(key!!, cur))
+    return out
+}
+
+private fun dateBucket(millis: Long, now: Long): String {
+    val age = now - millis
+    val day = 24L * 60 * 60 * 1000
+    return when {
+        age < day -> "Today"
+        age < 2 * day -> "Yesterday"
+        age < 7 * day -> "This week"
+        age < 30 * day -> "This month"
+        age < 365 * day -> "This year"
+        else -> "Older"
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        title,
+        color = Color(0xFFBFC8CE),
+        fontSize = 13.sp,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+        modifier = Modifier.fillMaxWidth().padding(start = 6.dp, top = 12.dp, bottom = 4.dp),
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

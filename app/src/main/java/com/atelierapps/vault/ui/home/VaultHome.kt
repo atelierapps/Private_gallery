@@ -36,6 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.SingletonImageLoader
 import com.atelierapps.vault.session.LockPrefs
 import com.atelierapps.vault.session.VaultSession
+import com.atelierapps.vault.session.VideoPrefs
 import com.atelierapps.vault.ui.grid.VaultGridScreen
 
 private val Ink = Color(0xFFE9EEF0)
@@ -137,6 +138,7 @@ fun VaultHome(
                 onLongPress = vm::startSelection,
                 onToggleSelect = vm::toggleSelection,
                 modifier = Modifier.weight(1f),
+                showSectionHeaders = sort == SortOrder.NEWEST || sort == SortOrder.OLDEST,
             )
         }
 
@@ -314,6 +316,8 @@ private fun TopAppRow(
     onSetDelay: (LockPrefs.Delay) -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var autoplay by remember { mutableStateOf(VideoPrefs.autoplay(context)) }
     Row(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -332,6 +336,10 @@ private fun TopAppRow(
                 DropdownMenuItem(text = { Text("Auto-tag rules") }, onClick = { menu = false; onRules() })
                 DropdownMenuItem(text = { Text("Export / back up") }, onClick = { menu = false; onExport() })
                 DropdownMenuItem(text = { Text("Restore from backup") }, onClick = { menu = false; onRestore() })
+                DropdownMenuItem(
+                    text = { Text((if (autoplay) "✓  " else "     ") + "Autoplay videos") },
+                    onClick = { autoplay = !autoplay; VideoPrefs.setAutoplay(context, autoplay) },
+                )
                 DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })
                 HorizontalDivider()
                 Text(
