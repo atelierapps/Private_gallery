@@ -9,4 +9,11 @@ package com.atelierapps.vault.ui.viewer
 object ViewerSession {
     @Volatile
     var orderedIds: List<String>? = null
+
+    /**
+     * Last playback position per video id, so reopening a clip resumes where you
+     * left off. In-memory only (cleared when the process dies) — deliberately not
+     * persisted, so watch positions never touch disk in plaintext.
+     */
+    val positions = HashMap<String, Long>()
 }

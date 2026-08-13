@@ -3,6 +3,7 @@ package com.atelierapps.vault.ui.viewer
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
@@ -38,6 +39,10 @@ class ViewerActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+
+        // Route the hardware volume buttons to the media stream so they raise/
+        // lower video sound while the viewer is open.
+        volumeControlStream = AudioManager.STREAM_MUSIC
 
         // Immersive: hide the status/nav bars (clock, signal) during viewing;
         // a swipe from the edge brings them back transiently.

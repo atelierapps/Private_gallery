@@ -1,6 +1,8 @@
 package com.atelierapps.vault.ui.viewer
 
 import android.app.Activity
+import android.content.Context
+import android.media.AudioManager
 import android.view.LayoutInflater
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -56,6 +58,7 @@ import com.atelierapps.vault.crypto.VaultCtrDataSource
 import com.atelierapps.vault.ui.image.VaultMediaKey
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private val Brass = Color(0xFFD8B463)
 private val SPEEDS = floatArrayOf(0.5f, 1f, 1.25f, 1.5f, 2f)
@@ -103,6 +106,8 @@ fun VideoPlayer(
 
     val context = LocalContext.current
     val activity = context as? Activity
+    val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val maxVol = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
     val currentOnEnded by rememberUpdatedState(onEnded)
     val player = remember(id) {
         ExoPlayer.Builder(context)
@@ -111,6 +116,8 @@ fun VideoPlayer(
             .apply {
                 setMediaItem(MediaItem.fromUri(VaultCtrDataSource.uriFor(id)))
                 prepare()
+                // Resume where the clip was left off (in-memory only).
+                (ViewerSession.positions[id] ?: 0L).let { if (it > 0) seekTo(it) }
                 playWhenReady = autoPlay
                 repeatMode = Player.REPEAT_MODE_ONE
                 addListener(object : Player.Listener {
@@ -132,7 +139,6 @@ fun VideoPlayer(
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
     var hud by remember(id) { mutableStateOf<String?>(null) }
-    var volume by remember(id) { mutableFloatStateOf(1f) }
 
     LaunchedEffect(autoPlay) { player.playWhenReady = autoPlay }
     LaunchedEffect(loop) { player.repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF }
@@ -146,7 +152,16 @@ fun VideoPlayer(
         player.addListener(listener)
         onDispose { player.removeListener(listener) }
     }
-    DisposableEffect(id) { onDispose { player.release() } }
+    DisposableEffect(id) {
+        onDispose {
+            // Remember the spot unless we're basically at the end.
+            val pos = player.currentPosition
+            val dur = player.duration
+            if (dur > 0 && pos in 1 until (dur - 1500)) ViewerSession.positions[id] = pos
+            else ViewerSession.positions.remove(id)
+            player.release()
+        }
+    }
 
     LaunchedEffect(player) {
         while (true) {
@@ -189,7 +204,7 @@ fun VideoPlayer(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var mode = 0 // 0 undecided, 1 pinch, 2 brightness, 3 volume, 4 pager(bail)
-                    val startVol = volume
+                    val startVol = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
                     var startBright = activity?.window?.attributes?.screenBrightness ?: 0.5f
                     if (startBright < 0f) startBright = 0.5f
                     while (true) {
@@ -224,9 +239,10 @@ fun VideoPlayer(
                             if (mode == 2 || mode == 3) {
                                 val frac = (-dy / size.height) // up = increase
                                 if (mode == 3) {
-                                    volume = (startVol + frac).coerceIn(0f, 1f)
-                                    player.volume = volume
-                                    hud = "Volume ${(volume * 100).toInt()}%"
+                                    val target = (startVol + frac * maxVol).roundToInt().coerceIn(0, maxVol)
+                                    // Can throw under Do-Not-Disturb; never let a drag crash playback.
+                                    runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0) }
+                                    hud = "Volume ${target * 100 / maxVol}%"
                                 } else if (activity != null) {
                                     val b = (startBright + frac).coerceIn(0.02f, 1f)
                                     val lp = activity.window.attributes
@@ -242,8 +258,20 @@ fun VideoPlayer(
             }.pointerInput(id) {
                 detectTapGestures(
                     onTap = { controlsVisible = !controlsVisible },
-                    onDoubleTap = {
-                        if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2f
+                    onDoubleTap = { pos ->
+                        val w = size.width
+                        when {
+                            // Double-tap the left/right third to skip 10s; middle toggles zoom.
+                            pos.x < w / 3f -> {
+                                player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0L))
+                                hud = "− 10s"
+                            }
+                            pos.x > w * 2f / 3f -> {
+                                player.seekTo(player.currentPosition + 10_000)
+                                hud = "+ 10s"
+                            }
+                            else -> if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2f
+                        }
                     },
                 )
             },
