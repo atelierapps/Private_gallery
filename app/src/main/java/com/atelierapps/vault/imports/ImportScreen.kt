@@ -70,13 +70,14 @@ fun ImportScreen(
     onSetType: (MediaTypeFilter) -> Unit,
     onSetDelete: (Boolean) -> Unit,
     onImport: () -> Unit,
+    onPickFiles: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val browsingFolders = tab == ImportTab.FOLDER && currentFolder == null
 
     Box(Modifier.fillMaxSize().background(Bg).safeDrawingPadding()) {
         Column(Modifier.fillMaxSize()) {
-            TopBar(count = selected.size, onCancel = onCancel)
+            TopBar(count = selected.size, onPickFiles = onPickFiles, onCancel = onCancel)
             Tabs(tab, onSelectDeviceTab, onSelectFolderTab)
 
             if (browsingFolders) {
@@ -103,7 +104,7 @@ fun ImportScreen(
 }
 
 @Composable
-private fun TopBar(count: Int, onCancel: () -> Unit) {
+private fun TopBar(count: Int, onPickFiles: () -> Unit, onCancel: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -114,6 +115,7 @@ private fun TopBar(count: Int, onCancel: () -> Unit) {
             color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f).padding(start = 8.dp),
         )
+        TextButton(onClick = onPickFiles) { Text("From files…", color = Brass) }
     }
 }
 

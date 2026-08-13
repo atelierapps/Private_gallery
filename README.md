@@ -22,7 +22,7 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 5 · Filter bar (source + tag + date chips, multi-select) | ✅ implemented |
 | 6 · MediaStore picker grid + permissions (incl. partial grant) | ✅ implemented |
 | 7 · Import pipeline + batched createDeleteRequest (verify-first) | ✅ implemented |
-| §4.1 · Folder import (SAF tree, encrypt-in, clear originals) | ✅ implemented |
+| §4.1 · Folder import (MediaStore buckets) + SAF file import (cloud) | ✅ implemented |
 | 8 · Full-screen viewer (swipe, pinch-zoom, metadata, delete) | ✅ implemented |
 | 9 · Encrypted video playback (ExoPlayer + CTR data source) | ✅ implemented |
 | 10 · Auto-lock on background (configurable delay) + lock now | ✅ implemented |

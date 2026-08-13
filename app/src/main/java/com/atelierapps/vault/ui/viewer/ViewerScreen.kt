@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -106,6 +107,7 @@ fun ViewerScreen(
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             ViewerPage(
                 item = media[page],
+                active = page == pagerState.currentPage,
                 onTap = { chromeVisible = !chromeVisible },
                 onVideoControls = { videoControls = it },
                 autoPlay = playMode && page == pagerState.currentPage,
@@ -164,6 +166,7 @@ fun ViewerScreen(
 @Composable
 private fun ViewerPage(
     item: MediaWithTags,
+    active: Boolean,
     onTap: () -> Unit,
     onVideoControls: (Boolean) -> Unit,
     autoPlay: Boolean,
@@ -172,6 +175,7 @@ private fun ViewerPage(
     if (item.media.mimeType.startsWith("video/")) {
         VideoPlayer(
             id = item.media.id,
+            active = active,
             modifier = Modifier.fillMaxSize(),
             autoPlay = autoPlay,
             onControlsVisible = onVideoControls,
@@ -233,7 +237,8 @@ private fun TopBar(
     onDelete: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().background(Color(0x99000000)).statusBarsPadding()
+        Modifier.fillMaxWidth().background(Color(0x99000000))
+            .statusBarsPadding().displayCutoutPadding()
             .padding(horizontal = 2.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

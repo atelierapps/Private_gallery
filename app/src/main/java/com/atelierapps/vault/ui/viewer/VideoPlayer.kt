@@ -1,5 +1,6 @@
 package com.atelierapps.vault.ui.viewer
 
+import android.app.Activity
 import android.view.LayoutInflater
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -37,6 +39,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,31 +50,59 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
+import coil3.compose.AsyncImage
 import com.atelierapps.vault.R
 import com.atelierapps.vault.crypto.VaultCtrDataSource
+import com.atelierapps.vault.ui.image.VaultMediaKey
 import kotlinx.coroutines.delay
+import kotlin.math.abs
+
+private val Brass = Color(0xFFD8B463)
+private val SPEEDS = floatArrayOf(0.5f, 1f, 1.25f, 1.5f, 2f)
 
 /**
  * Plays an encrypted vault video (spec §9) through ExoPlayer, decrypting via
  * [VaultCtrDataSource] so no plaintext touches disk.
  *
- * Uses a TextureView-backed [PlayerView] with the built-in controller off, and
- * draws its own Compose controls: a big centre play/pause, a full-width
- * drag-anywhere scrubber, and a loop toggle. The surface can be pinch-zoomed and
- * panned (two-finger, focal-anchored) while single-finger swipes still reach the
- * pager. The hosting activity keeps itself alive across rotation
- * (`configChanges`), so turning the phone no longer restarts the video.
+ * Only the **active** (currently-visible) page holds an ExoPlayer; every other
+ * page renders a lightweight thumbnail poster. Hardware video decoders are a
+ * scarce, pool-limited resource — holding one per composed pager page exhausted
+ * them after a handful of videos and left later ones on a black screen. Gating
+ * to a single live player fixes that.
+ *
+ * TextureView-backed so the surface can be pinch-zoomed / panned. Draws its own
+ * Compose controls: play/pause, drag-anywhere scrubber, speed, loop; plus VLC-
+ * style vertical drags (right = volume, left = brightness).
  */
 @UnstableApi
 @Composable
 fun VideoPlayer(
     id: String,
+    active: Boolean,
     modifier: Modifier = Modifier,
     autoPlay: Boolean = false,
     onControlsVisible: (Boolean) -> Unit = {},
     onEnded: () -> Unit = {},
 ) {
+    // Inactive pages: poster only, no decoder held.
+    if (!active) {
+        Box(modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            AsyncImage(
+                model = VaultMediaKey(id, full = false),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                Modifier.size(56.dp).clip(CircleShape).background(Color(0x66000000)),
+                contentAlignment = Alignment.Center,
+            ) { Text("▶", color = Color.White, fontSize = 24.sp) }
+        }
+        return
+    }
+
     val context = LocalContext.current
+    val activity = context as? Activity
     val currentOnEnded by rememberUpdatedState(onEnded)
     val player = remember(id) {
         ExoPlayer.Builder(context)
@@ -97,16 +128,17 @@ fun VideoPlayer(
     var durationMs by remember(id) { mutableLongStateOf(0L) }
     var scrubbing by remember(id) { mutableStateOf(false) }
     var scrubMs by remember(id) { mutableLongStateOf(0L) }
-
-    // Zoom / pan of the video surface.
+    var speedIdx by remember(id) { mutableStateOf(1) } // start at 1x
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
+    var hud by remember(id) { mutableStateOf<String?>(null) }
+    var volume by remember(id) { mutableFloatStateOf(1f) }
 
     LaunchedEffect(autoPlay) { player.playWhenReady = autoPlay }
     LaunchedEffect(loop) { player.repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF }
+    LaunchedEffect(speedIdx) { player.setPlaybackSpeed(SPEEDS[speedIdx]) }
     LaunchedEffect(controlsVisible) { onControlsVisible(controlsVisible) }
 
-    // Mirror play/pause state.
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
@@ -116,7 +148,6 @@ fun VideoPlayer(
     }
     DisposableEffect(id) { onDispose { player.release() } }
 
-    // Poll position/duration for the scrubber.
     LaunchedEffect(player) {
         while (true) {
             if (!scrubbing) {
@@ -126,12 +157,15 @@ fun VideoPlayer(
             delay(250)
         }
     }
-    // Auto-hide controls a few seconds after they appear while playing.
     LaunchedEffect(controlsVisible, isPlaying, scrubbing) {
         if (controlsVisible && isPlaying && !scrubbing) {
             delay(3500)
             controlsVisible = false
         }
+    }
+    // Clear the transient volume/brightness HUD shortly after the drag ends.
+    LaunchedEffect(hud) {
+        if (hud != null) { delay(900); hud = null }
     }
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
@@ -146,44 +180,83 @@ fun VideoPlayer(
             ),
         )
 
-        // Two-finger pinch-zoom + pan, focal-anchored. Single-finger gestures are
-        // left unconsumed so the pager can still swipe between items at 1x.
+        // Unified gesture surface: two-finger pinch/pan (focal-anchored), and
+        // single-finger vertical drags for volume (right half) / brightness
+        // (left half). Horizontal single-finger drags are left for the pager.
         Box(
-            Modifier.fillMaxSize()
-                .pointerInput(id) {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        do {
-                            val event = awaitPointerEvent()
-                            val pressed = event.changes.count { it.pressed }
-                            if (pressed >= 2) {
-                                val zoom = event.calculateZoom()
-                                val pan = event.calculatePan()
-                                val centroid = event.calculateCentroid()
-                                val old = scale
-                                val next = (old * zoom).coerceIn(1f, 5f)
-                                val center = Offset(size.width / 2f, size.height / 2f)
-                                val focus = centroid - center
-                                offset = (offset - focus) * (next / old) + focus + pan
-                                scale = next
-                                if (scale <= 1.01f) { scale = 1f; offset = Offset.Zero }
-                                event.changes.forEach { it.consume() }
+            Modifier.fillMaxSize().pointerInput(id) {
+                val slop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var mode = 0 // 0 undecided, 1 pinch, 2 brightness, 3 volume, 4 pager(bail)
+                    val startVol = volume
+                    var startBright = activity?.window?.attributes?.screenBrightness ?: 0.5f
+                    if (startBright < 0f) startBright = 0.5f
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.isEmpty()) break
+                        if (pressed.size >= 2) {
+                            mode = 1
+                            val zoom = event.calculateZoom()
+                            val pan = event.calculatePan()
+                            val centroid = event.calculateCentroid()
+                            val old = scale
+                            val next = (old * zoom).coerceIn(1f, 5f)
+                            val center = Offset(size.width / 2f, size.height / 2f)
+                            val focus = centroid - center
+                            offset = (offset - focus) * (next / old) + focus + pan
+                            scale = next
+                            if (scale <= 1.01f) { scale = 1f; offset = Offset.Zero }
+                            event.changes.forEach { it.consume() }
+                        } else if (mode != 1) {
+                            val c = pressed.first()
+                            val dx = c.position.x - down.position.x
+                            val dy = c.position.y - down.position.y
+                            if (mode == 0) {
+                                if (abs(dy) > slop && abs(dy) > abs(dx)) {
+                                    mode = if (down.position.x < size.width / 2f) 2 else 3
+                                } else if (abs(dx) > slop) {
+                                    mode = 4
+                                    break
+                                }
                             }
-                        } while (event.changes.any { it.pressed })
+                            if (mode == 2 || mode == 3) {
+                                val frac = (-dy / size.height) // up = increase
+                                if (mode == 3) {
+                                    volume = (startVol + frac).coerceIn(0f, 1f)
+                                    player.volume = volume
+                                    hud = "Volume ${(volume * 100).toInt()}%"
+                                } else if (activity != null) {
+                                    val b = (startBright + frac).coerceIn(0.02f, 1f)
+                                    val lp = activity.window.attributes
+                                    lp.screenBrightness = b
+                                    activity.window.attributes = lp
+                                    hud = "Brightness ${(b * 100).toInt()}%"
+                                }
+                                c.consume()
+                            }
+                        }
                     }
                 }
-                .pointerInput(id) {
-                    detectTapGestures(
-                        onTap = { controlsVisible = !controlsVisible },
-                        onDoubleTap = {
-                            if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2f
-                        },
-                    )
-                },
+            }.pointerInput(id) {
+                detectTapGestures(
+                    onTap = { controlsVisible = !controlsVisible },
+                    onDoubleTap = {
+                        if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2f
+                    },
+                )
+            },
         )
 
+        hud?.let {
+            Box(
+                Modifier.align(Alignment.Center).clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xAA000000)).padding(horizontal = 16.dp, vertical = 10.dp),
+            ) { Text(it, color = Color.White, fontSize = 15.sp) }
+        }
+
         if (controlsVisible) {
-            // Centre play/pause.
             Box(
                 Modifier.align(Alignment.Center).size(64.dp).clip(CircleShape)
                     .background(Color(0x66000000))
@@ -191,11 +264,8 @@ fun VideoPlayer(
                         detectTapGestures(onTap = { if (isPlaying) player.pause() else player.play() })
                     },
                 contentAlignment = Alignment.Center,
-            ) {
-                Text(if (isPlaying) "⏸" else "▶", color = Color.White, fontSize = 28.sp)
-            }
+            ) { Text(if (isPlaying) "⏸" else "▶", color = Color.White, fontSize = 28.sp) }
 
-            // Bottom: scrubber + times + loop.
             val shown = if (scrubbing) scrubMs else positionMs
             val dur = durationMs.coerceAtLeast(1L)
             Row(
@@ -203,19 +273,13 @@ fun VideoPlayer(
                     .background(Color(0xCC06080A)).navigationBarsPadding()
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(fmt(shown), color = Color.White, fontSize = 12.sp)
                 Slider(
                     value = (shown.toFloat() / dur).coerceIn(0f, 1f),
-                    onValueChange = { frac ->
-                        scrubbing = true
-                        scrubMs = (frac * dur).toLong()
-                    },
-                    onValueChangeFinished = {
-                        player.seekTo(scrubMs)
-                        scrubbing = false
-                    },
+                    onValueChange = { frac -> scrubbing = true; scrubMs = (frac * dur).toLong() },
+                    onValueChangeFinished = { player.seekTo(scrubMs); scrubbing = false },
                     colors = SliderDefaults.colors(
                         thumbColor = Brass,
                         activeTrackColor = Brass,
@@ -224,6 +288,14 @@ fun VideoPlayer(
                     modifier = Modifier.weight(1f),
                 )
                 Text(fmt(durationMs), color = Color.White, fontSize = 12.sp)
+                Text(
+                    speedLabel(SPEEDS[speedIdx]), color = Brass, fontSize = 13.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .pointerInput(id) {
+                            detectTapGestures(onTap = { speedIdx = (speedIdx + 1) % SPEEDS.size })
+                        }
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                )
                 Text(
                     "🔁", fontSize = 18.sp,
                     color = if (loop) Brass else Color(0x66FFFFFF),
@@ -236,11 +308,10 @@ fun VideoPlayer(
     }
 }
 
-private val Brass = Color(0xFFD8B463)
+private fun speedLabel(s: Float): String =
+    if (s == s.toLong().toFloat()) "${s.toLong()}×" else "$s×"
 
 private fun fmt(ms: Long): String {
     val totalSec = (ms / 1000).coerceAtLeast(0)
-    val m = totalSec / 60
-    val s = totalSec % 60
-    return "%d:%02d".format(m, s)
+    return "%d:%02d".format(totalSec / 60, totalSec % 60)
 }

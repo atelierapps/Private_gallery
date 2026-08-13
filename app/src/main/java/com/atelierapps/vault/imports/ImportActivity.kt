@@ -37,6 +37,12 @@ class ImportActivity : ComponentActivity() {
             vm.onDeviceDeleteFinished()
         }
 
+    // SAF multi-file picker — reaches cloud providers, Downloads, any folder.
+    private val filesLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            if (uris.isNotEmpty()) vm.importDocumentUris(uris)
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -86,6 +92,7 @@ class ImportActivity : ComponentActivity() {
                     onSetType = vm::setType,
                     onSetDelete = vm::setDeleteOriginals,
                     onImport = vm::startImport,
+                    onPickFiles = { filesLauncher.launch(arrayOf("image/*", "video/*")) },
                     onCancel = { finish() },
                 )
             }

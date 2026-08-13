@@ -155,6 +155,60 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
         ).isSuccess
     }
 
+    /**
+     * Import files picked through the system document picker (SAF) — reaches
+     * cloud providers (Drive, OneDrive), Downloads, and any folder, so media can
+     * be brought in directly without routing through the gallery. Unlike Restore,
+     * this needs no manifest.json; each file is spooled and encrypted as-is.
+     */
+    fun importDocumentUris(uris: List<Uri>) {
+        if (importing.value || uris.isEmpty()) return
+        importing.value = true
+        progress.value = ImportProgress(0, uris.size)
+        viewModelScope.launch(Dispatchers.IO) {
+            val saver = MediaSaver(getApplication())
+            var done = 0
+            for (uri in uris) {
+                runCatching { importDocument(saver, uri) }
+                    .onFailure { Log.w(TAG, "skip $uri", it) }
+                done++
+                progress.value = ImportProgress(done, uris.size)
+            }
+            finished.value = true
+        }
+    }
+
+    private suspend fun importDocument(saver: MediaSaver, uri: Uri): Boolean {
+        val resolver = getApplication<Application>().contentResolver
+        val mime = resolver.getType(uri) ?: return false
+        if (!mime.startsWith("image/") && !mime.startsWith("video/")) return false
+
+        var name = uri.lastPathSegment?.substringAfterLast('/') ?: "IMG"
+        var modified = System.currentTimeMillis()
+        runCatching {
+            resolver.query(uri, null, null, null, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    val nameCol = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameCol >= 0 && !c.isNull(nameCol)) name = c.getString(nameCol)
+                    val modCol = c.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                    if (modCol >= 0 && !c.isNull(modCol)) modified = c.getLong(modCol)
+                }
+            }
+        }
+
+        val temp = spool(uri)
+        return saver.save(
+            SaveRequest(
+                tempPath = temp.absolutePath,
+                mimeType = mime,
+                originalName = name,
+                dateTakenMillis = modified,
+                tagNames = emptyList(),
+                source = SourceInfo(SourceType.LOCAL_IMPORT, null, null, null),
+            ),
+        ).isSuccess
+    }
+
     private suspend fun spool(uri: Uri): File = withContext(Dispatchers.IO) {
         val temp = storage.newTempFile()
         getApplication<Application>().contentResolver.openInputStream(uri)!!.use { input ->
