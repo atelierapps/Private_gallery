@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -61,7 +63,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val Brass = Color(0xFFD8B463)
-private val SPEEDS = floatArrayOf(0.5f, 1f, 1.25f, 1.5f, 2f)
+private val SPEEDS = floatArrayOf(0.25f, 0.5f, 1f, 1.5f, 2f)
+private const val SPEED_DEFAULT = 2 // index of 1.0×
 
 /**
  * Plays an encrypted vault video (spec §9) through ExoPlayer, decrypting via
@@ -135,7 +138,8 @@ fun VideoPlayer(
     var durationMs by remember(id) { mutableLongStateOf(0L) }
     var scrubbing by remember(id) { mutableStateOf(false) }
     var scrubMs by remember(id) { mutableLongStateOf(0L) }
-    var speedIdx by remember(id) { mutableStateOf(1) } // start at 1x
+    var speedIdx by remember(id) { mutableStateOf(SPEED_DEFAULT) }
+    var speedMenu by remember(id) { mutableStateOf(false) }
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
     var hud by remember(id) { mutableStateOf<String?>(null) }
@@ -172,8 +176,8 @@ fun VideoPlayer(
             delay(250)
         }
     }
-    LaunchedEffect(controlsVisible, isPlaying, scrubbing) {
-        if (controlsVisible && isPlaying && !scrubbing) {
+    LaunchedEffect(controlsVisible, isPlaying, scrubbing, speedMenu) {
+        if (controlsVisible && isPlaying && !scrubbing && !speedMenu) {
             delay(3500)
             controlsVisible = false
         }
@@ -316,14 +320,22 @@ fun VideoPlayer(
                     modifier = Modifier.weight(1f),
                 )
                 Text(fmt(durationMs), color = Color.White, fontSize = 12.sp)
-                Text(
-                    speedLabel(SPEEDS[speedIdx]), color = Brass, fontSize = 13.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(6.dp))
-                        .pointerInput(id) {
-                            detectTapGestures(onTap = { speedIdx = (speedIdx + 1) % SPEEDS.size })
+                Box {
+                    Text(
+                        speedLabel(SPEEDS[speedIdx]), color = Brass, fontSize = 13.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                            .pointerInput(id) { detectTapGestures(onTap = { speedMenu = true }) }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                    DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
+                        SPEEDS.forEachIndexed { i, s ->
+                            DropdownMenuItem(
+                                text = { Text((if (i == speedIdx) "✓  " else "     ") + speedLabel(s)) },
+                                onClick = { speedIdx = i; speedMenu = false },
+                            )
                         }
-                        .padding(horizontal = 6.dp, vertical = 4.dp),
-                )
+                    }
+                }
                 Text(
                     "🔁", fontSize = 18.sp,
                     color = if (loop) Brass else Color(0x66FFFFFF),

@@ -108,10 +108,14 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
-     * Background-unwrap all thumbnail DEKs after unlock (spec §3.1) so the grid
-     * never stalls. Measured ~18 ms per RSA unwrap on real hardware, so this runs
-     * off the UI thread and fans out across a few workers to shorten the cold
-     * fill on large libraries.
+     * Background-unwrap every file's DEK after unlock (spec §3.1) so the grid
+     * never stalls — and, crucially, so video playback never needs the Keystore
+     * again this session. The Keystore key is only authorized for a short window
+     * after biometric auth (§3.2); a video whose DEK wasn't yet cached would fail
+     * to unwrap once that window lapsed, leaving a black screen until re-auth.
+     * Caching both the thumbnail and blob DEKs here closes that gap. Measured
+     * ~18 ms per RSA unwrap, so this fans out across a few workers off the UI
+     * thread.
      */
     private fun prewarmDekCache() {
         lifecycleScope.launch(Dispatchers.IO) {
@@ -121,7 +125,10 @@ class MainActivity : FragmentActivity() {
             coroutineScope {
                 ids.map { id ->
                     async {
-                        gate.withPermit { runCatching { MediaCrypto.prewarm(storage.thumb(id)) } }
+                        gate.withPermit {
+                            runCatching { MediaCrypto.prewarm(storage.thumb(id)) }
+                            runCatching { MediaCrypto.prewarm(storage.blob(id)) }
+                        }
                     }
                 }.awaitAll()
             }

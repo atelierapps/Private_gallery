@@ -328,24 +328,33 @@ private fun TopAppRow(
         Box {
             TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 20.sp) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                MenuSection("Library")
+                DropdownMenuItem(text = { Text("Albums") }, onClick = { menu = false; onAlbums() })
+                DropdownMenuItem(text = { Text("Auto-tag rules") }, onClick = { menu = false; onRules() })
                 DropdownMenuItem(
                     text = { Text("Recently deleted" + if (trashCount > 0) "  ($trashCount)" else "") },
                     onClick = { menu = false; onTrash() },
                 )
-                DropdownMenuItem(text = { Text("Albums") }, onClick = { menu = false; onAlbums() })
-                DropdownMenuItem(text = { Text("Auto-tag rules") }, onClick = { menu = false; onRules() })
+
+                HorizontalDivider()
+                MenuSection("Backup")
                 DropdownMenuItem(text = { Text("Export / back up") }, onClick = { menu = false; onExport() })
                 DropdownMenuItem(text = { Text("Restore from backup") }, onClick = { menu = false; onRestore() })
+
+                HorizontalDivider()
+                MenuSection("Playback")
                 DropdownMenuItem(
                     text = { Text((if (autoplay) "✓  " else "     ") + "Autoplay videos") },
                     onClick = { autoplay = !autoplay; VideoPrefs.setAutoplay(context, autoplay) },
                 )
-                DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })
+
                 HorizontalDivider()
+                MenuSection("Security")
+                DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })
                 Text(
                     "Auto-lock",
                     color = Muted, fontSize = 11.sp,
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 2.dp),
                 )
                 LockPrefs.Delay.entries.forEach { d ->
                     DropdownMenuItem(
@@ -359,6 +368,15 @@ private fun TopAppRow(
 }
 
 private val Muted = Color(0xFF8A969E)
+
+@Composable
+private fun MenuSection(title: String) {
+    Text(
+        title,
+        color = Brass, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp),
+    )
+}
 
 @Composable
 private fun SelectionBar(

@@ -6,6 +6,7 @@ import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.crypto.EnvelopeCodec
 import com.atelierapps.vault.crypto.EnvelopeFormat
 import com.atelierapps.vault.crypto.KeyWrapper
+import com.atelierapps.vault.crypto.MediaCrypto
 import com.atelierapps.vault.crypto.VaultKeys
 import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.storage.VaultStorage
@@ -95,6 +96,12 @@ class MediaSaver(
                 request.source.sourceDomain,
             )
             repository.saveMedia(entity, (request.tagNames + autoTags).distinct())
+
+            // Cache this file's DEK now, while we're still inside the Keystore
+            // auth window, so it's immediately viewable/playable this session
+            // without another unwrap (spec §3.2).
+            runCatching { MediaCrypto.prewarm(blob) }
+            runCatching { MediaCrypto.prewarm(thumb) }
 
             // 5. Only now is the spool disposable.
             temp.delete()
