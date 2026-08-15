@@ -38,6 +38,7 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | Pin-to-top, immersive viewer, playback/slideshow | ✅ implemented |
 | Video: zoom, drag-seek, speed, vol/brightness, resume, skip, autoplay | ✅ implemented |
 | Grid date section headers (Today / This week / …) | ✅ implemented |
+| Settings screen (playback, display, security, about) | ✅ implemented |
 | Disguised as "Link" (neutral name + icon) | ✅ implemented |
 | Project scaffold, manifest, anti-leak config, launcher icon | ✅ |
 

@@ -76,6 +76,12 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Settings (spec §7, §9). -->
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Albums (spec §7). -->
         <activity
             android:name=".ui.albums.AlbumsActivity"

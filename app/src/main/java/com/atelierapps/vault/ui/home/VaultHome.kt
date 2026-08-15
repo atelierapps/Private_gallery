@@ -34,9 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.SingletonImageLoader
-import com.atelierapps.vault.session.LockPrefs
 import com.atelierapps.vault.session.VaultSession
-import com.atelierapps.vault.session.VideoPrefs
 import com.atelierapps.vault.ui.grid.VaultGridScreen
 
 private val Ink = Color(0xFFE9EEF0)
@@ -57,10 +55,23 @@ fun VaultHome(
     onTrash: () -> Unit,
     onRules: () -> Unit,
     onAlbums: () -> Unit,
+    onSettings: () -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
 ) {
     val context = LocalContext.current
+    // Re-read display prefs whenever we resume (e.g. returning from Settings).
+    var prefsEpoch by remember { mutableStateOf(0) }
+    androidx.compose.runtime.DisposableEffect(context) {
+        val owner = context as? androidx.lifecycle.LifecycleOwner
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) prefsEpoch++
+        }
+        owner?.lifecycle?.addObserver(obs)
+        onDispose { owner?.lifecycle?.removeObserver(obs) }
+    }
+    val dateHeadersPref = remember(prefsEpoch) { com.atelierapps.vault.session.DisplayPrefs.dateHeaders(context) }
+    val columnsPref = remember(prefsEpoch) { com.atelierapps.vault.session.DisplayPrefs.columns(context) }
     val filter by vm.filter.collectAsState()
     val sources by vm.sourceChips.collectAsState()
     val tags by vm.tagChips.collectAsState()
@@ -74,7 +85,6 @@ fun VaultHome(
     val albums by vm.albums.collectAsState()
 
     var confirmDelete by remember { mutableStateOf(false) }
-    var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
     var searchOpen by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var showAlbumDialog by remember { mutableStateOf(false) }
@@ -99,14 +109,13 @@ fun VaultHome(
                     onTrash = onTrash,
                     onRules = onRules,
                     onAlbums = onAlbums,
+                    onSettings = onSettings,
                     trashCount = trashCount,
                     onToggleSearch = { searchOpen = !searchOpen; if (!searchOpen) vm.setQuery("") },
                     onLockNow = {
                         VaultSession.lock()
                         runCatching { SingletonImageLoader.get(context).memoryCache?.clear() }
                     },
-                    delay = lockDelay,
-                    onSetDelay = { LockPrefs.set(context, it); lockDelay = it },
                 )
                 if (searchOpen) {
                     SearchField(query = query, onQueryChange = vm::setQuery)
@@ -138,7 +147,8 @@ fun VaultHome(
                 onLongPress = vm::startSelection,
                 onToggleSelect = vm::toggleSelection,
                 modifier = Modifier.weight(1f),
-                showSectionHeaders = sort == SortOrder.NEWEST || sort == SortOrder.OLDEST,
+                showSectionHeaders = dateHeadersPref && (sort == SortOrder.NEWEST || sort == SortOrder.OLDEST),
+                initialColumns = columnsPref,
             )
         }
 
@@ -309,15 +319,12 @@ private fun TopAppRow(
     onTrash: () -> Unit,
     onRules: () -> Unit,
     onAlbums: () -> Unit,
+    onSettings: () -> Unit,
     trashCount: Int,
     onToggleSearch: () -> Unit,
     onLockNow: () -> Unit,
-    delay: LockPrefs.Delay,
-    onSetDelay: (LockPrefs.Delay) -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    var autoplay by remember { mutableStateOf(VideoPrefs.autoplay(context)) }
     Row(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -342,26 +349,8 @@ private fun TopAppRow(
                 DropdownMenuItem(text = { Text("Restore from backup") }, onClick = { menu = false; onRestore() })
 
                 HorizontalDivider()
-                MenuSection("Playback")
-                DropdownMenuItem(
-                    text = { Text((if (autoplay) "✓  " else "     ") + "Autoplay videos") },
-                    onClick = { autoplay = !autoplay; VideoPrefs.setAutoplay(context, autoplay) },
-                )
-
-                HorizontalDivider()
-                MenuSection("Security")
                 DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })
-                Text(
-                    "Auto-lock",
-                    color = Muted, fontSize = 11.sp,
-                    modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 2.dp),
-                )
-                LockPrefs.Delay.entries.forEach { d ->
-                    DropdownMenuItem(
-                        text = { Text((if (d == delay) "✓  " else "     ") + d.label) },
-                        onClick = { onSetDelay(d); menu = false },
-                    )
-                }
+                DropdownMenuItem(text = { Text("Settings") }, onClick = { menu = false; onSettings() })
             }
         }
     }

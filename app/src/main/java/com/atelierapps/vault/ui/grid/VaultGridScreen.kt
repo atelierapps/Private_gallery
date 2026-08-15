@@ -55,6 +55,7 @@ fun VaultGridScreen(
     onToggleSelect: (id: String) -> Unit,
     modifier: Modifier = Modifier,
     showSectionHeaders: Boolean = false,
+    initialColumns: Int = 3,
 ) {
     if (media.isEmpty()) {
         EmptyState(modifier)
@@ -62,7 +63,7 @@ fun VaultGridScreen(
     }
     // Pinch to change column count (2–6). Two-finger only, so single-finger
     // scrolling is untouched.
-    var columns by remember { mutableIntStateOf(3) }
+    var columns by remember(initialColumns) { mutableIntStateOf(initialColumns) }
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         modifier = modifier.fillMaxSize().background(Color(0xFF0E1113))
