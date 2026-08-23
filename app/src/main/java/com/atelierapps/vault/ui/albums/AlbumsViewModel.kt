@@ -23,7 +23,10 @@ class AlbumsViewModel(app: Application) : AndroidViewModel(app) {
         combine(repo.observeAlbums(), repo.observeAll()) { albums, media ->
             albums.map { a ->
                 val members = media.filter { it.media.albumId == a.id }
-                val cover = members.maxByOrNull { it.media.importedAtMillis }?.media?.id
+                // Honour an explicitly chosen cover, but fall back if that item
+                // has since left the album (moved out, trashed, deleted).
+                val chosen = a.coverId?.takeIf { id -> members.any { it.media.id == id } }
+                val cover = chosen ?: members.maxByOrNull { it.media.importedAtMillis }?.media?.id
                 AlbumCard(a, members.size, cover)
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

@@ -51,6 +51,8 @@ class ExportActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A selection or album export narrows the scope; absent extra = whole library.
+        vm.scopeIds = intent.getStringArrayExtra(EXTRA_IDS)?.toSet()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
@@ -68,10 +70,12 @@ class ExportActivity : FragmentActivity() {
                             modifier = Modifier.safeDrawingPadding(),
                         )
                     } else {
+                        val scoped = vm.scopeIds?.size
                         val phase by vm.phase.collectAsState()
                         val progress by vm.progress.collectAsState()
                         val result by vm.result.collectAsState()
                         ExportScreen(
+                            scopedCount = scoped,
                             phase = phase,
                             progress = progress,
                             result = result,
@@ -85,6 +89,15 @@ class ExportActivity : FragmentActivity() {
         }
 
         promptAuth()
+    }
+
+    companion object {
+        private const val EXTRA_IDS = "ids"
+
+        /** Export just these items (a grid selection or an album). */
+        fun intent(context: android.content.Context, ids: Collection<String>): Intent =
+            Intent(context, ExportActivity::class.java)
+                .putExtra(EXTRA_IDS, ids.toTypedArray())
     }
 
     private fun promptAuth() {

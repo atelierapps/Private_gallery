@@ -25,14 +25,21 @@ data class ExportResult(val exported: Int, val failed: Int, val total: Int)
  */
 object VaultExporter {
 
+    /**
+     * Export the vault, or just [onlyIds] when a selection or album was chosen.
+     * A scoped export still writes a manifest, so it round-trips through restore
+     * exactly like a full backup does.
+     */
     suspend fun exportAll(
         context: Context,
         treeUri: Uri,
+        onlyIds: Set<String>? = null,
         onProgress: (ExportProgress) -> Unit,
     ): ExportResult {
         val tree = DocumentFile.fromTreeUri(context, treeUri)
             ?: return ExportResult(0, 0, 0)
-        val items = VaultGraph.repository(context).allMedia()
+        val all = VaultGraph.repository(context).allMedia()
+        val items = if (onlyIds == null) all else all.filter { it.media.id in onlyIds }
 
         val manifest = JSONArray()
         var done = 0

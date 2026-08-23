@@ -41,7 +41,7 @@ fun ExportAuthGate(
         ) {
             Text("Confirm it's you", color = Ink, fontSize = 20.sp)
             Text(
-                "Exporting decrypts your entire library to a folder in the clear. " +
+                "Exporting decrypts media to a folder in the clear. " +
                     "Confirm with your fingerprint or device PIN to continue.",
                 color = Muted, fontSize = 14.sp, textAlign = TextAlign.Center,
             )
@@ -57,6 +57,7 @@ fun ExportAuthGate(
 /** Export UI (spec §11): pick a destination, watch progress, see the verified count. */
 @Composable
 fun ExportScreen(
+    scopedCount: Int?,
     phase: ExportPhase,
     progress: ExportProgress,
     result: ExportResult?,
@@ -70,7 +71,10 @@ fun ExportScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize().padding(top = 40.dp),
         ) {
-            Text("Export library", color = Ink, fontSize = 22.sp)
+            Text(
+                if (scopedCount == null) "Export library" else "Export $scopedCount item(s)",
+                color = Ink, fontSize = 22.sp,
+            )
             when (phase) {
                 ExportPhase.PICK -> {
                     Text(

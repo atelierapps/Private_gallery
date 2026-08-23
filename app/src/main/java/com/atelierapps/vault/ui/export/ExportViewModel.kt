@@ -19,11 +19,14 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
     val progress = MutableStateFlow(ExportProgress(0, 0, 0))
     val result = MutableStateFlow<ExportResult?>(null)
 
+    /** Ids to export, or null for the whole library. */
+    var scopeIds: Set<String>? = null
+
     fun run(treeUri: Uri) {
         if (phase.value == ExportPhase.RUNNING) return
         phase.value = ExportPhase.RUNNING
         viewModelScope.launch(Dispatchers.IO) {
-            val r = VaultExporter.exportAll(getApplication(), treeUri) { progress.value = it }
+            val r = VaultExporter.exportAll(getApplication(), treeUri, scopeIds) { progress.value = it }
             result.value = r
             phase.value = ExportPhase.DONE
         }

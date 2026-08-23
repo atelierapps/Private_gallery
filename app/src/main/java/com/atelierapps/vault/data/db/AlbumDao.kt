@@ -19,6 +19,9 @@ interface AlbumDao {
     @Query("UPDATE album SET name = :name WHERE id = :id")
     suspend fun rename(id: String, name: String)
 
+    @Query("UPDATE album SET coverId = :mediaId WHERE id = :id")
+    suspend fun setCover(id: String, mediaId: String?)
+
     @Query("DELETE FROM album WHERE id = :id")
     suspend fun delete(id: String)
 

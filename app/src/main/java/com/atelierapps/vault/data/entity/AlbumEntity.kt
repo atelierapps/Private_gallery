@@ -13,4 +13,6 @@ data class AlbumEntity(
     @PrimaryKey val id: String,
     val name: String,
     val createdAtMillis: Long,
+    /** Chosen cover item; null falls back to the most recent member. */
+    val coverId: String? = null,
 )

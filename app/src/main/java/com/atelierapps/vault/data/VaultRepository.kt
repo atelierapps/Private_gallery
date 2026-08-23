@@ -178,6 +178,10 @@ class VaultRepository(
         albumDao.delete(id)
     }
 
+    /** Pin a specific item as the album's cover (null reverts to most-recent). */
+    suspend fun setAlbumCover(albumId: String, mediaId: String?) =
+        withContext(Dispatchers.IO) { albumDao.setCover(albumId, mediaId) }
+
     suspend fun setAlbumForItems(ids: Collection<String>, albumId: String?) =
         withContext(Dispatchers.IO) { albumDao.setAlbumForIds(ids.toList(), albumId) }
 

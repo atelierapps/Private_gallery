@@ -60,6 +60,16 @@ class AlbumViewModel(app: Application) : AndroidViewModel(app) {
         selectionMode.value = false
     }
 
+    /** Pin the single selected item as this album's cover. */
+    fun setCoverFromSelection() {
+        val id = selectedIds.value.singleOrNull() ?: return
+        val album = albumId.value ?: return
+        viewModelScope.launch {
+            repo.setAlbumCover(album, id)
+            clearSelection()
+        }
+    }
+
     /** Remove selected items from this album — they stay in the library. */
     fun removeSelected() {
         val ids = selectedIds.value

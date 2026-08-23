@@ -34,7 +34,9 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | Recycle bin (soft delete, restore, 30-day auto-purge) | ✅ implemented |
 | Share-out (decrypt one item to another app via FileProvider) | ✅ implemented |
 | Auto-tag rules (tag on save by source/capture type) | ✅ implemented |
-| Albums (curated collections, cover + count, add/remove) | ✅ implemented |
+| Albums (curated collections, chosen cover, add/remove, export) | ✅ implemented |
+| Tag manager (rename / merge / delete, live counts) | ✅ implemented |
+| Durable bulk import (survives leaving the app) + duplicate report | ✅ implemented |
 | Pin-to-top, immersive viewer, playback/slideshow | ✅ implemented |
 | Video: zoom, drag-seek, speed, vol/brightness, resume, skip, autoplay | ✅ implemented |
 | Grid date section headers (Today / This week / …) | ✅ implemented |

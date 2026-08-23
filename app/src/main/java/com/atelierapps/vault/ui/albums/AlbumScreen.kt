@@ -35,6 +35,7 @@ fun AlbumScreen(
     vm: AlbumViewModel,
     albumName: String,
     onOpen: (id: String) -> Unit,
+    onExport: (Set<String>) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -58,6 +59,11 @@ fun AlbumScreen(
                         modifier = Modifier.weight(1f).padding(start = 4.dp),
                     )
                     TextButton(onClick = vm::selectAll) { Text("All", color = Ink) }
+                    // Only meaningful for exactly one item, so it's enabled then.
+                    TextButton(
+                        onClick = vm::setCoverFromSelection,
+                        enabled = selectedIds.size == 1,
+                    ) { Text("Cover", color = Ink) }
                     TextButton(onClick = vm::removeSelected, enabled = selectedIds.isNotEmpty()) {
                         Text("Remove", color = Brass)
                     }
@@ -76,6 +82,10 @@ fun AlbumScreen(
                         color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f).padding(start = 4.dp),
                     )
+                    TextButton(
+                        onClick = { onExport(media.map { it.media.id }.toSet()) },
+                        enabled = media.isNotEmpty(),
+                    ) { Text("Export", color = Brass, fontSize = 13.sp) }
                 }
             }
 

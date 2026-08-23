@@ -57,6 +57,7 @@ fun VaultHome(
     onAlbums: () -> Unit,
     onTags: () -> Unit,
     onSettings: () -> Unit,
+    onExportSelection: (Set<String>) -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
 ) {
@@ -100,6 +101,7 @@ fun VaultHome(
                     onTag = { showTagDialog = true },
                     onAlbum = { showAlbumDialog = true },
                     onMove = vm::moveSelectedToGallery,
+                    onExport = { onExportSelection(selectedIds) },
                     onDelete = { confirmDelete = true },
                 )
             } else {
@@ -379,8 +381,12 @@ private fun SelectionBar(
     onTag: () -> Unit,
     onAlbum: () -> Unit,
     onMove: () -> Unit,
+    onExport: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    // The common actions stay on the bar; the rarer ones (leaving the vault) sit
+    // behind an overflow so the row doesn't turn into seven cramped buttons.
+    var more by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().background(Color(0xFF171C20)).padding(horizontal = 2.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -394,7 +400,21 @@ private fun SelectionBar(
         TextButton(onClick = onSelectAll) { Text("All", color = Ink) }
         TextButton(onClick = onTag, enabled = count > 0) { Text("Tag", color = Ink) }
         TextButton(onClick = onAlbum, enabled = count > 0) { Text("Album", color = Ink) }
-        TextButton(onClick = onMove, enabled = count > 0) { Text("Move", color = Brass) }
         TextButton(onClick = onDelete, enabled = count > 0) { Text("Delete", color = Color(0xFFE08A7A)) }
+        Box {
+            TextButton(onClick = { more = true }, enabled = count > 0) {
+                Text("⋮", color = Ink, fontSize = 18.sp)
+            }
+            DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                DropdownMenuItem(
+                    text = { Text("Export selection…") },
+                    onClick = { more = false; onExport() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Move back to gallery") },
+                    onClick = { more = false; onMove() },
+                )
+            }
+        }
     }
 }

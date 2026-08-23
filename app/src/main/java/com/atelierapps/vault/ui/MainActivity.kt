@@ -97,6 +97,9 @@ class MainActivity : FragmentActivity() {
                                 onSettings = {
                                     startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
                                 },
+                                onExportSelection = { ids ->
+                                    startActivity(ExportActivity.intent(this@MainActivity, ids))
+                                },
                             )
                         }
                     }

@@ -42,6 +42,9 @@ class AlbumActivity : ComponentActivity() {
                         vm = vm,
                         albumName = albumName,
                         onOpen = { id -> startActivity(ViewerActivity.intent(this, id)) },
+                        onExport = { ids ->
+                            startActivity(com.atelierapps.vault.ui.export.ExportActivity.intent(this, ids))
+                        },
                         onClose = { finish() },
                         modifier = Modifier.safeDrawingPadding(),
                     )

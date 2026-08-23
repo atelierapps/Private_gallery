@@ -23,7 +23,7 @@ import com.atelierapps.vault.data.entity.TagEntity
         MediaItemEntity::class, TagEntity::class, MediaTagCrossRef::class,
         AutoTagRuleEntity::class, AlbumEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -81,13 +81,20 @@ abstract class VaultDatabase : RoomDatabase() {
             }
         }
 
+        // Albums gain an explicitly chosen cover (nullable, no DB default).
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE album ADD COLUMN coverId TEXT")
+            }
+        }
+
         fun get(context: Context): VaultDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     VaultDatabase::class.java,
                     "vault.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build().also { instance = it }
             }
     }
