@@ -49,6 +49,7 @@ fun SettingsScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
     var autoplay by remember { mutableStateOf(VideoPrefs.autoplay(context)) }
+    var muted by remember { mutableStateOf(VideoPrefs.muted(context)) }
     var dateHeaders by remember { mutableStateOf(DisplayPrefs.dateHeaders(context)) }
     var columns by remember { mutableIntStateOf(DisplayPrefs.columns(context)) }
     var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
@@ -80,6 +81,13 @@ fun SettingsScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
                     subtitle = "Start playing as soon as a video opens",
                     checked = autoplay,
                     onCheckedChange = { autoplay = it; VideoPrefs.setAutoplay(context, it) },
+                )
+                HorizontalDivider(color = Color(0xFF20272C), modifier = Modifier.padding(vertical = 10.dp))
+                ToggleRow(
+                    title = "Mute videos",
+                    subtitle = "Silences playback and disables the swipe volume gesture",
+                    checked = muted,
+                    onCheckedChange = { muted = it; VideoPrefs.setMuted(context, it) },
                 )
             }
 

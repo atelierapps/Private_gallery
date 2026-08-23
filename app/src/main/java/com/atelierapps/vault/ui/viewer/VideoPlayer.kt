@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +60,7 @@ import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import com.atelierapps.vault.R
 import com.atelierapps.vault.crypto.VaultCtrDataSource
+import com.atelierapps.vault.session.VideoPrefs
 import com.atelierapps.vault.ui.image.VaultMediaKey
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -80,7 +82,12 @@ private const val SPEED_DEFAULT = 2 // index of 1.0×
  *
  * TextureView-backed so the surface can be pinch-zoomed / panned. Draws its own
  * Compose controls: play/pause, drag-anywhere scrubber, prev/skip/next, speed,
- * loop; plus VLC-style vertical drags (right = volume, left = brightness).
+ * mute, loop; plus VLC-style vertical drags (right = volume, left = brightness).
+ *
+ * Mute is global and persisted, and while it's on the volume drag is swallowed
+ * rather than applied — a mute you have to keep re-applying because a stray
+ * swipe undid it isn't a mute. It attenuates the player, never the system
+ * stream, so silencing playback leaves the device's media volume alone.
  *
  * Loop starts OFF for every clip and is disabled outright while a slideshow is
  * running: a repeat-one player never emits STATE_ENDED, which is the very signal
@@ -157,6 +164,8 @@ fun VideoPlayer(
         mutableStateOf(SPEEDS.indexOfFirst { it == ViewerSession.playbackSpeed }.takeIf { it >= 0 } ?: SPEED_DEFAULT)
     }
     var speedMenu by remember(id) { mutableStateOf(false) }
+    // Global mute: persisted, so it holds across videos and app launches.
+    var muted by remember(id) { mutableStateOf(VideoPrefs.muted(context)) }
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
     var hud by remember(id) { mutableStateOf<String?>(null) }
@@ -172,6 +181,9 @@ fun VideoPlayer(
         player.setPlaybackSpeed(SPEEDS[speedIdx])
         ViewerSession.playbackSpeed = SPEEDS[speedIdx]
     }
+    // Mute the player rather than the system stream, so silencing playback never
+    // disturbs the device's media volume.
+    LaunchedEffect(muted) { player.volume = if (muted) 0f else 1f }
     LaunchedEffect(controlsVisible) { onControlsVisible(controlsVisible) }
 
     DisposableEffect(player) {
@@ -259,7 +271,15 @@ fun VideoPlayer(
                             val dy = c.position.y - down.position.y
                             if (mode == 0) {
                                 if (abs(dy) > slop && abs(dy) > abs(dx)) {
-                                    mode = if (down.position.x < size.width / 2f) 2 else 3
+                                    val leftHalf = down.position.x < size.width / 2f
+                                    mode = when {
+                                        leftHalf -> 2
+                                        // Muted: swallow the volume drag instead of
+                                        // acting on it, so it can't be undone by accident.
+                                        muted -> 5
+                                        else -> 3
+                                    }
+                                    if (mode == 5) hud = "Muted"
                                 } else if (abs(dx) > slop) {
                                     mode = 4
                                     break
@@ -279,6 +299,9 @@ fun VideoPlayer(
                                     activity.window.attributes = lp
                                     hud = "Brightness ${(b * 100).toInt()}%"
                                 }
+                                c.consume()
+                            } else if (mode == 5) {
+                                // Swallowed volume drag while muted.
                                 c.consume()
                             }
                         }
@@ -353,12 +376,26 @@ fun VideoPlayer(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    CtlButton("⏮", enabled = onPrev != null) { onPrev?.invoke() }
-                    CtlButton("−10") { player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0L)) }
-                    CtlButton("+10") { player.seekTo(player.currentPosition + 10_000) }
-                    CtlButton("⏭", enabled = onNext != null) { onNext?.invoke() }
+                    CtlButton("⏮", Modifier.weight(1f), enabled = onPrev != null) { onPrev?.invoke() }
+                    CtlButton("−10", Modifier.weight(1f)) {
+                        player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0L))
+                    }
+                    CtlButton("+10", Modifier.weight(1f)) { player.seekTo(player.currentPosition + 10_000) }
+                    CtlButton("⏭", Modifier.weight(1f), enabled = onNext != null) { onNext?.invoke() }
 
-                    Box {
+                    // Mute is a standing setting, not a per-clip one: it persists
+                    // and also switches off the swipe volume gesture.
+                    CtlButton(
+                        if (muted) "🔇" else "🔊",
+                        Modifier.weight(1f),
+                        tint = if (muted) Brass else Color(0x88FFFFFF),
+                    ) {
+                        muted = !muted
+                        VideoPrefs.setMuted(context, muted)
+                        hud = if (muted) "Muted" else "Sound on"
+                    }
+
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         CtlButton(speedLabel(SPEEDS[speedIdx]), tint = Brass) { speedMenu = true }
                         DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
                             SPEEDS.forEachIndexed { i, sp ->
@@ -373,6 +410,7 @@ fun VideoPlayer(
                     // clip from ever ending, which is what advances the show.
                     CtlButton(
                         "🔁",
+                        Modifier.weight(1f),
                         tint = when {
                             slideshowActive -> Color(0x33FFFFFF)
                             loop -> Brass
@@ -390,13 +428,14 @@ fun VideoPlayer(
 @Composable
 private fun CtlButton(
     label: String,
+    modifier: Modifier = Modifier,
     tint: Color = Color.White,
     fontSize: Int = 15,
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Box(
-        Modifier.size(44.dp).clip(RoundedCornerShape(10.dp))
+        modifier.height(44.dp).clip(RoundedCornerShape(10.dp))
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
