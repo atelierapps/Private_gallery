@@ -45,7 +45,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.media3.common.util.UnstableApi
 import coil3.compose.AsyncImage
 import com.atelierapps.vault.data.entity.MediaWithTags
 import com.atelierapps.vault.ui.image.VaultMediaKey
@@ -173,7 +172,6 @@ fun ViewerScreen(
     }
 }
 
-@OptIn(UnstableApi::class)
 @Composable
 private fun ViewerPage(
     item: MediaWithTags,
