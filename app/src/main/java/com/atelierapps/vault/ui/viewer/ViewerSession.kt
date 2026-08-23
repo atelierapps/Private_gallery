@@ -16,4 +16,18 @@ object ViewerSession {
      * persisted, so watch positions never touch disk in plaintext.
      */
     val positions = HashMap<String, Long>()
+
+    /**
+     * Playback speed, sticky for the whole viewer session: set it once and it
+     * carries to every video you move to (including slideshow advances) instead
+     * of snapping back to 1x. In-memory, so a fresh app launch starts at 1x.
+     */
+    @Volatile
+    var playbackSpeed: Float = 1f
+
+    /** Drop per-session playback state (called when the vault locks). */
+    fun clear() {
+        positions.clear()
+        playbackSpeed = 1f
+    }
 }

@@ -21,5 +21,8 @@ object VaultSession {
     fun lock() {
         _locked.value = true
         DekCache.clear()
+        // Watch positions and playback speed are session state about what you
+        // viewed — drop them with the keys rather than leaving them in memory.
+        com.atelierapps.vault.ui.viewer.ViewerSession.clear()
     }
 }

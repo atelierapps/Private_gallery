@@ -5,6 +5,7 @@ import android.content.Context
 import android.media.AudioManager
 import android.view.LayoutInflater
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
@@ -13,6 +14,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -77,8 +79,13 @@ private const val SPEED_DEFAULT = 2 // index of 1.0×
  * to a single live player fixes that.
  *
  * TextureView-backed so the surface can be pinch-zoomed / panned. Draws its own
- * Compose controls: play/pause, drag-anywhere scrubber, speed, loop; plus VLC-
- * style vertical drags (right = volume, left = brightness).
+ * Compose controls: play/pause, drag-anywhere scrubber, prev/skip/next, speed,
+ * loop; plus VLC-style vertical drags (right = volume, left = brightness).
+ *
+ * Loop starts OFF for every clip and is disabled outright while a slideshow is
+ * running: a repeat-one player never emits STATE_ENDED, which is the very signal
+ * the slideshow advances on, so leaving them both on stalls the show forever.
+ * Speed, by contrast, is deliberately sticky across clips ([ViewerSession]).
  */
 @UnstableApi
 @Composable
@@ -87,8 +94,11 @@ fun VideoPlayer(
     active: Boolean,
     modifier: Modifier = Modifier,
     autoPlay: Boolean = false,
+    slideshowActive: Boolean = false,
     onControlsVisible: (Boolean) -> Unit = {},
     onEnded: () -> Unit = {},
+    onPrev: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null,
 ) {
     // Inactive pages: poster only, no decoder held.
     if (!active) {
@@ -122,7 +132,9 @@ fun VideoPlayer(
                 // Resume where the clip was left off (in-memory only).
                 (ViewerSession.positions[id] ?: 0L).let { if (it > 0) seekTo(it) }
                 playWhenReady = autoPlay
-                repeatMode = Player.REPEAT_MODE_ONE
+                // Never start in repeat-one: a repeating player never emits
+                // STATE_ENDED, which is what slideshow advance listens for.
+                repeatMode = Player.REPEAT_MODE_OFF
                 addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(state: Int) {
                         if (state == Player.STATE_ENDED) currentOnEnded()
@@ -131,22 +143,35 @@ fun VideoPlayer(
             }
     }
 
-    var loop by remember(id) { mutableStateOf(true) }
+    // Loop is per-video and starts OFF every time (spec: it must never silently
+    // trap a slideshow on one clip).
+    var loop by remember(id) { mutableStateOf(false) }
     var isPlaying by remember(id) { mutableStateOf(autoPlay) }
     var controlsVisible by remember(id) { mutableStateOf(true) }
     var positionMs by remember(id) { mutableLongStateOf(0L) }
     var durationMs by remember(id) { mutableLongStateOf(0L) }
     var scrubbing by remember(id) { mutableStateOf(false) }
     var scrubMs by remember(id) { mutableLongStateOf(0L) }
-    var speedIdx by remember(id) { mutableStateOf(SPEED_DEFAULT) }
+    // Speed is sticky across videos for the session (seeded from ViewerSession).
+    var speedIdx by remember(id) {
+        mutableStateOf(SPEEDS.indexOfFirst { it == ViewerSession.playbackSpeed }.takeIf { it >= 0 } ?: SPEED_DEFAULT)
+    }
     var speedMenu by remember(id) { mutableStateOf(false) }
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
     var hud by remember(id) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(autoPlay) { player.playWhenReady = autoPlay }
-    LaunchedEffect(loop) { player.repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF }
-    LaunchedEffect(speedIdx) { player.setPlaybackSpeed(SPEEDS[speedIdx]) }
+    // Slideshow wins over loop: while it's running the clip must be allowed to
+    // end so the viewer can advance, no matter what the loop toggle says.
+    LaunchedEffect(loop, slideshowActive) {
+        player.repeatMode =
+            if (loop && !slideshowActive) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+    }
+    LaunchedEffect(speedIdx) {
+        player.setPlaybackSpeed(SPEEDS[speedIdx])
+        ViewerSession.playbackSpeed = SPEEDS[speedIdx]
+    }
     LaunchedEffect(controlsVisible) { onControlsVisible(controlsVisible) }
 
     DisposableEffect(player) {
@@ -300,51 +325,82 @@ fun VideoPlayer(
 
             val shown = if (scrubbing) scrubMs else positionMs
             val dur = durationMs.coerceAtLeast(1L)
-            Row(
+            Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .background(Color(0xCC06080A)).navigationBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
-                Text(fmt(shown), color = Color.White, fontSize = 12.sp)
-                Slider(
-                    value = (shown.toFloat() / dur).coerceIn(0f, 1f),
-                    onValueChange = { frac -> scrubbing = true; scrubMs = (frac * dur).toLong() },
-                    onValueChangeFinished = { player.seekTo(scrubMs); scrubbing = false },
-                    colors = SliderDefaults.colors(
-                        thumbColor = Brass,
-                        activeTrackColor = Brass,
-                        inactiveTrackColor = Color(0x55FFFFFF),
-                    ),
-                    modifier = Modifier.weight(1f),
-                )
-                Text(fmt(durationMs), color = Color.White, fontSize = 12.sp)
-                Box {
-                    Text(
-                        speedLabel(SPEEDS[speedIdx]), color = Brass, fontSize = 13.sp,
-                        modifier = Modifier.clip(RoundedCornerShape(6.dp))
-                            .pointerInput(id) { detectTapGestures(onTap = { speedMenu = true }) }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                // Row 1 — scrubber gets the full width, so dragging is easy.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(fmt(shown), color = Color.White, fontSize = 12.sp)
+                    Slider(
+                        value = (shown.toFloat() / dur).coerceIn(0f, 1f),
+                        onValueChange = { frac -> scrubbing = true; scrubMs = (frac * dur).toLong() },
+                        onValueChangeFinished = { player.seekTo(scrubMs); scrubbing = false },
+                        colors = SliderDefaults.colors(
+                            thumbColor = Brass,
+                            activeTrackColor = Brass,
+                            inactiveTrackColor = Color(0x55FFFFFF),
+                        ),
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                     )
-                    DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
-                        SPEEDS.forEachIndexed { i, s ->
-                            DropdownMenuItem(
-                                text = { Text((if (i == speedIdx) "✓  " else "     ") + speedLabel(s)) },
-                                onClick = { speedIdx = i; speedMenu = false },
-                            )
+                    Text(fmt(durationMs), color = Color.White, fontSize = 12.sp)
+                }
+
+                // Row 2 — evenly spaced, comfortably sized actions.
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    CtlButton("⏮", enabled = onPrev != null) { onPrev?.invoke() }
+                    CtlButton("−10") { player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0L)) }
+                    CtlButton("+10") { player.seekTo(player.currentPosition + 10_000) }
+                    CtlButton("⏭", enabled = onNext != null) { onNext?.invoke() }
+
+                    Box {
+                        CtlButton(speedLabel(SPEEDS[speedIdx]), tint = Brass) { speedMenu = true }
+                        DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
+                            SPEEDS.forEachIndexed { i, sp ->
+                                DropdownMenuItem(
+                                    text = { Text((if (i == speedIdx) "✓  " else "     ") + speedLabel(sp)) },
+                                    onClick = { speedIdx = i; speedMenu = false },
+                                )
+                            }
                         }
                     }
+                    // Loop is unavailable during a slideshow — it would stop the
+                    // clip from ever ending, which is what advances the show.
+                    CtlButton(
+                        "🔁",
+                        tint = when {
+                            slideshowActive -> Color(0x33FFFFFF)
+                            loop -> Brass
+                            else -> Color(0x88FFFFFF)
+                        },
+                        enabled = !slideshowActive,
+                    ) { loop = !loop }
                 }
-                Text(
-                    "🔁", fontSize = 18.sp,
-                    color = if (loop) Brass else Color(0x66FFFFFF),
-                    modifier = Modifier.clip(CircleShape)
-                        .pointerInput(id) { detectTapGestures(onTap = { loop = !loop }) }
-                        .padding(6.dp),
-                )
             }
         }
+    }
+}
+
+/** A roomy, evenly-spaced control-bar button (comfortable touch target). */
+@Composable
+private fun CtlButton(
+    label: String,
+    tint: Color = Color.White,
+    fontSize: Int = 15,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier.size(44.dp).clip(RoundedCornerShape(10.dp))
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = if (enabled) tint else Color(0x33FFFFFF), fontSize = fontSize.sp)
     }
 }
 

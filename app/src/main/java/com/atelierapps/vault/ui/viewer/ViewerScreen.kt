@@ -79,7 +79,9 @@ fun ViewerScreen(
     var pendingDelete by remember { mutableStateOf<String?>(null) }
     var playMode by remember { mutableStateOf(false) }
     var intervalSec by remember { mutableIntStateOf(5) }
-    var loop by remember { mutableStateOf(true) }
+    // Playlist-level: wrap back to the first item after the last. Distinct from
+    // the per-video loop in the player controls.
+    var repeatAll by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
 
     val current = media.getOrNull(pagerState.currentPage)
@@ -90,7 +92,7 @@ fun ViewerScreen(
             val next = pagerState.currentPage + 1
             when {
                 next < media.size -> pagerState.animateScrollToPage(next)
-                loop && media.isNotEmpty() -> pagerState.animateScrollToPage(0)
+                repeatAll && media.isNotEmpty() -> pagerState.animateScrollToPage(0)
                 else -> playMode = false
             }
         }
@@ -113,7 +115,14 @@ fun ViewerScreen(
                 onTap = { chromeVisible = !chromeVisible },
                 onVideoControls = { videoControls = it },
                 autoPlay = (playMode || autoplayPref) && page == pagerState.currentPage,
+                slideshowActive = playMode,
                 onEnded = { if (playMode) advance() },
+                onPrev = if (page > 0) {
+                    fun() { scope.launch { pagerState.animateScrollToPage(page - 1) } }
+                } else null,
+                onNext = if (page < media.size - 1) {
+                    fun() { scope.launch { pagerState.animateScrollToPage(page + 1) } }
+                } else null,
             )
         }
 
@@ -135,14 +144,14 @@ fun ViewerScreen(
             }
         }
 
-        // Slideshow controls (interval/loop) are image-only; videos have their
-        // own scrubber + loop, so don't double up the bottom bar for them.
+        // Slideshow controls are image-only; videos have their own control bar,
+        // so don't double up the bottom of the screen for them.
         if (playMode && !currentIsVideo) {
             PlayControls(
                 intervalSec = intervalSec,
                 onInterval = { intervalSec = it },
-                loop = loop,
-                onToggleLoop = { loop = !loop },
+                repeatAll = repeatAll,
+                onToggleRepeatAll = { repeatAll = !repeatAll },
                 onStop = { playMode = false },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
@@ -153,7 +162,7 @@ fun ViewerScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("Delete this item?") },
-            text = { Text("It'll be permanently removed. This can't be undone.") },
+            text = { Text("It moves to Recently deleted, where you can restore it for 30 days.") },
             confirmButton = {
                 TextButton(onClick = { pendingDelete = null; onDelete(id) }) {
                     Text("Delete", color = Color(0xFFE08A7A))
@@ -172,7 +181,10 @@ private fun ViewerPage(
     onTap: () -> Unit,
     onVideoControls: (Boolean) -> Unit,
     autoPlay: Boolean,
+    slideshowActive: Boolean,
     onEnded: () -> Unit,
+    onPrev: (() -> Unit)?,
+    onNext: (() -> Unit)?,
 ) {
     if (item.media.mimeType.startsWith("video/")) {
         VideoPlayer(
@@ -180,8 +192,11 @@ private fun ViewerPage(
             active = active,
             modifier = Modifier.fillMaxSize(),
             autoPlay = autoPlay,
+            slideshowActive = slideshowActive,
             onControlsVisible = onVideoControls,
             onEnded = onEnded,
+            onPrev = onPrev,
+            onNext = onNext,
         )
         return
     }
@@ -261,8 +276,8 @@ private fun TopBar(
 private fun PlayControls(
     intervalSec: Int,
     onInterval: (Int) -> Unit,
-    loop: Boolean,
-    onToggleLoop: () -> Unit,
+    repeatAll: Boolean,
+    onToggleRepeatAll: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -288,9 +303,9 @@ private fun PlayControls(
         }
         Box(Modifier.weight(1f))
         Text(
-            if (loop) "Loop ✓" else "Loop",
-            color = if (loop) Brass else Ink, fontSize = 12.sp,
-            modifier = Modifier.clickable { onToggleLoop() }.padding(6.dp),
+            if (repeatAll) "Repeat all ✓" else "Repeat all",
+            color = if (repeatAll) Brass else Ink, fontSize = 12.sp,
+            modifier = Modifier.clickable { onToggleRepeatAll() }.padding(6.dp),
         )
         Text(
             "Stop", color = Color(0xFFE08A7A), fontSize = 13.sp,
