@@ -5,10 +5,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.net.Uri
 import com.atelierapps.vault.VaultGraph
+import com.atelierapps.vault.data.entity.AlbumEntity
 import com.atelierapps.vault.data.entity.MediaWithTags
 import com.atelierapps.vault.media.MediaSharer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -23,6 +27,10 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
     val media = MutableStateFlow<List<MediaWithTags>>(emptyList())
     val loaded = MutableStateFlow(false)
 
+    val albums: StateFlow<List<AlbumEntity>> =
+        repo.observeAlbums()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     fun load() {
         viewModelScope.launch {
             val all = repo.allMedia()
@@ -34,6 +42,34 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
                 all
             }
             loaded.value = true
+        }
+    }
+
+    /** Rename an item in place, keeping the pager snapshot in sync. */
+    fun rename(id: String, newName: String) {
+        val clean = newName.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            repo.renameMedia(id, clean)
+            val list = media.value
+            val idx = list.indexOfFirst { it.media.id == id }
+            if (idx < 0) return@launch
+            media.value = list.toMutableList().also {
+                it[idx] = it[idx].copy(media = it[idx].media.copy(originalName = clean))
+            }
+        }
+    }
+
+    fun addToAlbum(id: String, albumId: String) {
+        viewModelScope.launch { repo.setAlbumForItems(listOf(id), albumId) }
+    }
+
+    fun addToNewAlbum(id: String, name: String) {
+        val clean = name.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            val albumId = repo.createAlbum(clean)
+            repo.setAlbumForItems(listOf(id), albumId)
         }
     }
 

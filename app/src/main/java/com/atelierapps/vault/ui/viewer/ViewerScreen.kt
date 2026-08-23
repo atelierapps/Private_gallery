@@ -21,6 +21,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -69,6 +72,10 @@ fun ViewerScreen(
     onDelete: (id: String) -> Unit,
     onTogglePin: (id: String) -> Unit,
     onShare: (id: String) -> Unit,
+    albums: List<com.atelierapps.vault.data.entity.AlbumEntity> = emptyList(),
+    onRename: (id: String, name: String) -> Unit = { _, _ -> },
+    onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
+    onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val autoplayPref = remember { com.atelierapps.vault.session.VideoPrefs.autoplay(context) }
@@ -76,6 +83,8 @@ fun ViewerScreen(
     var chromeVisible by remember { mutableStateOf(false) }
     var videoControls by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<String?>(null) }
+    var renaming by remember { mutableStateOf<MediaWithTags?>(null) }
+    var albumFor by remember { mutableStateOf<String?>(null) }
     var playMode by remember { mutableStateOf(false) }
     var intervalSec by remember { mutableIntStateOf(5) }
     // Playlist-level: wrap back to the first item after the last. Distinct from
@@ -135,6 +144,8 @@ fun ViewerScreen(
                     onTogglePlay = { playMode = !playMode },
                     onTogglePin = { onTogglePin(current.media.id) },
                     onShare = { onShare(current.media.id) },
+                    onRename = { renaming = current },
+                    onAddToAlbum = { albumFor = current.media.id },
                     onDelete = { pendingDelete = current.media.id },
                 )
             }
@@ -157,6 +168,23 @@ fun ViewerScreen(
         }
     }
 
+    renaming?.let { item ->
+        RenameItemDialog(
+            initial = item.media.originalName,
+            onConfirm = { newName -> onRename(item.media.id, newName); renaming = null },
+            onDismiss = { renaming = null },
+        )
+    }
+
+    albumFor?.let { id ->
+        ViewerAlbumDialog(
+            albums = albums,
+            onPick = { albumId -> onAddToAlbum(id, albumId); albumFor = null },
+            onCreate = { name -> onAddToNewAlbum(id, name); albumFor = null },
+            onDismiss = { albumFor = null },
+        )
+    }
+
     pendingDelete?.let { id ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
@@ -170,6 +198,74 @@ fun ViewerScreen(
             dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
         )
     }
+}
+
+@Composable
+private fun RenameItemDialog(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by remember(initial) { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(name) },
+                enabled = name.isNotBlank() && name.trim() != initial,
+            ) { Text("Save", color = Brass) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun ViewerAlbumDialog(
+    albums: List<com.atelierapps.vault.data.entity.AlbumEntity>,
+    onPick: (String) -> Unit,
+    onCreate: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var newAlbum by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to album") },
+        text = {
+            Column {
+                if (albums.isEmpty()) {
+                    Text("No albums yet — name one below.", color = Muted, fontSize = 13.sp)
+                } else {
+                    albums.forEach { album ->
+                        Text(
+                            album.name,
+                            color = Ink, fontSize = 15.sp,
+                            modifier = Modifier.fillMaxWidth()
+                                .clickable { onPick(album.id) }
+                                .padding(vertical = 10.dp),
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = newAlbum,
+                    onValueChange = { newAlbum = it },
+                    placeholder = { Text("New album name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onCreate(newAlbum) }, enabled = newAlbum.isNotBlank()) {
+                Text("Create & add", color = Brass)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -249,8 +345,11 @@ private fun TopBar(
     onTogglePlay: () -> Unit,
     onTogglePin: () -> Unit,
     onShare: () -> Unit,
+    onRename: () -> Unit,
+    onAddToAlbum: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    var menu by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().background(Color(0x99000000))
             .statusBarsPadding().displayCutoutPadding()
@@ -267,6 +366,13 @@ private fun TopBar(
             Text(if (isPinned) "📌" else "Pin", color = if (isPinned) Brass else Ink)
         }
         TextButton(onClick = onDelete) { Text("Delete", color = Color(0xFFE08A7A)) }
+        Box {
+            TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 18.sp) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
+                DropdownMenuItem(text = { Text("Add to album…") }, onClick = { menu = false; onAddToAlbum() })
+            }
+        }
     }
 }
 
@@ -318,7 +424,8 @@ private fun MetadataPanel(item: MediaWithTags, modifier: Modifier) {
         modifier.fillMaxWidth().background(Color(0xCC06080A)).navigationBarsPadding().padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        source(item)?.let { Text(it, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
+        Text(item.media.originalName, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        source(item)?.let { Text(it, color = Muted, fontSize = 12.sp) }
         Text(dateOf(item.media.dateTakenMillis), color = Muted, fontSize = 12.sp)
         if (item.tags.isNotEmpty()) {
             Text(item.tags.joinToString(" ") { "#${it.name}" }, color = Brass, fontSize = 13.sp)

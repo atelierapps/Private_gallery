@@ -58,6 +58,7 @@ class ViewerActivity : ComponentActivity() {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 val media by vm.media.collectAsState()
                 val loaded by vm.loaded.collectAsState()
+                val albums by vm.albums.collectAsState()
                 if (loaded && media.isNotEmpty()) {
                     val startIndex = media.indexOfFirst { it.media.id == startId }.coerceAtLeast(0)
                     ViewerScreen(
@@ -66,6 +67,10 @@ class ViewerActivity : ComponentActivity() {
                         onBack = { finish() },
                         onDelete = { id -> vm.delete(id) { finish() } },
                         onTogglePin = { id -> vm.togglePin(id) },
+                        albums = albums,
+                        onRename = { id, name -> vm.rename(id, name) },
+                        onAddToAlbum = { id, albumId -> vm.addToAlbum(id, albumId) },
+                        onAddToNewAlbum = { id, name -> vm.addToNewAlbum(id, name) },
                         onShare = { id ->
                             vm.share(
                                 id,

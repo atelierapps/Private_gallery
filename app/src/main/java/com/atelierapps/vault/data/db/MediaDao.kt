@@ -51,6 +51,9 @@ interface MediaDao {
     @Query("UPDATE media SET isPinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: String, pinned: Boolean)
 
+    @Query("UPDATE media SET originalName = :name WHERE id = :id")
+    suspend fun rename(id: String, name: String)
+
     /** Move to the recycle bin (soft delete). Blob + thumbnail stay on disk. */
     @Query("UPDATE media SET deletedAtMillis = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)

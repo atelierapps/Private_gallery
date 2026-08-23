@@ -64,6 +64,13 @@ class VaultRepository(
     suspend fun setPinned(id: String, pinned: Boolean) =
         withContext(Dispatchers.IO) { mediaDao.setPinned(id, pinned) }
 
+    /** Rename an item. Only the display name changes — the blob is untouched. */
+    suspend fun renameMedia(id: String, name: String) =
+        withContext(Dispatchers.IO) {
+            val clean = name.trim()
+            if (clean.isNotEmpty()) mediaDao.rename(id, clean)
+        }
+
     /** Add tags to an existing item (retroactive/bulk tagging, spec §7 v2). */
     suspend fun addTags(mediaId: String, tagNames: List<String>) =
         withContext(Dispatchers.IO) {
