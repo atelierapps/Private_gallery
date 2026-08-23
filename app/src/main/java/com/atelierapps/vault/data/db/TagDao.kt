@@ -46,6 +46,9 @@ interface TagDao {
     )
     fun observeAll(): Flow<List<TagEntity>>
 
+    @Query("SELECT COUNT(*) FROM tags")
+    suspend fun count(): Int
+
     /** Kept so the stored column stays roughly meaningful; ordering no longer uses it. */
     @Query("UPDATE tags SET useCount = useCount + 1 WHERE id = :id")
     suspend fun incrementUse(id: String)

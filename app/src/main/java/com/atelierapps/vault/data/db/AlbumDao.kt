@@ -22,6 +22,9 @@ interface AlbumDao {
     @Query("UPDATE album SET coverId = :mediaId WHERE id = :id")
     suspend fun setCover(id: String, mediaId: String?)
 
+    @Query("SELECT COUNT(*) FROM album")
+    suspend fun count(): Int
+
     @Query("DELETE FROM album WHERE id = :id")
     suspend fun delete(id: String)
 

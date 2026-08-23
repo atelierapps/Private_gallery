@@ -82,6 +82,12 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Storage + library stats. -->
+        <activity
+            android:name=".ui.storage.StorageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Settings (spec §7, §9). -->
         <activity
             android:name=".ui.settings.SettingsActivity"

@@ -170,6 +170,10 @@ class VaultRepository(
 
     fun observeAlbums(): Flow<List<AlbumEntity>> = albumDao.observeAll()
 
+    suspend fun albumCount(): Int = withContext(Dispatchers.IO) { albumDao.count() }
+
+    suspend fun tagCount(): Int = withContext(Dispatchers.IO) { tagDao.count() }
+
     suspend fun createAlbum(name: String): String = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
         albumDao.upsert(AlbumEntity(id, name.trim(), System.currentTimeMillis()))

@@ -153,6 +153,8 @@ fun VaultHome(
                 modifier = Modifier.weight(1f),
                 showSectionHeaders = dateHeadersPref && (sort == SortOrder.NEWEST || sort == SortOrder.OLDEST),
                 initialColumns = columnsPref,
+                onImport = onImport,
+                onCamera = onCamera,
             )
         }
 

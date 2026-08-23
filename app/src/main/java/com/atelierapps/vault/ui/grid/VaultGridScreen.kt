@@ -2,12 +2,14 @@ package com.atelierapps.vault.ui.grid
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +35,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,9 +59,11 @@ fun VaultGridScreen(
     modifier: Modifier = Modifier,
     showSectionHeaders: Boolean = false,
     initialColumns: Int = 3,
+    onImport: (() -> Unit)? = null,
+    onCamera: (() -> Unit)? = null,
 ) {
     if (media.isEmpty()) {
-        EmptyState(modifier)
+        EmptyState(modifier, onImport, onCamera)
         return
     }
     // Pinch to change column count (2–6). Two-finger only, so single-finger
@@ -156,7 +161,7 @@ private fun SectionHeader(title: String) {
         title,
         color = Color(0xFFBFC8CE),
         fontSize = 13.sp,
-        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+        fontWeight = FontWeight.SemiBold,
         modifier = Modifier.fillMaxWidth().padding(start = 6.dp, top = 12.dp, bottom = 4.dp),
     )
 }
@@ -220,18 +225,55 @@ private fun MediaTile(
     }
 }
 
+/**
+ * First run. Rather than a dead-end sentence, this names the three ways media
+ * gets in and makes two of them tappable right here — the third (sharing from
+ * another app) can't be triggered from inside the vault, so it's explained.
+ */
 @Composable
-private fun EmptyState(modifier: Modifier) {
+private fun EmptyState(modifier: Modifier, onImport: (() -> Unit)?, onCamera: (() -> Unit)?) {
     Box(
-        modifier.fillMaxSize().background(Color(0xFF0E1113)).padding(40.dp),
+        modifier.fillMaxSize().background(Color(0xFF0E1113)).padding(32.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            "Nothing saved yet.\nShare a photo or video to Link to get started.",
-            color = Color(0xFF8A969E),
-            fontSize = 15.sp,
-            textAlign = TextAlign.Center,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "Nothing here yet",
+                color = Color(0xFFE9EEF0), fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                "Everything you add is encrypted on this device.",
+                color = Color(0xFF8A969E), fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp, bottom = 22.dp),
+            )
+            if (onImport != null) {
+                EmptyAction("Import from your gallery", "Pick photos and videos already on this phone", onImport)
+            }
+            if (onCamera != null) {
+                EmptyAction("Take a photo or video", "Captured straight here — never touches the gallery", onCamera)
+            }
+            Text(
+                "Or share media to Link from any other app.",
+                color = Color(0xFF8A969E), fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 14.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyAction(title: String, subtitle: String, onClick: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(bottom = 10.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF171C20))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text(title, color = Color(0xFFD8B463), fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        Text(subtitle, color = Color(0xFF8A969E), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
 

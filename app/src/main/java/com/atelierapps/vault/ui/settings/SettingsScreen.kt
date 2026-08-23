@@ -45,7 +45,7 @@ private val Brass = Color(0xFFD8B463)
 private val BrassInk = Color(0xFF1A1509)
 
 @Composable
-fun SettingsScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
+fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
     var autoplay by remember { mutableStateOf(VideoPrefs.autoplay(context)) }
@@ -119,6 +119,22 @@ fun SettingsScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
                 )
                 LockPrefs.Delay.entries.forEach { d ->
                     RadioRow(d.label, d == lockDelay) { lockDelay = d; LockPrefs.set(context, d) }
+                }
+            }
+
+            SettingsCard("Storage") {
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onStorage),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Storage & stats", color = Ink, fontSize = 15.sp)
+                        Text(
+                            "What the vault holds and what it costs on disk",
+                            color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    Text("›", color = Muted, fontSize = 20.sp)
                 }
             }
 
