@@ -62,6 +62,7 @@ fun ImportScreen(
     deleteOriginals: Boolean,
     importing: Boolean,
     progress: ImportProgress,
+    summary: ImportProgress?,
     onSelectDeviceTab: () -> Unit,
     onSelectFolderTab: () -> Unit,
     onOpenFolder: (MediaFolder) -> Unit,
@@ -71,6 +72,7 @@ fun ImportScreen(
     onSetDelete: (Boolean) -> Unit,
     onImport: () -> Unit,
     onPickFiles: () -> Unit,
+    onDismissSummary: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val browsingFolders = tab == ImportTab.FOLDER && currentFolder == null
@@ -101,6 +103,40 @@ fun ImportScreen(
 
         if (importing) ImportingOverlay(progress)
     }
+
+    if (summary != null) ImportSummaryDialog(summary, onDismissSummary)
+}
+
+/**
+ * What actually landed. Dedup silently skips content already in the vault, so a
+ * raw "imported N" would overcount; this reports the skips explicitly.
+ */
+@Composable
+private fun ImportSummaryDialog(summary: ImportProgress, onDismiss: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Import complete") },
+        text = {
+            Column {
+                Text("${summary.imported} added to Link", color = Ink, fontSize = 15.sp)
+                if (summary.duplicates > 0) {
+                    Text(
+                        "${summary.duplicates} skipped — already in your library",
+                        color = Muted, fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+                if (summary.failed > 0) {
+                    Text(
+                        "${summary.failed} couldn't be read",
+                        color = Color(0xFFE08A7A), fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = Brass) } },
+    )
 }
 
 @Composable
@@ -290,6 +326,10 @@ private fun ImportingOverlay(progress: ImportProgress) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
             CircularProgressIndicator(color = Brass)
             Text("Encrypting ${progress.done} / ${progress.total}", color = Ink, fontSize = 14.sp)
+            Text(
+                "Keeps running if you leave this screen",
+                color = Muted, fontSize = 12.sp,
+            )
         }
     }
 }

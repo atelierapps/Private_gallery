@@ -40,7 +40,18 @@ class ImportActivity : ComponentActivity() {
     // SAF multi-file picker — reaches cloud providers, Downloads, any folder.
     private val filesLauncher =
         registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-            if (uris.isNotEmpty()) vm.importDocumentUris(uris)
+            if (uris.isEmpty()) return@registerForActivityResult
+            // The import is finished by a background worker, which may run long
+            // after this screen is gone — persist the read grant so it can still
+            // open the file. Best-effort: some providers refuse.
+            uris.forEach { uri ->
+                runCatching {
+                    contentResolver.takePersistableUriPermission(
+                        uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }
+            }
+            vm.importDocumentUris(uris)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,6 +75,7 @@ class ImportActivity : ComponentActivity() {
                 val progress by vm.progress.collectAsState()
                 val finished by vm.finished.collectAsState()
                 val pendingDelete by vm.pendingDeviceDelete.collectAsState()
+                val summary by vm.summary.collectAsState()
 
                 LaunchedEffect(finished) { if (finished) finish() }
                 LaunchedEffect(pendingDelete) { launchDeleteRequest(pendingDelete) }
@@ -78,6 +90,7 @@ class ImportActivity : ComponentActivity() {
                     deleteOriginals = deleteOriginals,
                     importing = importing,
                     progress = progress,
+                    summary = summary,
                     onSelectDeviceTab = {
                         if (MediaPermissions.canQuery(this)) vm.selectDeviceTab()
                         else permissionLauncher.launch(MediaPermissions.required())
@@ -93,6 +106,7 @@ class ImportActivity : ComponentActivity() {
                     onSetDelete = vm::setDeleteOriginals,
                     onImport = vm::startImport,
                     onPickFiles = { filesLauncher.launch(arrayOf("image/*", "video/*")) },
+                    onDismissSummary = vm::dismissSummary,
                     onCancel = { finish() },
                 )
             }

@@ -48,7 +48,7 @@ class MediaSaver(
             // Dedup (§4.2): identical content already present → drop the spool, done.
             if (repository.existsByHash(hash)) {
                 temp.delete()
-                return Result.success("duplicate")
+                return Result.success(DUPLICATE)
             }
 
             // 1. Encrypt + fsync.
@@ -150,5 +150,14 @@ class MediaSaver(
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    companion object { private const val TAG = "MediaSaver" }
+    companion object {
+        private const val TAG = "MediaSaver"
+
+        /**
+         * Sentinel returned instead of a new id when content-hash dedup (§4.2)
+         * recognised the item. Callers report these separately so an import
+         * summary can say what was skipped rather than counting it as saved.
+         */
+        const val DUPLICATE = "duplicate"
+    }
 }
