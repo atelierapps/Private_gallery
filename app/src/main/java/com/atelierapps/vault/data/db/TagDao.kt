@@ -49,4 +49,45 @@ interface TagDao {
     /** Kept so the stored column stays roughly meaningful; ordering no longer uses it. */
     @Query("UPDATE tags SET useCount = useCount + 1 WHERE id = :id")
     suspend fun incrementUse(id: String)
+
+    // ---- maintenance (§7): tags used to be create-only, so a typo was forever ----
+
+    /** Every tag with its live member count, for the tag manager. */
+    @Query(
+        """
+        SELECT t.id AS id, t.name AS name, t.colorHex AS colorHex, COUNT(m.id) AS liveCount
+        FROM tags t
+        LEFT JOIN media_tag mt ON mt.tagId = t.id
+        LEFT JOIN media m ON m.id = mt.mediaId AND m.deletedAtMillis IS NULL
+        GROUP BY t.id
+        ORDER BY liveCount DESC, t.name COLLATE NOCASE ASC
+        """,
+    )
+    fun observeUsage(): Flow<List<TagUsage>>
+
+    @Query("UPDATE tags SET name = :name WHERE id = :id")
+    suspend fun rename(id: String, name: String)
+
+    @Query("DELETE FROM media_tag WHERE tagId = :id")
+    suspend fun deleteLinks(id: String)
+
+    @Query("DELETE FROM tags WHERE id = :id")
+    suspend fun deleteTag(id: String)
+
+    /**
+     * Repoint one tag's members onto another. OR IGNORE covers items that already
+     * carry the target tag (the (mediaId, tagId) primary key would collide);
+     * [deleteLinks] then clears whatever those ignored rows left behind.
+     */
+    @Query("UPDATE OR IGNORE media_tag SET tagId = :targetId WHERE tagId = :sourceId")
+    suspend fun repointLinks(sourceId: String, targetId: String)
+
 }
+
+/** A tag plus how many live (non-trashed) items carry it. */
+data class TagUsage(
+    val id: String,
+    val name: String,
+    val colorHex: String,
+    val liveCount: Int,
+)

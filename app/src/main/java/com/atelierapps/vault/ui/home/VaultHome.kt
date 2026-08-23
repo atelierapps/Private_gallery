@@ -55,6 +55,7 @@ fun VaultHome(
     onTrash: () -> Unit,
     onRules: () -> Unit,
     onAlbums: () -> Unit,
+    onTags: () -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
     vm: GridViewModel = viewModel(),
@@ -109,6 +110,7 @@ fun VaultHome(
                     onTrash = onTrash,
                     onRules = onRules,
                     onAlbums = onAlbums,
+                    onTags = onTags,
                     onSettings = onSettings,
                     trashCount = trashCount,
                     onToggleSearch = { searchOpen = !searchOpen; if (!searchOpen) vm.setQuery("") },
@@ -319,6 +321,7 @@ private fun TopAppRow(
     onTrash: () -> Unit,
     onRules: () -> Unit,
     onAlbums: () -> Unit,
+    onTags: () -> Unit,
     onSettings: () -> Unit,
     trashCount: Int,
     onToggleSearch: () -> Unit,
@@ -337,6 +340,7 @@ private fun TopAppRow(
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 MenuSection("Library")
                 DropdownMenuItem(text = { Text("Albums") }, onClick = { menu = false; onAlbums() })
+                DropdownMenuItem(text = { Text("Tags") }, onClick = { menu = false; onTags() })
                 DropdownMenuItem(text = { Text("Auto-tag rules") }, onClick = { menu = false; onRules() })
                 DropdownMenuItem(
                     text = { Text("Recently deleted" + if (trashCount > 0) "  ($trashCount)" else "") },

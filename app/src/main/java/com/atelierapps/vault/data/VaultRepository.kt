@@ -129,6 +129,36 @@ class VaultRepository(
             .distinct()
     }
 
+    // ---- tag maintenance (§7) ----
+
+    fun observeTagUsage(): Flow<List<com.atelierapps.vault.data.db.TagUsage>> = tagDao.observeUsage()
+
+    /** Rename a tag, unless the new name collides with an existing one. */
+    suspend fun renameTag(id: String, newName: String): Boolean = withContext(Dispatchers.IO) {
+        val clean = newName.trim()
+        if (clean.isEmpty()) return@withContext false
+        val existing = tagDao.byName(clean)
+        if (existing != null && existing.id != id) return@withContext false
+        tagDao.rename(id, clean)
+        true
+    }
+
+    /** Delete a tag and unlink it from every item (the items themselves stay). */
+    suspend fun deleteTag(id: String) = withContext(Dispatchers.IO) {
+        tagDao.deleteLinks(id)
+        tagDao.deleteTag(id)
+    }
+
+    /** Fold [sourceId] into [targetId]: its items gain the target tag, it goes away. */
+    suspend fun mergeTags(sourceId: String, targetId: String) = withContext(Dispatchers.IO) {
+        if (sourceId == targetId) return@withContext
+        tagDao.repointLinks(sourceId, targetId)
+        // Items that already carried the target keep their row; the ignored
+        // duplicates are still pointing at the source, so clear the remainder.
+        tagDao.deleteLinks(sourceId)
+        tagDao.deleteTag(sourceId)
+    }
+
     // ---- albums (§7) ----
 
     fun observeAlbums(): Flow<List<AlbumEntity>> = albumDao.observeAll()

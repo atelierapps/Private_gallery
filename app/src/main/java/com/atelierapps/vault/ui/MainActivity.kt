@@ -28,6 +28,7 @@ import com.atelierapps.vault.ui.export.ExportActivity
 import com.atelierapps.vault.ui.restore.RestoreActivity
 import com.atelierapps.vault.ui.rules.RulesActivity
 import com.atelierapps.vault.ui.settings.SettingsActivity
+import com.atelierapps.vault.ui.tags.TagsActivity
 import com.atelierapps.vault.ui.trash.TrashActivity
 import com.atelierapps.vault.ui.home.VaultHome
 import com.atelierapps.vault.ui.lock.LockScreen
@@ -89,6 +90,9 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onAlbums = {
                                     startActivity(Intent(this@MainActivity, AlbumsActivity::class.java))
+                                },
+                                onTags = {
+                                    startActivity(Intent(this@MainActivity, TagsActivity::class.java))
                                 },
                                 onSettings = {
                                     startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
