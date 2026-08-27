@@ -92,7 +92,8 @@ private const val SPEED_DEFAULT = 2 // index of 1.0×
  * stream, so silencing playback leaves the device's media volume alone.
  *
  * The surface fades in over the clip's own thumbnail once the decoder renders a
- * first frame, so an autoplay advance never cuts through bare black.
+ * first frame, so an autoplay advance never cuts through bare black. The fade is
+ * deliberately unhurried — a quick dissolve still reads as a cut.
  *
  * Loop starts OFF for every clip and is disabled outright while a slideshow is
  * running: a repeat-one player never emits STATE_ENDED, which is the very signal
@@ -183,7 +184,7 @@ fun VideoPlayer(
     var firstFrame by remember(id) { mutableStateOf(false) }
     val videoAlpha by animateFloatAsState(
         targetValue = if (firstFrame) 1f else 0f,
-        animationSpec = tween(durationMillis = 220),
+        animationSpec = tween(durationMillis = 450),
         label = "videoFadeIn",
     )
 

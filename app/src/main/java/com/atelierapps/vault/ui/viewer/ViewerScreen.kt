@@ -62,7 +62,7 @@ import java.util.Locale
  * rather than the pager's default spring: a spring overshoots and settles, which
  * on a run of short clips reads as a jolt. Manual swipes still fling normally.
  */
-private val PageGlide = tween<Float>(durationMillis = 300, easing = FastOutSlowInEasing)
+private val PageGlide = tween<Float>(durationMillis = 550, easing = FastOutSlowInEasing)
 
 private val Ink = Color(0xFFE9EEF0)
 private val Muted = Color(0xFF9AA6AD)
