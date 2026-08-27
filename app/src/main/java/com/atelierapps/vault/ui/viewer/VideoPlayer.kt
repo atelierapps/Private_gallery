@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
 import android.view.LayoutInflater
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -89,6 +91,9 @@ private const val SPEED_DEFAULT = 2 // index of 1.0×
  * swipe undid it isn't a mute. It attenuates the player, never the system
  * stream, so silencing playback leaves the device's media volume alone.
  *
+ * The surface fades in over the clip's own thumbnail once the decoder renders a
+ * first frame, so an autoplay advance never cuts through bare black.
+ *
  * Loop starts OFF for every clip and is disabled outright while a slideshow is
  * running: a repeat-one player never emits STATE_ENDED, which is the very signal
  * the slideshow advances on, so leaving them both on stalls the show forever.
@@ -172,6 +177,15 @@ fun VideoPlayer(
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
     var hud by remember(id) { mutableStateOf<String?>(null) }
+    // The surface is black until the decoder produces a frame. On an autoplay
+    // advance that black gap is what reads as a jolt, so hold the thumbnail
+    // underneath and dissolve the video in over it once it's actually showing.
+    var firstFrame by remember(id) { mutableStateOf(false) }
+    val videoAlpha by animateFloatAsState(
+        targetValue = if (firstFrame) 1f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "videoFadeIn",
+    )
 
     LaunchedEffect(autoPlay) { player.playWhenReady = autoPlay }
     // Slideshow wins over loop: while it's running the clip must be allowed to
@@ -192,6 +206,7 @@ fun VideoPlayer(
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+            override fun onRenderedFirstFrame() { firstFrame = true }
         }
         player.addListener(listener)
         onDispose { player.removeListener(listener) }
@@ -222,12 +237,26 @@ fun VideoPlayer(
             controlsVisible = false
         }
     }
+    // Safety net: if onRenderedFirstFrame never arrives (some decoders stay quiet
+    // when paused), reveal the surface anyway rather than stranding the poster.
+    LaunchedEffect(id) {
+        delay(700)
+        firstFrame = true
+    }
     // Clear the transient volume/brightness HUD shortly after the drag ends.
     LaunchedEffect(hud) {
         if (hud != null) { delay(900); hud = null }
     }
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
+        if (videoAlpha < 1f) {
+            AsyncImage(
+                model = VaultMediaKey(id, full = false),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         AndroidView(
             factory = { ctx ->
                 (LayoutInflater.from(ctx).inflate(R.layout.vault_player_view, null) as PlayerView)
@@ -236,6 +265,7 @@ fun VideoPlayer(
             modifier = Modifier.fillMaxSize().graphicsLayer(
                 scaleX = scale, scaleY = scale,
                 translationX = offset.x, translationY = offset.y,
+                alpha = videoAlpha,
             ),
         )
 

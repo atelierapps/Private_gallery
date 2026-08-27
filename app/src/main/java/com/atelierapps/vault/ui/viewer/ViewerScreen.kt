@@ -1,5 +1,7 @@
 package com.atelierapps.vault.ui.viewer
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -55,6 +57,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Programmatic page changes (slideshow advance, prev/next) use an eased glide
+ * rather than the pager's default spring: a spring overshoots and settles, which
+ * on a run of short clips reads as a jolt. Manual swipes still fling normally.
+ */
+private val PageGlide = tween<Float>(durationMillis = 300, easing = FastOutSlowInEasing)
+
 private val Ink = Color(0xFFE9EEF0)
 private val Muted = Color(0xFF9AA6AD)
 private val Brass = Color(0xFFD8B463)
@@ -99,8 +108,8 @@ fun ViewerScreen(
         scope.launch {
             val next = pagerState.currentPage + 1
             when {
-                next < media.size -> pagerState.animateScrollToPage(next)
-                repeatAll && media.isNotEmpty() -> pagerState.animateScrollToPage(0)
+                next < media.size -> pagerState.animateScrollToPage(next, animationSpec = PageGlide)
+                repeatAll && media.isNotEmpty() -> pagerState.animateScrollToPage(0, animationSpec = PageGlide)
                 else -> playMode = false
             }
         }
@@ -126,10 +135,10 @@ fun ViewerScreen(
                 slideshowActive = playMode,
                 onEnded = { if (playMode) advance() },
                 onPrev = if (page > 0) {
-                    fun() { scope.launch { pagerState.animateScrollToPage(page - 1) } }
+                    fun() { scope.launch { pagerState.animateScrollToPage(page - 1, animationSpec = PageGlide) } }
                 } else null,
                 onNext = if (page < media.size - 1) {
-                    fun() { scope.launch { pagerState.animateScrollToPage(page + 1) } }
+                    fun() { scope.launch { pagerState.animateScrollToPage(page + 1, animationSpec = PageGlide) } }
                 } else null,
             )
         }
