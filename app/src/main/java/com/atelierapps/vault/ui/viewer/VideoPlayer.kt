@@ -154,7 +154,10 @@ fun VideoPlayer(
     // trap a slideshow on one clip).
     var loop by remember(id) { mutableStateOf(false) }
     var isPlaying by remember(id) { mutableStateOf(autoPlay) }
-    var controlsVisible by remember(id) { mutableStateOf(true) }
+    // Start hidden when the clip plays itself: with a run of short videos,
+    // showing the full control bar on every advance is just flicker. A clip that
+    // opens paused still shows them, since you need the play button.
+    var controlsVisible by remember(id) { mutableStateOf(!autoPlay) }
     var positionMs by remember(id) { mutableLongStateOf(0L) }
     var durationMs by remember(id) { mutableLongStateOf(0L) }
     var scrubbing by remember(id) { mutableStateOf(false) }

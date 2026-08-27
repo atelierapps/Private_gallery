@@ -24,6 +24,8 @@ enum class SortOrder(val label: String) {
     NEWEST("Newest"),
     OLDEST("Oldest"),
     NAME("Name A–Z"),
+    LONGEST("Longest first"),
+    SHORTEST("Shortest first"),
 }
 
 /** A source-filter chip: an app that media came from, with its total count (spec §7). */
@@ -95,6 +97,15 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
                 SortOrder.NEWEST -> out.sortedByDescending { it.media.dateTakenMillis }
                 SortOrder.OLDEST -> out.sortedBy { it.media.dateTakenMillis }
                 SortOrder.NAME -> out.sortedBy { it.media.originalName.lowercase() }
+                // Images have no duration; park them after the videos either way
+                // rather than letting a null masquerade as length zero.
+                SortOrder.LONGEST -> out.sortedByDescending { it.media.durationMillis ?: -1L }
+                SortOrder.SHORTEST -> out.sortedWith(
+                    compareBy(
+                        { it.media.durationMillis == null },
+                        { it.media.durationMillis ?: Long.MAX_VALUE },
+                    ),
+                )
             }
             // Pinned items float to the top (stable — keeps sort order within groups).
             sorted.sortedByDescending { it.media.isPinned }
