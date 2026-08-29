@@ -25,9 +25,23 @@ object ViewerSession {
     @Volatile
     var playbackSpeed: Float = 1f
 
+    /**
+     * Set by Shuffle so the viewer opens already playing through the order it was
+     * handed. Consumed once on open — a later manual visit shouldn't inherit it.
+     */
+    @Volatile
+    var startPlaying: Boolean = false
+
+    fun consumeStartPlaying(): Boolean {
+        val v = startPlaying
+        startPlaying = false
+        return v
+    }
+
     /** Drop per-session playback state (called when the vault locks). */
     fun clear() {
         positions.clear()
         playbackSpeed = 1f
+        startPlaying = false
     }
 }

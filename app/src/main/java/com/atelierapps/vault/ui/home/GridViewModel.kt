@@ -121,6 +121,26 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
         _filter.value = _filter.value.withType(t)
     }
     fun setSort(s: SortOrder) { _sort.value = s }
+
+    private var lastShuffle: List<String> = emptyList()
+
+    /**
+     * A fresh random order over what's currently visible. Re-rolls if the shuffle
+     * came out identical to the previous one, so every press really is a new
+     * order rather than occasionally repeating on small sets.
+     */
+    fun shuffledIds(): List<String> {
+        val ids = media.value.map { it.media.id }
+        if (ids.size < 2) return ids
+        var next = ids.shuffled()
+        var attempts = 0
+        while (next == lastShuffle && attempts < 5) {
+            next = ids.shuffled()
+            attempts++
+        }
+        lastShuffle = next
+        return next
+    }
     fun setQuery(q: String) { _query.value = q }
 
     // ---- selection actions ----

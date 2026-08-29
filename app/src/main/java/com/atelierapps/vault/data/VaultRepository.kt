@@ -81,6 +81,27 @@ class VaultRepository(
         }
 
     /**
+     * Make [tagNames] the item's exact tag set — additions and removals both.
+     * The bulk tagger is additive by design (you're painting a label across a
+     * selection), but editing one item needs to be able to take a tag off again.
+     */
+    suspend fun setTagsForMedia(mediaId: String, tagNames: List<String>) =
+        withContext(Dispatchers.IO) {
+            val desiredIds = tagNames.map { it.trim() }.filter { it.isNotEmpty() }
+                .map { resolveTag(it) }.toSet()
+            val currentIds = mediaDao.tagIdsFor(mediaId).toSet()
+
+            val toRemove = currentIds - desiredIds
+            if (toRemove.isNotEmpty()) mediaDao.unlinkTags(mediaId, toRemove.toList())
+
+            val toAdd = desiredIds - currentIds
+            if (toAdd.isNotEmpty()) {
+                mediaDao.insertCrossRefs(toAdd.map { MediaTagCrossRef(mediaId, it) })
+                toAdd.forEach { tagDao.incrementUse(it) }
+            }
+        }
+
+    /**
      * Persist a media row and its tags atomically-ish: the row insert and tag
      * bump happen after the blob is already verified on disk (spec §4 hard rule).
      * Tag names are resolved case-insensitively, created on first use, and their

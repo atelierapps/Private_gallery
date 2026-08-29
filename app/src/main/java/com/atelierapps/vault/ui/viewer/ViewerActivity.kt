@@ -59,6 +59,7 @@ class ViewerActivity : ComponentActivity() {
                 val media by vm.media.collectAsState()
                 val loaded by vm.loaded.collectAsState()
                 val albums by vm.albums.collectAsState()
+                val allTags by vm.tags.collectAsState()
                 if (loaded && media.isNotEmpty()) {
                     val startIndex = media.indexOfFirst { it.media.id == startId }.coerceAtLeast(0)
                     ViewerScreen(
@@ -68,6 +69,8 @@ class ViewerActivity : ComponentActivity() {
                         onDelete = { id -> vm.delete(id) { finish() } },
                         onTogglePin = { id -> vm.togglePin(id) },
                         albums = albums,
+                        allTags = allTags,
+                        onSetTags = { id, names -> vm.setTags(id, names) },
                         onRename = { id, name -> vm.rename(id, name) },
                         onAddToAlbum = { id, albumId -> vm.addToAlbum(id, albumId) },
                         onAddToNewAlbum = { id, name -> vm.addToNewAlbum(id, name) },

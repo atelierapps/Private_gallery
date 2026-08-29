@@ -48,6 +48,12 @@ interface MediaDao {
     @Query("DELETE FROM media_tag WHERE mediaId = :id")
     suspend fun deleteCrossRefs(id: String)
 
+    @Query("SELECT tagId FROM media_tag WHERE mediaId = :id")
+    suspend fun tagIdsFor(id: String): List<String>
+
+    @Query("DELETE FROM media_tag WHERE mediaId = :id AND tagId IN (:tagIds)")
+    suspend fun unlinkTags(id: String, tagIds: List<String>)
+
     @Query("UPDATE media SET isPinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: String, pinned: Boolean)
 

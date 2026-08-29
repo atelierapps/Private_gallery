@@ -7,6 +7,7 @@ import android.net.Uri
 import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.data.entity.AlbumEntity
 import com.atelierapps.vault.data.entity.MediaWithTags
+import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.media.MediaSharer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,10 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
 
     val albums: StateFlow<List<AlbumEntity>> =
         repo.observeAlbums()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val tags: StateFlow<List<TagEntity>> =
+        repo.observeTags()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun load() {
@@ -57,6 +62,21 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
             media.value = list.toMutableList().also {
                 it[idx] = it[idx].copy(media = it[idx].media.copy(originalName = clean))
             }
+        }
+    }
+
+    /**
+     * Set an item's tags from the viewer — including new ones typed on the spot.
+     * Keeps the pager's snapshot in sync so the change shows without reopening.
+     */
+    fun setTags(id: String, names: List<String>) {
+        viewModelScope.launch {
+            repo.setTagsForMedia(id, names)
+            val refreshed = repo.allMedia().firstOrNull { it.media.id == id } ?: return@launch
+            val list = media.value
+            val idx = list.indexOfFirst { it.media.id == id }
+            if (idx < 0) return@launch
+            media.value = list.toMutableList().also { it[idx] = refreshed }
         }
     }
 

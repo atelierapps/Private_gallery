@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,6 +86,8 @@ fun ViewerScreen(
     onTogglePin: (id: String) -> Unit,
     onShare: (id: String) -> Unit,
     albums: List<com.atelierapps.vault.data.entity.AlbumEntity> = emptyList(),
+    allTags: List<com.atelierapps.vault.data.entity.TagEntity> = emptyList(),
+    onSetTags: (id: String, names: List<String>) -> Unit = { _, _ -> },
     onRename: (id: String, name: String) -> Unit = { _, _ -> },
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
     onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
@@ -94,7 +100,9 @@ fun ViewerScreen(
     var pendingDelete by remember { mutableStateOf<String?>(null) }
     var renaming by remember { mutableStateOf<MediaWithTags?>(null) }
     var albumFor by remember { mutableStateOf<String?>(null) }
-    var playMode by remember { mutableStateOf(false) }
+    var taggingItem by remember { mutableStateOf<MediaWithTags?>(null) }
+    // Shuffle hands us an order and asks for playback to start straight away.
+    var playMode by remember { mutableStateOf(ViewerSession.consumeStartPlaying()) }
     var intervalSec by remember { mutableIntStateOf(5) }
     // Playlist-level: wrap back to the first item after the last. Distinct from
     // the per-video loop in the player controls.
@@ -154,6 +162,7 @@ fun ViewerScreen(
                     onTogglePin = { onTogglePin(current.media.id) },
                     onShare = { onShare(current.media.id) },
                     onRename = { renaming = current },
+                    onTag = { taggingItem = current },
                     onAddToAlbum = { albumFor = current.media.id },
                     onDelete = { pendingDelete = current.media.id },
                 )
@@ -175,6 +184,15 @@ fun ViewerScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
+    }
+
+    taggingItem?.let { item ->
+        ViewerTagDialog(
+            allTags = allTags,
+            applied = item.tags.map { it.name },
+            onApply = { names -> onSetTags(item.media.id, names); taggingItem = null },
+            onDismiss = { taggingItem = null },
+        )
     }
 
     renaming?.let { item ->
@@ -207,6 +225,62 @@ fun ViewerScreen(
             dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
         )
     }
+}
+
+/**
+ * Tag the item you're watching, without leaving it. Chips show the tag's current
+ * state, so this both adds and removes — a mis-tap mid-playback is undoable
+ * here rather than only from the grid.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ViewerTagDialog(
+    allTags: List<com.atelierapps.vault.data.entity.TagEntity>,
+    applied: List<String>,
+    onApply: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val picked = remember(applied) { mutableStateListOf<String>().apply { addAll(applied) } }
+    var newTag by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tags") },
+        text = {
+            Column {
+                if (allTags.isEmpty()) {
+                    Text("No tags yet — name one below.", color = Muted, fontSize = 13.sp)
+                } else {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        allTags.forEach { tag ->
+                            val on = picked.any { it.equals(tag.name, ignoreCase = true) }
+                            FilterChip(
+                                selected = on,
+                                onClick = {
+                                    if (on) picked.removeAll { it.equals(tag.name, ignoreCase = true) }
+                                    else picked.add(tag.name)
+                                },
+                                label = { Text("#" + tag.name) },
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = newTag,
+                    onValueChange = { newTag = it },
+                    placeholder = { Text("New tag(s), comma-separated") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val all = (picked + newTag.split(",")).map { it.trim() }.filter { it.isNotEmpty() }
+                onApply(all.distinctBy { it.lowercase() })
+            }) { Text("Save", color = Brass) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -355,6 +429,7 @@ private fun TopBar(
     onTogglePin: () -> Unit,
     onShare: () -> Unit,
     onRename: () -> Unit,
+    onTag: () -> Unit,
     onAddToAlbum: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -378,6 +453,7 @@ private fun TopBar(
         Box {
             TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 18.sp) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text("Tags…") }, onClick = { menu = false; onTag() })
                 DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
                 DropdownMenuItem(text = { Text("Add to album…") }, onClick = { menu = false; onAddToAlbum() })
             }

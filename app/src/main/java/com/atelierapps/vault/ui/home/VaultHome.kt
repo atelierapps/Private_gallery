@@ -109,6 +109,14 @@ fun VaultHome(
                     onExport = onExport,
                     onRestore = onRestore,
                     onCamera = onCamera,
+                    onShuffle = {
+                        val order = vm.shuffledIds()
+                        if (order.isNotEmpty()) {
+                            com.atelierapps.vault.ui.viewer.ViewerSession.orderedIds = order
+                            com.atelierapps.vault.ui.viewer.ViewerSession.startPlaying = true
+                            onOpen(order.first())
+                        }
+                    },
                     onTrash = onTrash,
                     onRules = onRules,
                     onAlbums = onAlbums,
@@ -322,6 +330,7 @@ private fun TopAppRow(
     onExport: () -> Unit,
     onRestore: () -> Unit,
     onCamera: () -> Unit,
+    onShuffle: () -> Unit,
     onTrash: () -> Unit,
     onRules: () -> Unit,
     onAlbums: () -> Unit,
@@ -338,6 +347,7 @@ private fun TopAppRow(
     ) {
         Text("Link", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         TextButton(onClick = onCamera) { Text("📷", fontSize = 15.sp) }
+        TextButton(onClick = onShuffle) { Text("🔀", fontSize = 15.sp) }
         TextButton(onClick = onToggleSearch) { Text("🔍", fontSize = 15.sp) }
         Box {
             TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 20.sp) }
