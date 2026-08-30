@@ -47,6 +47,13 @@ import com.atelierapps.vault.ui.theme.Muted
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import com.atelierapps.vault.ui.theme.VaultIconButton
+import com.atelierapps.vault.ui.theme.ScreenHeader
+import com.atelierapps.vault.ui.theme.ScreenCaption
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Hairline
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material3.Icon
 
 /** Friendly labels for the capture-type picker (UNKNOWN is never a rule target). */
 private val TYPE_CHOICES = listOf(
@@ -67,29 +74,17 @@ fun RulesScreen(vm: RulesViewModel, onClose: () -> Unit, modifier: Modifier = Mo
 
     Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                VaultIconButton(Icons.Outlined.Close, "Close", onClose)
-                Text(
-                    "Auto-tag rules",
-                    color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
-                )
-            }
-            Text(
+            ScreenHeader("Auto-tag rules", onClose)
+            ScreenCaption(
                 "Tags are applied automatically as items are saved, based on where " +
                     "they came from. New rules apply to items saved from now on.",
-                color = Muted, fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
 
             if (rules.isEmpty()) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
                         "No rules yet.\nTap + to add one.",
-                        color = Muted, fontSize = 15.sp, textAlign = TextAlign.Center,
+                        color = Muted, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center,
                     )
                 }
             } else {
@@ -100,7 +95,7 @@ fun RulesScreen(vm: RulesViewModel, onClose: () -> Unit, modifier: Modifier = Mo
                             onToggle = { vm.setEnabled(rule.id, it) },
                             onDelete = { vm.delete(rule.id) },
                         )
-                        HorizontalDivider(color = Color(0xFF20272C))
+                        HorizontalDivider(color = Hairline)
                     }
                 }
             }
@@ -109,9 +104,9 @@ fun RulesScreen(vm: RulesViewModel, onClose: () -> Unit, modifier: Modifier = Mo
         FloatingActionButton(
             onClick = { showAdd = true },
             containerColor = Brass,
-            contentColor = Color(0xFF1A1509),
+            contentColor = BrassInk,
             modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
-        ) { Text("+", fontSize = 26.sp) }
+        ) { Icon(Icons.Outlined.Add, contentDescription = "New rule") }
     }
 
     if (showAdd) {
@@ -134,15 +129,15 @@ private fun RuleRow(rule: AutoTagRuleEntity, onToggle: (Boolean) -> Unit, onDele
                 RuleMatchKind.SOURCE -> "Source contains “${rule.matchValue}”"
                 RuleMatchKind.TYPE -> "Added via ${typeLabel(rule.matchValue)}"
             }
-            Text(condition, color = if (rule.enabled) Ink else Muted, fontSize = 14.sp)
+            Text(condition, color = if (rule.enabled) Ink else Muted, style = MaterialTheme.typography.bodyMedium)
             Text(
                 rule.tags().joinToString(" ") { "#$it" },
-                color = if (rule.enabled) Brass else Muted, fontSize = 13.sp,
+                color = if (rule.enabled) Brass else Muted, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
         Switch(checked = rule.enabled, onCheckedChange = onToggle)
-        TextButton(onClick = onDelete) { Text("Delete", color = Danger, fontSize = 13.sp) }
+        TextButton(onClick = onDelete) { Text("Delete", color = Danger, style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -164,7 +159,7 @@ private fun AddRuleDialog(
         title = { Text("Add rule") },
         text = {
             Column {
-                Text("When…", color = Muted, fontSize = 12.sp)
+                Text("When…", color = Muted, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                     FilterChip(
                         selected = kind == RuleMatchKind.SOURCE,
@@ -188,7 +183,7 @@ private fun AddRuleDialog(
                     )
                     Text(
                         "Matches the app name, package, or website.",
-                        color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp),
+                        color = Muted, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 2.dp),
                     )
                 } else {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
@@ -202,7 +197,7 @@ private fun AddRuleDialog(
                     }
                 }
 
-                Text("Apply tags", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
+                Text("Apply tags", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
                 if (existingTags.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         existingTags.take(12).forEach { tag ->

@@ -31,6 +31,13 @@ import com.atelierapps.vault.ui.theme.Ink
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import com.atelierapps.vault.ui.theme.VaultIconButton
+import com.atelierapps.vault.ui.theme.ScreenHeader
+import com.atelierapps.vault.ui.theme.HeaderAction
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Scrim
+import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 
 @Composable
 fun AlbumScreen(
@@ -47,17 +54,17 @@ fun AlbumScreen(
     val working by vm.working.collectAsState()
     var confirmDelete by remember { mutableStateOf(false) }
 
-    Box(modifier.fillMaxSize().background(Color(0xFF0E1113))) {
+    Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
             if (selectionMode) {
                 Row(
-                    Modifier.fillMaxWidth().background(Color(0xFF171C20)).padding(horizontal = 4.dp, vertical = 6.dp),
+                    Modifier.fillMaxWidth().background(SurfaceHigh).padding(horizontal = 4.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     VaultIconButton(Icons.Outlined.Close, "Close", vm::clearSelection)
                     Text(
                         "${selectedIds.size}",
-                        color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                        color = Ink, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f).padding(start = 4.dp),
                     )
                     TextButton(onClick = vm::selectAll) { Text("All", color = Ink) }
@@ -74,20 +81,17 @@ fun AlbumScreen(
                     }
                 }
             } else {
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                ScreenHeader(
+                    title = albumName,
+                    onBack = onClose,
+                    icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                    backDescription = "Back",
                 ) {
-                    TextButton(onClick = onClose) { Text("‹", color = Ink, fontSize = 20.sp) }
-                    Text(
-                        albumName,
-                        color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f).padding(start = 4.dp),
-                    )
-                    TextButton(
+                    HeaderAction(
+                        "Export",
                         onClick = { onExport(media.map { it.media.id }.toSet()) },
                         enabled = media.isNotEmpty(),
-                    ) { Text("Export", color = Brass, fontSize = 13.sp) }
+                    )
                 }
             }
 
@@ -106,7 +110,7 @@ fun AlbumScreen(
         }
 
         if (working) {
-            Box(Modifier.fillMaxSize().background(Color(0xCC06080A)), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().background(Scrim), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Brass)
             }
         }

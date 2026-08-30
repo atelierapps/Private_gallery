@@ -48,6 +48,9 @@ import com.atelierapps.vault.ui.theme.VaultIconButton
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.Check
+import com.atelierapps.vault.ui.theme.ScreenHeader
+import com.atelierapps.vault.ui.theme.Hairline
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifier = Modifier) {
@@ -63,17 +66,7 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
     }
 
     Column(modifier.fillMaxSize().background(Bg)) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            VaultIconButton(Icons.Outlined.Close, "Close", onClose)
-            Text(
-                "Settings",
-                color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f).padding(start = 4.dp),
-            )
-        }
+        ScreenHeader("Settings", onClose)
 
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -87,7 +80,7 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
                     checked = autoplay,
                     onCheckedChange = { autoplay = it; VideoPrefs.setAutoplay(context, it) },
                 )
-                HorizontalDivider(color = Color(0xFF20272C), modifier = Modifier.padding(vertical = 10.dp))
+                HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 10.dp))
                 ToggleRow(
                     title = "Mute videos",
                     subtitle = "Silences playback and disables the swipe volume gesture",
@@ -103,11 +96,11 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
                     checked = dateHeaders,
                     onCheckedChange = { dateHeaders = it; DisplayPrefs.setDateHeaders(context, it) },
                 )
-                HorizontalDivider(color = Color(0xFF20272C), modifier = Modifier.padding(vertical = 10.dp))
-                Text("Grid columns", color = Ink, fontSize = 15.sp)
+                HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 10.dp))
+                Text("Grid columns", color = Ink, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     "Default tile density (pinch on the grid still adjusts live)",
-                    color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
+                    color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (n in DisplayPrefs.MIN_COLUMNS..DisplayPrefs.MAX_COLUMNS) {
@@ -117,10 +110,10 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
             }
 
             SettingsCard("Security") {
-                Text("Auto-lock", color = Ink, fontSize = 15.sp)
+                Text("Auto-lock", color = Ink, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     "Lock the vault after it's been in the background",
-                    color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
+                    color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
                 )
                 LockPrefs.Delay.entries.forEach { d ->
                     RadioRow(d.label, d == lockDelay) { lockDelay = d; LockPrefs.set(context, d) }
@@ -133,10 +126,10 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Storage & stats", color = Ink, fontSize = 15.sp)
+                        Text("Storage & stats", color = Ink, style = MaterialTheme.typography.bodyLarge)
                         Text(
                             "What the vault holds and what it costs on disk",
-                            color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp),
+                            color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp),
                         )
                     }
                     Icon(Icons.Outlined.KeyboardArrowRight, null, tint = Muted, modifier = Modifier.size(20.dp))
@@ -144,14 +137,14 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
             }
 
             SettingsCard("About") {
-                Text("Link", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text("Link", color = Ink, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 if (version != null) {
-                    Text("Version $version", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                    Text("Version $version", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
                 }
                 Text(
                     "No internet access. Everything stays encrypted on this device — " +
                         "no cloud, no accounts, no analytics.",
-                    color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp),
+                    color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
@@ -163,7 +156,7 @@ private fun SettingsCard(title: String, content: @Composable () -> Unit) {
     Column {
         Text(
             title.uppercase(),
-            color = Brass, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+            color = Brass, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 6.dp, bottom = 6.dp),
         )
         Column(
@@ -176,8 +169,8 @@ private fun SettingsCard(title: String, content: @Composable () -> Unit) {
 private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = Ink, fontSize = 15.sp)
-            Text(subtitle, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(title, color = Ink, style = MaterialTheme.typography.bodyLarge)
+            Text(subtitle, color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
         }
         Switch(
             checked = checked,
@@ -194,11 +187,11 @@ private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onCheck
 private fun NumberChip(n: Int, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.size(40.dp).clip(RoundedCornerShape(10.dp))
-            .background(if (selected) Brass else Color(0xFF232A30))
+            .background(if (selected) Brass else Hairline)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text("$n", color = if (selected) BrassInk else Ink, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        Text("$n", color = if (selected) BrassInk else Ink, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -210,9 +203,9 @@ private fun RadioRow(label: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Box(
             Modifier.size(18.dp).clip(CircleShape)
-                .background(if (selected) Brass else Color(0xFF2A3238)),
+                .background(if (selected) Brass else Hairline),
             contentAlignment = Alignment.Center,
         ) { if (selected) Icon(Icons.Filled.Check, null, tint = BrassInk, modifier = Modifier.size(12.dp)) }
-        Text(label, color = Ink, fontSize = 15.sp, modifier = Modifier.padding(start = 12.dp))
+        Text(label, color = Ink, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 12.dp))
     }
 }

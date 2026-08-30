@@ -21,6 +21,16 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 
 /**
  * The app's icon button. One shape, one touch target, one press behaviour, so
@@ -80,4 +90,58 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun Separator(modifier: Modifier = Modifier) {
     Box(modifier.background(Hairline))
+}
+
+/**
+ * Every secondary screen's title bar. Before this, seven screens each declared
+ * their own header and had already drifted to two different title sizes and two
+ * different back affordances (one was a bare `‹` character). One header, one
+ * height, one type style — the app now opens the same way every time.
+ */
+@Composable
+fun ScreenHeader(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Outlined.Close,
+    backDescription: String = "Close",
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(start = Space.xs, end = Space.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        VaultIconButton(icon, backDescription, onBack)
+        Text(
+            title,
+            color = Ink,
+            style = MaterialTheme.typography.titleLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).padding(start = Space.xs),
+        )
+        actions()
+    }
+}
+
+/** The supporting line that sits under a [ScreenHeader] and explains the screen. */
+@Composable
+fun ScreenCaption(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        color = Muted,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = modifier.padding(start = Space.lg, end = Space.lg, bottom = Space.sm),
+    )
+}
+
+/** A text action for a header or bar — brass, label weight, one size everywhere. */
+@Composable
+fun HeaderAction(text: String, onClick: () -> Unit, enabled: Boolean = true) {
+    TextButton(onClick = onClick, enabled = enabled) {
+        Text(text, color = if (enabled) Brass else Faint, style = MaterialTheme.typography.labelLarge)
+    }
 }

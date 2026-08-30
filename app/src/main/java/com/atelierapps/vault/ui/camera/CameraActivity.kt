@@ -60,6 +60,9 @@ import java.io.File
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Icon
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Muted
 
 /**
  * In-app camera: captures photos and videos **straight into the vault** via the
@@ -238,7 +241,7 @@ private fun CameraScreen(lifecycleOwner: LifecycleOwner, audioEnabled: Boolean, 
 private fun ModeLabel(text: String, selected: Boolean, onClick: () -> Unit) {
     Text(
         text,
-        color = if (selected) Color(0xFFD8B463) else Color.White,
+        color = if (selected) Brass else Color.White,
         fontSize = 14.sp,
         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
         modifier = Modifier.clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
@@ -247,10 +250,10 @@ private fun ModeLabel(text: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun PermissionPrompt(onGrant: () -> Unit, onClose: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(Color(0xFF0E1113)).padding(32.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(Bg).padding(32.dp), contentAlignment = Alignment.Center) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Grant camera", color = Color(0xFFD8B463), fontSize = 16.sp, modifier = Modifier.clickable { onGrant() })
-            Text("Cancel", color = Color(0xFF8A969E), fontSize = 16.sp, modifier = Modifier.clickable { onClose() })
+            Text("Grant camera", color = Brass, fontSize = 16.sp, modifier = Modifier.clickable { onGrant() })
+            Text("Cancel", color = Muted, fontSize = 16.sp, modifier = Modifier.clickable { onClose() })
         }
     }
 }

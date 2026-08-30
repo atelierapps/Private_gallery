@@ -63,6 +63,10 @@ import com.atelierapps.vault.ui.theme.Hairline
 import com.atelierapps.vault.ui.theme.Space
 import com.atelierapps.vault.ui.theme.Surface
 import com.atelierapps.vault.ui.theme.VaultIconButton
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Scrim
+import androidx.compose.material.icons.outlined.Add
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -115,7 +119,7 @@ fun VaultHome(
     var showTagDialog by remember { mutableStateOf(false) }
     var showAlbumDialog by remember { mutableStateOf(false) }
 
-    Box(modifier.fillMaxSize().background(Color(0xFF0E1113))) {
+    Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
             if (selectionMode) {
                 SelectionBar(
@@ -194,16 +198,16 @@ fun VaultHome(
             FloatingActionButton(
                 onClick = onImport,
                 containerColor = Brass,
-                contentColor = Color(0xFF1A1509),
+                contentColor = BrassInk,
                 modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
             ) {
-                Text("+", fontSize = 26.sp)
+                Icon(Icons.Outlined.Add, contentDescription = "Import")
             }
         }
 
         if (working) {
             Box(
-                Modifier.fillMaxSize().background(Color(0xCC06080A)),
+                Modifier.fillMaxSize().background(Scrim),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator(color = Brass)
@@ -218,7 +222,7 @@ fun VaultHome(
             text = { Text("They'll be permanently removed. This can't be undone.") },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; vm.deleteSelected() }) {
-                    Text("Delete", color = Color(0xFFE08A7A))
+                    Text("Delete", color = Danger)
                 }
             },
             dismissButton = {

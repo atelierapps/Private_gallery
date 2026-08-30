@@ -81,6 +81,7 @@ import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import com.atelierapps.vault.ui.theme.Scrim
 
 private val SPEEDS = floatArrayOf(0.25f, 0.5f, 1f, 1.5f, 2f)
 private const val SPEED_DEFAULT = 2 // index of 1.0×
@@ -411,7 +412,7 @@ fun VideoPlayer(
             val dur = durationMs.coerceAtLeast(1L)
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                    .background(Color(0xCC06080A)).navigationBarsPadding()
+                    .background(Scrim).navigationBarsPadding()
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 // Row 1 — scrubber gets the full width, so dragging is easy.

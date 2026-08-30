@@ -45,6 +45,13 @@ import com.atelierapps.vault.ui.theme.Muted
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import com.atelierapps.vault.ui.theme.VaultIconButton
+import com.atelierapps.vault.ui.theme.ScreenHeader
+import com.atelierapps.vault.ui.theme.ScreenCaption
+import androidx.compose.material3.MaterialTheme
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Scrim
+import com.atelierapps.vault.ui.theme.ScrimSoft
+import com.atelierapps.vault.ui.theme.SurfaceHigh
 
 @Composable
 fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -54,33 +61,22 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
     var selected by remember { mutableStateOf<MediaWithTags?>(null) }
     var confirmEmpty by remember { mutableStateOf(false) }
 
-    Box(modifier.fillMaxSize().background(Color(0xFF0E1113))) {
+    Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                VaultIconButton(Icons.Outlined.Close, "Close", onClose)
-                Text(
-                    "Recently deleted",
-                    color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
-                )
+            ScreenHeader("Recently deleted", onClose) {
                 if (items.isNotEmpty()) {
-                    TextButton(onClick = { confirmEmpty = true }) { Text("Empty", color = Danger) }
+                    TextButton(onClick = { confirmEmpty = true }) {
+                        Text("Empty", color = Danger, style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
-            Text(
-                "Items are kept for 30 days, then deleted forever.",
-                color = Muted, fontSize = 12.sp,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
-            )
+            ScreenCaption("Items are kept for 30 days, then deleted forever.")
 
             if (items.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         "The bin is empty.",
-                        color = Muted, fontSize = 15.sp, textAlign = TextAlign.Center,
+                        color = Muted, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center,
                     )
                 }
             } else {
@@ -100,7 +96,7 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
 
         if (working) {
             Box(
-                Modifier.fillMaxSize().background(Color(0xCC06080A)),
+                Modifier.fillMaxSize().background(Scrim),
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator(color = Brass) }
         }
@@ -134,7 +130,7 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
 private fun TrashTile(item: MediaWithTags, onClick: () -> Unit) {
     Box(
         Modifier.aspectRatio(1f).clip(RoundedCornerShape(2.dp))
-            .background(Color(0xFF1B2126)).clickable(onClick = onClick),
+            .background(SurfaceHigh).clickable(onClick = onClick),
     ) {
         AsyncImage(
             model = VaultMediaKey(item.media.id, full = false),
@@ -145,9 +141,9 @@ private fun TrashTile(item: MediaWithTags, onClick: () -> Unit) {
         val days = daysLeft(item.media.deletedAtMillis)
         Text(
             if (days <= 0) "Today" else "${days}d",
-            color = Color.White, fontSize = 10.sp,
+            color = Color.White, style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.align(Alignment.BottomStart).padding(4.dp)
-                .clip(RoundedCornerShape(4.dp)).background(Color(0x9906080A))
+                .clip(RoundedCornerShape(4.dp)).background(ScrimSoft)
                 .padding(horizontal = 4.dp, vertical = 1.dp),
         )
     }
@@ -163,7 +159,7 @@ private fun ItemActionDialog(
     val days = daysLeft(item.media.deletedAtMillis)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(item.media.originalName, fontSize = 15.sp) },
+        title = { Text(item.media.originalName, style = MaterialTheme.typography.bodyLarge) },
         text = {
             Text(
                 if (days <= 0) "Deleted forever soon." else "Deleted forever in $days day(s).",

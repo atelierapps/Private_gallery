@@ -42,6 +42,11 @@ import coil3.compose.AsyncImage
 import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.media.SourceInfo
 import com.atelierapps.vault.ui.theme.VaultTheme
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.material3.MaterialTheme
+import com.atelierapps.vault.ui.theme.Ink
 
 /**
  * The save bottom sheet (spec §5). Renders inside the transparent share Activity.
@@ -78,20 +83,20 @@ fun SaveSheet(
                     .wrapContentHeight()
                     // Consume taps so touching the sheet doesn't reach the scrim's dismiss.
                     .pointerInput(Unit) { detectTapGestures { } },
-                color = Color(0xFF171C20),
+                color = SurfaceHigh,
                 shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
             ) {
                 Column(Modifier.navigationBarsPadding().padding(20.dp)) {
                     Text(
                         "Save to Link",
-                        color = Color(0xFFE9EEF0),
-                        fontSize = 17.sp,
+                        color = Ink,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
                         "Encrypts on save · no unlock needed",
-                        color = Color(0xFF8A969E),
-                        fontSize = 12.sp,
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 2.dp, bottom = 16.dp),
                     )
 
@@ -106,12 +111,12 @@ fun SaveSheet(
                         Column(Modifier.padding(start = 13.dp)) {
                             Text(
                                 if (itemCount > 1) "$itemCount items" else "1 item",
-                                color = Color(0xFFE9EEF0),
-                                fontSize = 14.sp,
+                                color = Ink,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
                             )
                             sourceLabel(source)?.let {
-                                Text("From $it", color = Color(0xFF8A969E), fontSize = 12.sp)
+                                Text("From $it", color = Muted, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -119,8 +124,8 @@ fun SaveSheet(
                     if (topTags.isNotEmpty()) {
                         Text(
                             "QUICK TAGS",
-                            color = Color(0xFF8A969E),
-                            fontSize = 11.sp,
+                            color = Muted,
+                            style = MaterialTheme.typography.labelMedium,
                             modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
                         )
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -150,7 +155,7 @@ fun SaveSheet(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
-                                color = Color(0xFF1A1509),
+                                color = BrassInk,
                             )
                             Text("  Saving…")
                         } else {

@@ -48,6 +48,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import com.atelierapps.vault.ui.theme.VaultIconButton
 import androidx.compose.material.icons.outlined.MoreVert
+import com.atelierapps.vault.ui.theme.ScreenHeader
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.Add
 
 @Composable
 fun AlbumsScreen(
@@ -63,23 +69,13 @@ fun AlbumsScreen(
 
     Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                VaultIconButton(Icons.Outlined.Close, "Close", onClose)
-                Text(
-                    "Albums",
-                    color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
-                )
-            }
+            ScreenHeader("Albums", onClose)
 
             if (albums.isEmpty()) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
                         "No albums yet.\nTap + to make one, then add items from the grid.",
-                        color = Muted, fontSize = 15.sp, textAlign = TextAlign.Center,
+                        color = Muted, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center,
                     )
                 }
             } else {
@@ -105,9 +101,9 @@ fun AlbumsScreen(
         FloatingActionButton(
             onClick = { showCreate = true },
             containerColor = Brass,
-            contentColor = Color(0xFF1A1509),
+            contentColor = BrassInk,
             modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
-        ) { Text("+", fontSize = 26.sp) }
+        ) { Icon(Icons.Outlined.Add, contentDescription = "New album") }
     }
 
     if (showCreate) {
@@ -154,7 +150,7 @@ private fun AlbumTile(
     Column(Modifier.clickable(onClick = onOpen)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF1B2126)),
+                .background(SurfaceHigh),
         ) {
             if (card.coverId != null) {
                 AsyncImage(
@@ -165,14 +161,14 @@ private fun AlbumTile(
                 )
             } else {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Empty", color = Muted, fontSize = 13.sp)
+                    Text("Empty", color = Muted, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
             Column(Modifier.weight(1f)) {
-                Text(card.album.name, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                Text("${card.count} item(s)", color = Muted, fontSize = 12.sp)
+                Text(card.album.name, color = Ink, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
+                Text("${card.count} item(s)", color = Muted, style = MaterialTheme.typography.bodySmall)
             }
             Box {
                 VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true }, size = 36)

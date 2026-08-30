@@ -27,6 +27,7 @@ val Surface = Color(0xFF14181B)     // raised: bars, sheets
 val SurfaceHigh = Color(0xFF1C2125) // cards, tiles, dialogs
 val Hairline = Color(0xFF262C31)    // 1px separators, borders
 val Scrim = Color(0xCC06080A)       // over-media overlays
+val ScrimSoft = Color(0x9906080A)   // lighter wash: badges sitting on a thumbnail
 
 // ---- content ----
 val Ink = Color(0xFFF2F5F7)         // primary text

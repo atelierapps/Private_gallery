@@ -48,6 +48,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.PlayArrow
+import com.atelierapps.vault.ui.theme.Scrim
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import com.atelierapps.vault.ui.theme.Danger
 
 /**
  * The importer UI (spec §4, §4.1, §15.5): tabs (all media / by folder), a
@@ -121,18 +125,18 @@ private fun ImportSummaryDialog(summary: ImportProgress, onDismiss: () -> Unit) 
         title = { Text("Import complete") },
         text = {
             Column {
-                Text("${summary.imported} added to Link", color = Ink, fontSize = 15.sp)
+                Text("${summary.imported} added to Link", color = Ink, style = MaterialTheme.typography.bodyLarge)
                 if (summary.duplicates > 0) {
                     Text(
                         "${summary.duplicates} skipped — already in your library",
-                        color = Muted, fontSize = 13.sp,
+                        color = Muted, style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
                 if (summary.failed > 0) {
                     Text(
                         "${summary.failed} couldn't be read",
-                        color = Color(0xFFE08A7A), fontSize = 13.sp,
+                        color = Danger, style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
@@ -151,7 +155,7 @@ private fun TopBar(count: Int, onPickFiles: () -> Unit, onCancel: () -> Unit) {
         TextButton(onClick = onCancel) { Text("Cancel", color = Muted) }
         Text(
             if (count == 0) "Select media" else "$count selected",
-            color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+            color = Ink, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f).padding(start = 8.dp),
         )
         TextButton(onClick = onPickFiles) { Text("From files…", color = Brass) }
@@ -177,7 +181,7 @@ private fun TabButton(label: String, selected: Boolean, modifier: Modifier, onCl
             .clickable(onClick = onClick).padding(vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (selected) BrassInk else Muted, fontSize = 13.sp)
+        Text(label, color = if (selected) BrassInk else Muted, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -204,10 +208,21 @@ private fun FolderHeader(folder: MediaFolder, onBack: () -> Unit) {
         Modifier.fillMaxWidth().clickable(onClick = onBack).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("‹ Folders", color = Brass, fontSize = 13.sp)
+        Icon(
+            Icons.AutoMirrored.Outlined.ArrowBack,
+            contentDescription = null,
+            tint = Brass,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            "Folders",
+            color = Brass,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(start = 6.dp),
+        )
         Text(
             "  ·  ${folder.name} (${folder.count})",
-            color = Muted, fontSize = 13.sp,
+            color = Muted, style = MaterialTheme.typography.bodySmall,
         )
     }
 }
@@ -216,7 +231,7 @@ private fun FolderHeader(folder: MediaFolder, onBack: () -> Unit) {
 private fun FolderGrid(folders: List<MediaFolder>, onOpen: (MediaFolder) -> Unit, modifier: Modifier) {
     if (folders.isEmpty()) {
         Box(modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-            Text("No folders found.", color = Muted, fontSize = 14.sp)
+            Text("No folders found.", color = Muted, style = MaterialTheme.typography.bodyMedium)
         }
         return
     }
@@ -234,13 +249,13 @@ private fun FolderGrid(folders: List<MediaFolder>, onOpen: (MediaFolder) -> Unit
                     contentDescription = folder.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
-                        .clip(RoundedCornerShape(8.dp)).background(Color(0xFF1B2126)),
+                        .clip(RoundedCornerShape(8.dp)).background(SurfaceHigh),
                 )
                 Text(
-                    folder.name, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    folder.name, color = Ink, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
                     maxLines = 1, modifier = Modifier.padding(top = 6.dp),
                 )
-                Text("${folder.count} items", color = Muted, fontSize = 11.sp)
+                Text("${folder.count} items", color = Muted, style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -269,7 +284,7 @@ private fun MediaGrid(
 @Composable
 private fun PickTile(item: DeviceMedia, selected: Boolean, onToggle: (Uri) -> Unit) {
     Box(
-        Modifier.aspectRatio(1f).clip(RoundedCornerShape(2.dp)).background(Color(0xFF1B2126))
+        Modifier.aspectRatio(1f).clip(RoundedCornerShape(2.dp)).background(SurfaceHigh)
             .clickable { onToggle(item.uri) }
             .then(if (selected) Modifier.border(2.5.dp, Brass, RoundedCornerShape(2.dp)) else Modifier),
     ) {
@@ -309,7 +324,7 @@ private fun BottomBar(
 ) {
     Column(Modifier.fillMaxWidth().background(SurfaceHigh).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Delete originals after import", color = Ink, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            Text("Delete originals after import", color = Ink, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
             Switch(checked = deleteOriginals, onCheckedChange = onSetDelete)
         }
         Button(
@@ -325,15 +340,15 @@ private fun BottomBar(
 @Composable
 private fun ImportingOverlay(progress: ImportProgress) {
     Box(
-        Modifier.fillMaxSize().background(Color(0xCC06080A)),
+        Modifier.fillMaxSize().background(Scrim),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
             CircularProgressIndicator(color = Brass)
-            Text("Encrypting ${progress.done} / ${progress.total}", color = Ink, fontSize = 14.sp)
+            Text("Encrypting ${progress.done} / ${progress.total}", color = Ink, style = MaterialTheme.typography.bodyMedium)
             Text(
                 "Keeps running if you leave this screen",
-                color = Muted, fontSize = 12.sp,
+                color = Muted, style = MaterialTheme.typography.bodySmall,
             )
         }
     }

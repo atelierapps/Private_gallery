@@ -18,6 +18,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Ink
+import androidx.compose.material.icons.outlined.Lock
 
 /**
  * Shown while the vault is locked (spec §9, §15.1). Full black — no blurred
@@ -27,7 +36,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun LockScreen(onUnlock: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier.fillMaxSize().background(Color(0xFF0E1113)).padding(32.dp),
+        modifier.fillMaxSize().background(Bg).padding(32.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -35,16 +44,21 @@ fun LockScreen(onUnlock: () -> Unit, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Box(
-                Modifier.size(84.dp).clip(CircleShape).background(Color(0xFF171C20)),
+                Modifier.size(84.dp).clip(CircleShape).background(SurfaceHigh),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("🔒", fontSize = 34.sp)
+                Icon(
+                    Icons.Outlined.Lock,
+                    contentDescription = null,
+                    tint = Brass,
+                    modifier = Modifier.size(32.dp),
+                )
             }
-            Text("Locked", color = Color(0xFFE9EEF0), fontSize = 20.sp)
+            Text("Locked", color = Ink, style = MaterialTheme.typography.titleLarge)
             Text(
                 "Unlock with your fingerprint or device PIN.",
-                color = Color(0xFF8A969E),
-                fontSize = 13.sp,
+                color = Muted,
+                style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
             )
             OutlinedButton(onClick = onUnlock) { Text("Unlock") }

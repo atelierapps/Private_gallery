@@ -43,6 +43,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import com.atelierapps.vault.ui.theme.VaultIconButton
 import androidx.compose.material.icons.outlined.MoreVert
+import com.atelierapps.vault.ui.theme.ScreenHeader
+import com.atelierapps.vault.ui.theme.ScreenCaption
+import com.atelierapps.vault.ui.theme.Hairline
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun TagsScreen(vm: TagsViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -54,26 +58,12 @@ fun TagsScreen(vm: TagsViewModel, onClose: () -> Unit, modifier: Modifier = Modi
     var merging by remember { mutableStateOf<TagUsage?>(null) }
 
     Column(modifier.fillMaxSize().background(Bg)) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            VaultIconButton(Icons.Outlined.Close, "Close", onClose)
-            Text(
-                "Tags",
-                color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f).padding(start = 4.dp),
-            )
-        }
-        Text(
-            "Counts are live items. Deleting a tag keeps the items — it only removes the label.",
-            color = Muted, fontSize = 12.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        )
+        ScreenHeader("Tags", onClose)
+        ScreenCaption("Counts are live items. Deleting a tag keeps the items — it only removes the label.")
 
         if (tags.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No tags yet.", color = Muted, fontSize = 15.sp, textAlign = TextAlign.Center)
+                Text("No tags yet.", color = Muted, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
             }
         } else {
             LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
@@ -84,7 +74,7 @@ fun TagsScreen(vm: TagsViewModel, onClose: () -> Unit, modifier: Modifier = Modi
                         onMerge = { merging = tag },
                         onDelete = { deleting = tag },
                     )
-                    HorizontalDivider(color = Color(0xFF20272C))
+                    HorizontalDivider(color = Hairline)
                 }
             }
         }
@@ -141,8 +131,8 @@ private fun TagRow(tag: TagUsage, onRename: () -> Unit, onMerge: () -> Unit, onD
                 .background(runCatching { Color(android.graphics.Color.parseColor(tag.colorHex)) }.getOrDefault(Brass)),
         )
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Text("#${tag.name}", color = Ink, fontSize = 15.sp)
-            Text("${tag.liveCount} item(s)", color = Muted, fontSize = 12.sp)
+            Text("#${tag.name}", color = Ink, style = MaterialTheme.typography.bodyLarge)
+            Text("${tag.liveCount} item(s)", color = Muted, style = MaterialTheme.typography.bodySmall)
         }
         Box {
             VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true }, size = 36)
@@ -172,12 +162,12 @@ private fun MergeDialog(
                 Column {
                     Text(
                         "Its ${source.liveCount} item(s) get the tag you pick, and “${source.name}” is removed.",
-                        color = Muted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp),
+                        color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp),
                     )
                     candidates.forEach { t ->
                         Text(
                             "#${t.name}",
-                            color = Ink, fontSize = 15.sp,
+                            color = Ink, style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.fillMaxWidth().clickable { onPick(t) }.padding(vertical = 10.dp),
                         )
                     }

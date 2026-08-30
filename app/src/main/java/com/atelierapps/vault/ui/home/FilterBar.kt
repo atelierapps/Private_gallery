@@ -42,6 +42,9 @@ import com.atelierapps.vault.filter.MediaTypeFilter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Icon
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Muted
+import androidx.compose.material3.MaterialTheme
 
 /**
  * Compact filter bar (spec §7). Fixed category buttons — Type · Source · Tag ·
@@ -66,7 +69,7 @@ fun FilterBar(
     var tagPicker by remember { mutableStateOf(false) }
 
     LazyRow(
-        modifier = modifier.background(Color(0xFF0E1113)),
+        modifier = modifier.background(Bg),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -146,7 +149,7 @@ private fun SourceMenu(
         AssistChip(onClick = { open = true }, label = { Text("Source ▾") })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             if (sources.isEmpty()) {
-                DropdownMenuItem(text = { Text("No sources yet", color = Color(0xFF8A969E)) }, onClick = {})
+                DropdownMenuItem(text = { Text("No sources yet", color = Muted) }, onClick = {})
             }
             sources.forEach { s ->
                 DropdownMenuItem(
@@ -218,7 +221,7 @@ private fun TagPickerDialog(
                         ) {
                             Checkbox(checked = tag.name in selected, onCheckedChange = { onToggle(tag.name) })
                             Text("#${tag.name}", modifier = Modifier.weight(1f))
-                            Text("${tag.useCount}", color = Color(0xFF8A969E), fontSize = 12.sp)
+                            Text("${tag.useCount}", color = Muted, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

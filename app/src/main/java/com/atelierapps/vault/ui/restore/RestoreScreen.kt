@@ -47,6 +47,7 @@ import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.VaultTheme
+import androidx.compose.material3.MaterialTheme
 
 enum class RestorePhase { PICK, RUNNING, DONE }
 
@@ -122,20 +123,20 @@ private fun RestoreBody(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize().padding(top = 40.dp),
         ) {
-            Text("Restore from backup", color = Ink, fontSize = 22.sp)
+            Text("Restore from backup", color = Ink, style = MaterialTheme.typography.titleLarge)
             when (phase) {
                 RestorePhase.PICK -> {
                     Text(
                         "Choose the folder that contains your manifest.json. Every file it " +
                             "lists is re-encrypted and saved back in with its tags and source. " +
                             "Items already saved are skipped.",
-                        color = Muted, fontSize = 14.sp, textAlign = TextAlign.Center,
+                        color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
                     Button(onClick = onPick) { Text("Choose backup folder") }
                     TextButton(onClick = onClose) { Text("Cancel", color = Muted) }
                 }
                 RestorePhase.RUNNING -> {
-                    Text("Restoring ${progress.done} / ${progress.total}", color = Ink, fontSize = 15.sp)
+                    Text("Restoring ${progress.done} / ${progress.total}", color = Ink, style = MaterialTheme.typography.bodyLarge)
                     LinearProgressIndicator(
                         progress = { if (progress.total == 0) 0f else progress.done.toFloat() / progress.total },
                         color = Brass,
@@ -150,7 +151,7 @@ private fun RestoreBody(
                         else -> "Restored ${r.imported} of ${r.total}" +
                             if (r.failed > 0) " · ${r.failed} skipped/failed" else ""
                     }
-                    Text(msg, color = Ink, fontSize = 16.sp, textAlign = TextAlign.Center)
+                    Text(msg, color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                     Button(onClick = onClose) { Text("Done") }
                 }
             }

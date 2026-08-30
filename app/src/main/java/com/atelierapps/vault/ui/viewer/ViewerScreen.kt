@@ -73,6 +73,8 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.VaultIconButton
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Scrim
 
 /**
  * Programmatic page changes (slideshow advance, prev/next) use an eased glide
@@ -228,7 +230,7 @@ fun ViewerScreen(
             text = { Text("It moves to Recently deleted, where you can restore it for 30 days.") },
             confirmButton = {
                 TextButton(onClick = { pendingDelete = null; onDelete(id) }) {
-                    Text("Delete", color = Color(0xFFE08A7A))
+                    Text("Delete", color = Danger)
                 }
             },
             dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
@@ -488,7 +490,7 @@ private fun PlayControls(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier.fillMaxWidth().background(Color(0xCC06080A)).navigationBarsPadding()
+        modifier.fillMaxWidth().background(Scrim).navigationBarsPadding()
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -498,7 +500,7 @@ private fun PlayControls(
             val on = sec == intervalSec
             Text(
                 "${sec}s",
-                color = if (on) Color(0xFF1A1509) else Ink,
+                color = if (on) BrassInk else Ink,
                 fontSize = 12.sp,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
@@ -514,7 +516,7 @@ private fun PlayControls(
             modifier = Modifier.clickable { onToggleRepeatAll() }.padding(6.dp),
         )
         Text(
-            "Stop", color = Color(0xFFE08A7A), fontSize = 13.sp,
+            "Stop", color = Danger, fontSize = 13.sp,
             modifier = Modifier.clickable { onStop() }.padding(6.dp),
         )
     }
@@ -523,7 +525,7 @@ private fun PlayControls(
 @Composable
 private fun MetadataPanel(item: MediaWithTags, modifier: Modifier) {
     Column(
-        modifier.fillMaxWidth().background(Color(0xCC06080A)).navigationBarsPadding().padding(18.dp),
+        modifier.fillMaxWidth().background(Scrim).navigationBarsPadding().padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(item.media.originalName, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
