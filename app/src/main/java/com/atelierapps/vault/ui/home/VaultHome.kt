@@ -43,7 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.DriveFileMoveOutline
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreVert
@@ -58,6 +58,7 @@ import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.size
+import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.Hairline
 import com.atelierapps.vault.ui.theme.Space
 import com.atelierapps.vault.ui.theme.Surface
@@ -454,7 +455,7 @@ private fun SelectionBar(
             VaultIconButton(Icons.Outlined.MoreVert, "More", { more = true }, enabled = count > 0)
             DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
                 MenuRow(Icons.Outlined.Upload, "Export selection…") { more = false; onExport() }
-                MenuRow(Icons.Outlined.DriveFileMoveOutline, "Move back to gallery") { more = false; onMove() }
+                MenuRow(Icons.Outlined.PhotoLibrary, "Move back to gallery") { more = false; onMove() }
             }
         }
     }
