@@ -38,11 +38,10 @@ import coil3.compose.AsyncImage
 import com.atelierapps.vault.data.entity.MediaWithTags
 import com.atelierapps.vault.ui.image.VaultMediaKey
 import kotlin.math.max
-
-private val Ink = Color(0xFFE9EEF0)
-private val Muted = Color(0xFF8A969E)
-private val Brass = Color(0xFFD8B463)
-private val Danger = Color(0xFFE08A7A)
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Danger
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
 
 @Composable
 fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {

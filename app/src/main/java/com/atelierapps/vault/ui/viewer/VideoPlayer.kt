@@ -67,8 +67,9 @@ import com.atelierapps.vault.ui.image.VaultMediaKey
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Muted
 
-private val Brass = Color(0xFFD8B463)
 private val SPEEDS = floatArrayOf(0.25f, 0.5f, 1f, 1.5f, 2f)
 private const val SPEED_DEFAULT = 2 // index of 1.0×
 

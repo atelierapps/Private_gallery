@@ -25,10 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.atelierapps.vault.ui.grid.VaultGridScreen
 import com.atelierapps.vault.ui.viewer.ViewerSession
-
-private val Ink = Color(0xFFE9EEF0)
-private val Brass = Color(0xFFD8B463)
-private val Danger = Color(0xFFE08A7A)
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Danger
+import com.atelierapps.vault.ui.theme.Ink
 
 @Composable
 fun AlbumScreen(

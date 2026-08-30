@@ -38,13 +38,12 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.atelierapps.vault.filter.MediaTypeFilter
 import com.atelierapps.vault.ui.image.DeviceThumb
-
-private val Bg = Color(0xFF0E1113)
-private val Surface = Color(0xFF171C20)
-private val Brass = Color(0xFFD8B463)
-private val BrassInk = Color(0xFF1A1509)
-private val Muted = Color(0xFF8A969E)
-private val Ink = Color(0xFFE9EEF0)
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.SurfaceHigh
 
 /**
  * The importer UI (spec §4, §4.1, §15.5): tabs (all media / by folder), a
@@ -159,7 +158,7 @@ private fun TopBar(count: Int, onPickFiles: () -> Unit, onCancel: () -> Unit) {
 private fun Tabs(tab: ImportTab, onDevice: () -> Unit, onFolder: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(11.dp)).background(Surface),
+            .clip(RoundedCornerShape(11.dp)).background(SurfaceHigh),
     ) {
         TabButton("All media", tab == ImportTab.DEVICE, Modifier.weight(1f), onDevice)
         TabButton("By folder", tab == ImportTab.FOLDER, Modifier.weight(1f), onFolder)
@@ -302,7 +301,7 @@ private fun BottomBar(
     onSetDelete: (Boolean) -> Unit,
     onImport: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().background(Surface).padding(16.dp)) {
+    Column(Modifier.fillMaxWidth().background(SurfaceHigh).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Delete originals after import", color = Ink, fontSize = 13.sp, modifier = Modifier.weight(1f))
             Switch(checked = deleteOriginals, onCheckedChange = onSetDelete)

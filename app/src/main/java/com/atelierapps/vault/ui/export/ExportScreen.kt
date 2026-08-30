@@ -20,11 +20,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import com.atelierapps.vault.media.ExportProgress
 import com.atelierapps.vault.media.ExportResult
-
-private val Bg = Color(0xFF0E1113)
-private val Ink = Color(0xFFE9EEF0)
-private val Muted = Color(0xFF8A969E)
-private val Brass = Color(0xFFD8B463)
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
 
 /** Biometric gate shown before the export flow (spec §11). */
 @Composable

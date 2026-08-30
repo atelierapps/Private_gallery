@@ -36,9 +36,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.SingletonImageLoader
 import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.ui.grid.VaultGridScreen
-
-private val Ink = Color(0xFFE9EEF0)
-private val Brass = Color(0xFFD8B463)
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -373,8 +373,6 @@ private fun TopAppRow(
         }
     }
 }
-
-private val Muted = Color(0xFF8A969E)
 
 @Composable
 private fun MenuSection(title: String) {

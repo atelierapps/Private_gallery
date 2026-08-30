@@ -22,11 +22,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,6 +42,11 @@ import com.atelierapps.vault.media.VaultRestorer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.VaultTheme
 
 enum class RestorePhase { PICK, RUNNING, DONE }
 
@@ -87,7 +90,7 @@ class RestoreActivity : ComponentActivity() {
         )
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            VaultTheme {
                 Surface(Modifier.fillMaxSize()) {
                     val phase by vm.phase.collectAsState()
                     val progress by vm.progress.collectAsState()
@@ -103,11 +106,6 @@ class RestoreActivity : ComponentActivity() {
         }
     }
 }
-
-private val Bg = Color(0xFF0E1113)
-private val Ink = Color(0xFFE9EEF0)
-private val Muted = Color(0xFF8A969E)
-private val Brass = Color(0xFFD8B463)
 
 @Composable
 private fun RestoreBody(

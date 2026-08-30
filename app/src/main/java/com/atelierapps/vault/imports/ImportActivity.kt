@@ -11,11 +11,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.atelierapps.vault.ui.theme.VaultTheme
 
 /**
  * Hosts the importer (spec §4, §4.1). Owns the read-media permission request and
@@ -63,7 +62,7 @@ class ImportActivity : ComponentActivity() {
         else permissionLauncher.launch(MediaPermissions.required())
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            VaultTheme {
                 val tab by vm.tab.collectAsState()
                 val items by vm.items.collectAsState()
                 val folders by vm.folders.collectAsState()

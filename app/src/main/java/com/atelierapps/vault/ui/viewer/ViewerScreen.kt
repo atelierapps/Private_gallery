@@ -60,6 +60,9 @@ import com.atelierapps.vault.ui.image.VaultMediaKey
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
 
 /**
  * Programmatic page changes (slideshow advance, prev/next) use an eased glide
@@ -67,10 +70,6 @@ import java.util.Locale
  * on a run of short clips reads as a jolt. Manual swipes still fling normally.
  */
 private val PageGlide = tween<Float>(durationMillis = 550, easing = FastOutSlowInEasing)
-
-private val Ink = Color(0xFFE9EEF0)
-private val Muted = Color(0xFF9AA6AD)
-private val Brass = Color(0xFFD8B463)
 
 /**
  * Full-screen viewer (spec §8, §15.4). Swipe between items; pinch to zoom images.

@@ -22,10 +22,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -43,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import coil3.compose.AsyncImage
 import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.media.SourceInfo
+import com.atelierapps.vault.ui.theme.VaultTheme
 
 /**
  * The save bottom sheet (spec §5). Renders inside the transparent share Activity.
@@ -59,7 +58,7 @@ fun SaveSheet(
     onSave: (selectedTags: List<String>, onEnqueued: () -> Unit) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    MaterialTheme(colorScheme = darkColorScheme()) {
+    VaultTheme {
         var topTags by remember { mutableStateOf<List<TagEntity>>(emptyList()) }
         val selected = remember { mutableStateListOf<String>() }
         var saving by remember { mutableStateOf(false) }

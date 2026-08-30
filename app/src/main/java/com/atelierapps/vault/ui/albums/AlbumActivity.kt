@@ -12,11 +12,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.Modifier
 import com.atelierapps.vault.ui.viewer.ViewerActivity
+import com.atelierapps.vault.ui.theme.VaultTheme
 
 /** Shows one album's contents (spec §7). FLAG_SECURE like the rest of the vault. */
 class AlbumActivity : ComponentActivity() {
@@ -36,7 +35,7 @@ class AlbumActivity : ComponentActivity() {
         vm.setAlbum(albumId)
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            VaultTheme {
                 Surface(Modifier.fillMaxSize()) {
                     AlbumScreen(
                         vm = vm,

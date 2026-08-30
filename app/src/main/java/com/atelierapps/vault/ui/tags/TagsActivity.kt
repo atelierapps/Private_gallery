@@ -10,10 +10,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.Modifier
+import com.atelierapps.vault.ui.theme.VaultTheme
 
 /** Hosts the tag manager (spec §7). FLAG_SECURE like the rest of the vault. */
 class TagsActivity : ComponentActivity() {
@@ -29,7 +28,7 @@ class TagsActivity : ComponentActivity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            VaultTheme {
                 Surface(Modifier.fillMaxSize()) {
                     TagsScreen(vm = vm, onClose = { finish() }, modifier = Modifier.safeDrawingPadding())
                 }

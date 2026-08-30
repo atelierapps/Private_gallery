@@ -30,12 +30,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
-
-private val Bg = Color(0xFF0E1113)
-private val Card = Color(0xFF171C20)
-private val Ink = Color(0xFFE9EEF0)
-private val Muted = Color(0xFF8A969E)
-private val Brass = Color(0xFFD8B463)
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.SurfaceHigh
 
 @Composable
 fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -157,7 +156,7 @@ private fun StorageCard(title: String, content: @Composable () -> Unit) {
             modifier = Modifier.padding(start = 6.dp, bottom = 6.dp),
         )
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Card).padding(16.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SurfaceHigh).padding(16.dp),
         ) { content() }
     }
 }

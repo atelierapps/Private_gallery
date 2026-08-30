@@ -39,12 +39,11 @@ import com.atelierapps.vault.data.entity.AutoTagRuleEntity
 import com.atelierapps.vault.data.entity.RuleMatchKind
 import com.atelierapps.vault.data.entity.SourceType
 import com.atelierapps.vault.data.entity.TagEntity
-
-private val Bg = Color(0xFF0E1113)
-private val Ink = Color(0xFFE9EEF0)
-private val Muted = Color(0xFF8A969E)
-private val Brass = Color(0xFFD8B463)
-private val Danger = Color(0xFFE08A7A)
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.Danger
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
 
 /** Friendly labels for the capture-type picker (UNKNOWN is never a rule target). */
 private val TYPE_CHOICES = listOf(

@@ -13,13 +13,12 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.atelierapps.vault.ui.theme.VaultTheme
 
 /**
  * Hosts the full-screen viewer (spec §8). FLAG_SECURE blocks screenshots here
@@ -55,7 +54,7 @@ class ViewerActivity : ComponentActivity() {
         vm.load()
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            VaultTheme {
                 val media by vm.media.collectAsState()
                 val loaded by vm.loaded.collectAsState()
                 val albums by vm.albums.collectAsState()

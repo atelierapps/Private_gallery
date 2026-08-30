@@ -36,13 +36,12 @@ import androidx.compose.ui.unit.sp
 import com.atelierapps.vault.session.DisplayPrefs
 import com.atelierapps.vault.session.LockPrefs
 import com.atelierapps.vault.session.VideoPrefs
-
-private val Bg = Color(0xFF0E1113)
-private val Card = Color(0xFF171C20)
-private val Ink = Color(0xFFE9EEF0)
-private val Muted = Color(0xFF8A969E)
-private val Brass = Color(0xFFD8B463)
-private val BrassInk = Color(0xFF1A1509)
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.SurfaceHigh
 
 @Composable
 fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifier = Modifier) {
@@ -162,7 +161,7 @@ private fun SettingsCard(title: String, content: @Composable () -> Unit) {
             modifier = Modifier.padding(start = 6.dp, bottom = 6.dp),
         )
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Card).padding(16.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SurfaceHigh).padding(16.dp),
         ) { content() }
     }
 }
