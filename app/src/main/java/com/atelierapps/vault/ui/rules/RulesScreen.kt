@@ -44,6 +44,9 @@ import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import com.atelierapps.vault.ui.theme.VaultIconButton
 
 /** Friendly labels for the capture-type picker (UNKNOWN is never a rule target). */
 private val TYPE_CHOICES = listOf(
@@ -68,7 +71,7 @@ fun RulesScreen(vm: RulesViewModel, onClose: () -> Unit, modifier: Modifier = Mo
                 Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onClose) { Text("✕", color = Ink, fontSize = 16.sp) }
+                VaultIconButton(Icons.Outlined.Close, "Close", onClose)
                 Text(
                     "Auto-tag rules",
                     color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,

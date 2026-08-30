@@ -44,6 +44,10 @@ import com.atelierapps.vault.ui.theme.BrassInk
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.PlayArrow
 
 /**
  * The importer UI (spec §4, §4.1, §15.5): tabs (all media / by folder), a
@@ -276,9 +280,11 @@ private fun PickTile(item: DeviceMedia, selected: Boolean, onToggle: (Uri) -> Un
             modifier = Modifier.fillMaxSize(),
         )
         if (item.isVideo) {
-            Text(
-                "▶", color = Color.White, fontSize = 12.sp,
-                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp),
+            Icon(
+                Icons.Filled.PlayArrow,
+                contentDescription = "Video",
+                tint = Color.White,
+                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).size(15.dp),
             )
         }
         if (selected) {
@@ -287,7 +293,7 @@ private fun PickTile(item: DeviceMedia, selected: Boolean, onToggle: (Uri) -> Un
                     .background(Brass),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✓", color = BrassInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Filled.Check, null, tint = BrassInk, modifier = Modifier.size(13.dp))
             }
         }
     }

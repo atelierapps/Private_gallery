@@ -39,6 +39,10 @@ import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import com.atelierapps.vault.ui.theme.VaultIconButton
+import androidx.compose.material.icons.outlined.MoreVert
 
 @Composable
 fun TagsScreen(vm: TagsViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -54,7 +58,7 @@ fun TagsScreen(vm: TagsViewModel, onClose: () -> Unit, modifier: Modifier = Modi
             Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onClose) { Text("✕", color = Ink, fontSize = 16.sp) }
+            VaultIconButton(Icons.Outlined.Close, "Close", onClose)
             Text(
                 "Tags",
                 color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
@@ -141,7 +145,7 @@ private fun TagRow(tag: TagUsage, onRename: () -> Unit, onMerge: () -> Unit, onD
             Text("${tag.liveCount} item(s)", color = Muted, fontSize = 12.sp)
         }
         Box {
-            TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 18.sp) }
+            VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true }, size = 36)
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
                 DropdownMenuItem(text = { Text("Merge into…") }, onClick = { menu = false; onMerge() })

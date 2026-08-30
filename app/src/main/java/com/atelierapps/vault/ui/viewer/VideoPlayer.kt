@@ -69,6 +69,18 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Muted
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.VolumeOff
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Forward10
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Replay10
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 
 private val SPEEDS = floatArrayOf(0.25f, 0.5f, 1f, 1.5f, 2f)
 private const val SPEED_DEFAULT = 2 // index of 1.0×
@@ -126,7 +138,14 @@ fun VideoPlayer(
             Box(
                 Modifier.size(56.dp).clip(CircleShape).background(Color(0x66000000)),
                 contentAlignment = Alignment.Center,
-            ) { Text("▶", color = Color.White, fontSize = 24.sp) }
+            ) {
+                Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
         return
     }
@@ -379,7 +398,14 @@ fun VideoPlayer(
                         detectTapGestures(onTap = { if (isPlaying) player.pause() else player.play() })
                     },
                 contentAlignment = Alignment.Center,
-            ) { Text(if (isPlaying) "⏸" else "▶", color = Color.White, fontSize = 28.sp) }
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp),
+                )
+            }
 
             val shown = if (scrubbing) scrubMs else positionMs
             val dur = durationMs.coerceAtLeast(1L)
@@ -411,19 +437,26 @@ fun VideoPlayer(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    CtlButton("⏮", Modifier.weight(1f), enabled = onPrev != null) { onPrev?.invoke() }
-                    CtlButton("−10", Modifier.weight(1f)) {
+                    CtlIcon(Icons.Outlined.SkipPrevious, "Previous", Modifier.weight(1f), enabled = onPrev != null) {
+                        onPrev?.invoke()
+                    }
+                    CtlIcon(Icons.Outlined.Replay10, "Back 10 seconds", Modifier.weight(1f)) {
                         player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0L))
                     }
-                    CtlButton("+10", Modifier.weight(1f)) { player.seekTo(player.currentPosition + 10_000) }
-                    CtlButton("⏭", Modifier.weight(1f), enabled = onNext != null) { onNext?.invoke() }
+                    CtlIcon(Icons.Outlined.Forward10, "Forward 10 seconds", Modifier.weight(1f)) {
+                        player.seekTo(player.currentPosition + 10_000)
+                    }
+                    CtlIcon(Icons.Outlined.SkipNext, "Next", Modifier.weight(1f), enabled = onNext != null) {
+                        onNext?.invoke()
+                    }
 
                     // Mute is a standing setting, not a per-clip one: it persists
                     // and also switches off the swipe volume gesture.
-                    CtlButton(
-                        if (muted) "🔇" else "🔊",
+                    CtlIcon(
+                        if (muted) Icons.AutoMirrored.Outlined.VolumeOff else Icons.AutoMirrored.Outlined.VolumeUp,
+                        if (muted) "Unmute" else "Mute",
                         Modifier.weight(1f),
-                        tint = if (muted) Brass else Color(0x88FFFFFF),
+                        tint = if (muted) Brass else Color(0x99FFFFFF),
                     ) {
                         muted = !muted
                         VideoPrefs.setMuted(context, muted)
@@ -431,7 +464,7 @@ fun VideoPlayer(
                     }
 
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        CtlButton(speedLabel(SPEEDS[speedIdx]), tint = Brass) { speedMenu = true }
+                        CtlText(speedLabel(SPEEDS[speedIdx]), tint = Brass) { speedMenu = true }
                         DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
                             SPEEDS.forEachIndexed { i, sp ->
                                 DropdownMenuItem(
@@ -443,13 +476,14 @@ fun VideoPlayer(
                     }
                     // Loop is unavailable during a slideshow — it would stop the
                     // clip from ever ending, which is what advances the show.
-                    CtlButton(
-                        "🔁",
+                    CtlIcon(
+                        Icons.Outlined.Repeat,
+                        "Loop this clip",
                         Modifier.weight(1f),
                         tint = when {
                             slideshowActive -> Color(0x33FFFFFF)
                             loop -> Brass
-                            else -> Color(0x88FFFFFF)
+                            else -> Color(0x99FFFFFF)
                         },
                         enabled = !slideshowActive,
                     ) { loop = !loop }
@@ -461,11 +495,11 @@ fun VideoPlayer(
 
 /** A roomy, evenly-spaced control-bar button (comfortable touch target). */
 @Composable
-private fun CtlButton(
-    label: String,
+private fun CtlIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
     modifier: Modifier = Modifier,
     tint: Color = Color.White,
-    fontSize: Int = 15,
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
@@ -474,7 +508,28 @@ private fun CtlButton(
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (enabled) tint else Color(0x33FFFFFF), fontSize = fontSize.sp)
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) tint else Color(0x33FFFFFF),
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+/** The speed control shows a value, so it stays text where an icon would lose meaning. */
+@Composable
+private fun CtlText(
+    label: String,
+    modifier: Modifier = Modifier,
+    tint: Color = Color.White,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier.height(44.dp).clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = tint, style = MaterialTheme.typography.labelLarge)
     }
 }
 

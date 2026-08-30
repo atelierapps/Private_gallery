@@ -39,6 +39,29 @@ import com.atelierapps.vault.ui.grid.VaultGridScreen
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.DriveFileMoveOutline
+import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PhotoAlbum
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Upload
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.size
+import com.atelierapps.vault.ui.theme.Hairline
+import com.atelierapps.vault.ui.theme.Space
+import com.atelierapps.vault.ui.theme.Surface
+import com.atelierapps.vault.ui.theme.VaultIconButton
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -342,36 +365,51 @@ private fun TopAppRow(
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 2.dp),
+        Modifier.fillMaxWidth().padding(start = Space.lg, end = Space.sm, top = Space.sm, bottom = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Link", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        TextButton(onClick = onCamera) { Text("📷", fontSize = 15.sp) }
-        TextButton(onClick = onShuffle) { Text("🔀", fontSize = 15.sp) }
-        TextButton(onClick = onToggleSearch) { Text("🔍", fontSize = 15.sp) }
+        Text(
+            "Link",
+            color = Ink,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.weight(1f),
+        )
+        VaultIconButton(Icons.Outlined.PhotoCamera, "Camera", onCamera)
+        VaultIconButton(Icons.Outlined.Shuffle, "Shuffle play", onShuffle)
+        VaultIconButton(Icons.Outlined.Search, "Search", onToggleSearch)
         Box {
-            TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 20.sp) }
+            VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true })
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 MenuSection("Library")
-                DropdownMenuItem(text = { Text("Albums") }, onClick = { menu = false; onAlbums() })
-                DropdownMenuItem(text = { Text("Tags") }, onClick = { menu = false; onTags() })
-                DropdownMenuItem(text = { Text("Auto-tag rules") }, onClick = { menu = false; onRules() })
-                DropdownMenuItem(
-                    text = { Text("Recently deleted" + if (trashCount > 0) "  ($trashCount)" else "") },
-                    onClick = { menu = false; onTrash() },
-                )
+                MenuRow(Icons.Outlined.PhotoAlbum, "Albums") { menu = false; onAlbums() }
+                MenuRow(Icons.Outlined.LocalOffer, "Tags") { menu = false; onTags() }
+                MenuRow(Icons.Outlined.AutoAwesome, "Auto-tag rules") { menu = false; onRules() }
+                MenuRow(
+                    Icons.Outlined.DeleteOutline,
+                    "Recently deleted" + if (trashCount > 0) "  ($trashCount)" else "",
+                ) { menu = false; onTrash() }
 
-                HorizontalDivider()
+                HorizontalDivider(color = Hairline)
                 MenuSection("Backup")
-                DropdownMenuItem(text = { Text("Export / back up") }, onClick = { menu = false; onExport() })
-                DropdownMenuItem(text = { Text("Restore from backup") }, onClick = { menu = false; onRestore() })
+                MenuRow(Icons.Outlined.Upload, "Export / back up") { menu = false; onExport() }
+                MenuRow(Icons.Outlined.Restore, "Restore from backup") { menu = false; onRestore() }
 
-                HorizontalDivider()
-                DropdownMenuItem(text = { Text("Lock now") }, onClick = { menu = false; onLockNow() })
-                DropdownMenuItem(text = { Text("Settings") }, onClick = { menu = false; onSettings() })
+                HorizontalDivider(color = Hairline)
+                MenuRow(Icons.Outlined.Lock, "Lock now") { menu = false; onLockNow() }
+                MenuRow(Icons.Outlined.Settings, "Settings") { menu = false; onSettings() }
             }
         }
     }
+}
+
+/** One row of the overflow menu: leading icon, label, consistent everywhere. */
+@Composable
+private fun MenuRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(label, style = MaterialTheme.typography.bodyLarge) },
+        leadingIcon = { Icon(icon, contentDescription = null, tint = Muted, modifier = Modifier.size(20.dp)) },
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -398,32 +436,25 @@ private fun SelectionBar(
     // behind an overflow so the row doesn't turn into seven cramped buttons.
     var more by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().background(Color(0xFF171C20)).padding(horizontal = 2.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth().background(Surface).padding(horizontal = Space.sm, vertical = Space.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextButton(onClick = onClose) { Text("✕", color = Ink, fontSize = 16.sp) }
+        VaultIconButton(Icons.Outlined.Close, "Clear selection", onClose)
         Text(
-            "$count",
-            color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.weight(1f).padding(start = 4.dp),
+            "$count selected",
+            color = Ink,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f).padding(start = Space.xs),
         )
-        TextButton(onClick = onSelectAll) { Text("All", color = Ink) }
-        TextButton(onClick = onTag, enabled = count > 0) { Text("Tag", color = Ink) }
-        TextButton(onClick = onAlbum, enabled = count > 0) { Text("Album", color = Ink) }
-        TextButton(onClick = onDelete, enabled = count > 0) { Text("Delete", color = Color(0xFFE08A7A)) }
+        VaultIconButton(Icons.Outlined.SelectAll, "Select all", onSelectAll)
+        VaultIconButton(Icons.Outlined.LocalOffer, "Tag", onTag, enabled = count > 0)
+        VaultIconButton(Icons.Outlined.PhotoAlbum, "Add to album", onAlbum, enabled = count > 0)
+        VaultIconButton(Icons.Outlined.DeleteOutline, "Delete", onDelete, tint = Danger, enabled = count > 0)
         Box {
-            TextButton(onClick = { more = true }, enabled = count > 0) {
-                Text("⋮", color = Ink, fontSize = 18.sp)
-            }
+            VaultIconButton(Icons.Outlined.MoreVert, "More", { more = true }, enabled = count > 0)
             DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
-                DropdownMenuItem(
-                    text = { Text("Export selection…") },
-                    onClick = { more = false; onExport() },
-                )
-                DropdownMenuItem(
-                    text = { Text("Move back to gallery") },
-                    onClick = { more = false; onMove() },
-                )
+                MenuRow(Icons.Outlined.Upload, "Export selection…") { more = false; onExport() }
+                MenuRow(Icons.Outlined.DriveFileMoveOutline, "Move back to gallery") { more = false; onMove() }
             }
         }
     }

@@ -42,6 +42,9 @@ import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import com.atelierapps.vault.ui.theme.VaultIconButton
 
 @Composable
 fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -57,7 +60,7 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
                 Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onClose) { Text("✕", color = Ink, fontSize = 16.sp) }
+                VaultIconButton(Icons.Outlined.Close, "Close", onClose)
                 Text(
                     "Recently deleted",
                     color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,

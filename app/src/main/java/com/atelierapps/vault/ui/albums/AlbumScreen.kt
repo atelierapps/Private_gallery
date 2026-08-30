@@ -28,6 +28,9 @@ import com.atelierapps.vault.ui.viewer.ViewerSession
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.Ink
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import com.atelierapps.vault.ui.theme.VaultIconButton
 
 @Composable
 fun AlbumScreen(
@@ -51,7 +54,7 @@ fun AlbumScreen(
                     Modifier.fillMaxWidth().background(Color(0xFF171C20)).padding(horizontal = 4.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = vm::clearSelection) { Text("✕", color = Ink, fontSize = 16.sp) }
+                    VaultIconButton(Icons.Outlined.Close, "Close", vm::clearSelection)
                     Text(
                         "${selectedIds.size}",
                         color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,

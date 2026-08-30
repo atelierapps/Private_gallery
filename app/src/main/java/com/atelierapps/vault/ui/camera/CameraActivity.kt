@@ -57,6 +57,9 @@ import com.atelierapps.vault.media.SaveRequest
 import com.atelierapps.vault.media.SourceInfo
 import com.atelierapps.vault.share.SaveMediaWorker
 import java.io.File
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Icon
 
 /**
  * In-app camera: captures photos and videos **straight into the vault** via the
@@ -187,9 +190,12 @@ private fun CameraScreen(lifecycleOwner: LifecycleOwner, audioEnabled: Boolean, 
             modifier = Modifier.fillMaxSize(),
         )
 
-        Text(
-            "✕", color = Color.White, fontSize = 22.sp,
-            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(16.dp).clickable { onClose() },
+        Icon(
+            Icons.Outlined.Close,
+            contentDescription = "Close camera",
+            tint = Color.White,
+            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(16.dp)
+                .size(26.dp).clickable { onClose() },
         )
         Text(
             "Flip", color = Color.White, fontSize = 14.sp,

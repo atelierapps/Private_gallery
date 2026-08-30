@@ -63,6 +63,16 @@ import java.util.Locale
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.IosShare
+import androidx.compose.material.icons.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import com.atelierapps.vault.ui.theme.Danger
+import com.atelierapps.vault.ui.theme.VaultIconButton
 
 /**
  * Programmatic page changes (slideshow advance, prev/next) use an eased glide
@@ -439,18 +449,26 @@ private fun TopBar(
             .padding(horizontal = 2.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextButton(onClick = onBack) { Text("‹", color = Ink, fontSize = 20.sp) }
+        VaultIconButton(Icons.Outlined.KeyboardArrowLeft, "Back", onBack, tint = Ink, size = 44)
         Box(Modifier.weight(1f))
-        TextButton(onClick = onTogglePlay) {
-            Text(if (playMode) "⏸" else "▶", color = Brass, fontSize = 16.sp)
-        }
-        TextButton(onClick = onShare) { Text("Share", color = Ink) }
-        TextButton(onClick = onTogglePin) {
-            Text(if (isPinned) "📌" else "Pin", color = if (isPinned) Brass else Ink)
-        }
-        TextButton(onClick = onDelete) { Text("Delete", color = Color(0xFFE08A7A)) }
+        VaultIconButton(
+            if (playMode) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+            if (playMode) "Pause slideshow" else "Play all",
+            onTogglePlay,
+            tint = Brass,
+            size = 44,
+        )
+        VaultIconButton(Icons.Outlined.IosShare, "Share", onShare, size = 44)
+        VaultIconButton(
+            Icons.Filled.PushPin,
+            if (isPinned) "Unpin" else "Pin",
+            onTogglePin,
+            tint = if (isPinned) Brass else Ink,
+            size = 44,
+        )
+        VaultIconButton(Icons.Outlined.DeleteOutline, "Delete", onDelete, tint = Danger, size = 44)
         Box {
-            TextButton(onClick = { menu = true }) { Text("⋮", color = Ink, fontSize = 18.sp) }
+            VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true }, size = 44)
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Tags…") }, onClick = { menu = false; onTag() })
                 DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })

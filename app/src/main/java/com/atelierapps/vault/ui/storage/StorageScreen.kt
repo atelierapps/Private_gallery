@@ -35,6 +35,9 @@ import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import com.atelierapps.vault.ui.theme.VaultIconButton
 
 @Composable
 fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -46,7 +49,7 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
             Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onClose) { Text("✕", color = Ink, fontSize = 16.sp) }
+            VaultIconButton(Icons.Outlined.Close, "Close", onClose)
             Text(
                 "Storage",
                 color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,

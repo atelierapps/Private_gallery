@@ -42,6 +42,12 @@ import com.atelierapps.vault.ui.theme.BrassInk
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import com.atelierapps.vault.ui.theme.VaultIconButton
+import androidx.compose.material.icons.outlined.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Check
 
 @Composable
 fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifier = Modifier) {
@@ -61,7 +67,7 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
             Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onClose) { Text("✕", color = Ink, fontSize = 16.sp) }
+            VaultIconButton(Icons.Outlined.Close, "Close", onClose)
             Text(
                 "Settings",
                 color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
@@ -133,7 +139,7 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
                             color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp),
                         )
                     }
-                    Text("›", color = Muted, fontSize = 20.sp)
+                    Icon(Icons.Outlined.KeyboardArrowRight, null, tint = Muted, modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -206,7 +212,7 @@ private fun RadioRow(label: String, selected: Boolean, onClick: () -> Unit) {
             Modifier.size(18.dp).clip(CircleShape)
                 .background(if (selected) Brass else Color(0xFF2A3238)),
             contentAlignment = Alignment.Center,
-        ) { if (selected) Text("✓", color = BrassInk, fontSize = 11.sp) }
+        ) { if (selected) Icon(Icons.Filled.Check, null, tint = BrassInk, modifier = Modifier.size(12.dp)) }
         Text(label, color = Ink, fontSize = 15.sp, modifier = Modifier.padding(start = 12.dp))
     }
 }

@@ -42,6 +42,17 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.atelierapps.vault.data.entity.MediaWithTags
 import com.atelierapps.vault.ui.image.VaultMediaKey
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.SurfaceHigh
 
 /**
  * The vault grid — home base (spec §8, §15.2). Three columns, decrypting Coil
@@ -71,7 +82,7 @@ fun VaultGridScreen(
     var columns by remember(initialColumns) { mutableIntStateOf(initialColumns) }
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
-        modifier = modifier.fillMaxSize().background(Color(0xFF0E1113))
+        modifier = modifier.fillMaxSize().background(Bg)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -159,10 +170,9 @@ private fun dateBucket(millis: Long, now: Long): String {
 private fun SectionHeader(title: String) {
     Text(
         title,
-        color = Color(0xFFBFC8CE),
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.fillMaxWidth().padding(start = 6.dp, top = 12.dp, bottom = 4.dp),
+        color = Muted,
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier.fillMaxWidth().padding(start = 6.dp, top = 18.dp, bottom = 6.dp),
     )
 }
 
@@ -181,12 +191,12 @@ private fun MediaTile(
         Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(2.dp))
-            .background(Color(0xFF1B2126))
+            .background(SurfaceHigh)
             .combinedClickable(
                 onClick = { if (selectionMode) onToggleSelect(id) else onOpen(id) },
                 onLongClick = { onLongPress(id) },
             )
-            .then(if (selected) Modifier.border(2.5.dp, Color(0xFFD8B463), RoundedCornerShape(2.dp)) else Modifier),
+            .then(if (selected) Modifier.border(2.5.dp, Brass, RoundedCornerShape(2.dp)) else Modifier),
     ) {
         AsyncImage(
             model = VaultMediaKey(id, full = false),
@@ -202,24 +212,33 @@ private fun MediaTile(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(4.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0x9906080A))
-                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(Color(0xAA06080A))
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
             )
         }
         if (item.media.isPinned) {
-            Text(
-                "📌", fontSize = 11.sp,
-                modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
+            Icon(
+                Icons.Filled.PushPin,
+                contentDescription = "Pinned",
+                tint = Ink,
+                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp).size(13.dp),
             )
         }
         if (selectionMode) {
             Box(
                 Modifier.align(Alignment.TopStart).padding(4.dp).size(18.dp).clip(CircleShape)
-                    .background(if (selected) Color(0xFFD8B463) else Color(0x8806080A)),
+                    .background(if (selected) Brass else Color(0x8806080A)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (selected) Text("✓", color = Color(0xFF1A1509), fontSize = 12.sp)
+                if (selected) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = BrassInk,
+                        modifier = Modifier.size(13.dp),
+                    )
+                }
             }
         }
     }
@@ -233,17 +252,17 @@ private fun MediaTile(
 @Composable
 private fun EmptyState(modifier: Modifier, onImport: (() -> Unit)?, onCamera: (() -> Unit)?) {
     Box(
-        modifier.fillMaxSize().background(Color(0xFF0E1113)).padding(32.dp),
+        modifier.fillMaxSize().background(Bg).padding(32.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "Nothing here yet",
-                color = Color(0xFFE9EEF0), fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+                color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
             )
             Text(
                 "Everything you add is encrypted on this device.",
-                color = Color(0xFF8A969E), fontSize = 13.sp,
+                color = Muted, fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 6.dp, bottom = 22.dp),
             )
@@ -255,7 +274,7 @@ private fun EmptyState(modifier: Modifier, onImport: (() -> Unit)?, onCamera: ((
             }
             Text(
                 "Or share media to Link from any other app.",
-                color = Color(0xFF8A969E), fontSize = 12.sp,
+                color = Muted, fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 14.dp),
             )
@@ -268,12 +287,12 @@ private fun EmptyAction(title: String, subtitle: String, onClick: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().padding(bottom = 10.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF171C20))
+            .background(SurfaceHigh)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Text(title, color = Color(0xFFD8B463), fontSize = 15.sp, fontWeight = FontWeight.Medium)
-        Text(subtitle, color = Color(0xFF8A969E), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+        Text(title, color = Brass, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        Text(subtitle, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
 

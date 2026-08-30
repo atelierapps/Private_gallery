@@ -39,6 +39,9 @@ import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.filter.DateBucket
 import com.atelierapps.vault.filter.MediaFilter
 import com.atelierapps.vault.filter.MediaTypeFilter
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Icon
 
 /**
  * Compact filter bar (spec §7). Fixed category buttons — Type · Source · Tag ·
@@ -108,7 +111,7 @@ private fun ActiveChip(label: String, onRemove: () -> Unit) {
         selected = true,
         onClick = onRemove,
         label = { Text(label) },
-        trailingIcon = { Text("✕", fontSize = 12.sp) },
+        trailingIcon = { Icon(Icons.Outlined.Close, null, Modifier.size(14.dp)) },
     )
 }
 
