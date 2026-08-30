@@ -39,6 +39,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import com.atelierapps.vault.ui.theme.VaultTheme
+import androidx.compose.ui.platform.LocalView
+import com.atelierapps.vault.session.TileAnchor
 
 /**
  * Host for the vault UI (spec §8, §9). Shows the lock screen until a successful
@@ -57,6 +59,8 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             VaultTheme {
+                // The window the viewer's open animation is measured against.
+                val hostView = LocalView.current
                 Surface(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                         val locked by VaultSession.locked.collectAsState()
@@ -67,7 +71,10 @@ class MainActivity : FragmentActivity() {
                         } else {
                             VaultHome(
                                 onOpen = { id ->
-                                    startActivity(ViewerActivity.intent(this@MainActivity, id))
+                                    startActivity(
+                                        ViewerActivity.intent(this@MainActivity, id),
+                                        TileAnchor.consumeOptions(hostView),
+                                    )
                                 },
                                 onImport = {
                                     startActivity(Intent(this@MainActivity, ImportActivity::class.java))

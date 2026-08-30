@@ -53,6 +53,15 @@ import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.atelierapps.vault.session.TileAnchor
 
 /**
  * The vault grid — home base (spec §8, §15.2). Three columns, decrypting Coil
@@ -187,13 +196,37 @@ private fun MediaTile(
     onToggleSelect: (String) -> Unit,
 ) {
     val id = item.media.id
+
+    // Held outside snapshot state on purpose: this is written on every layout
+    // pass while the grid scrolls, and routing it through mutableStateOf would
+    // recompose every visible tile for a value only the click handler reads.
+    val coords = remember { arrayOfNulls<LayoutCoordinates>(1) }
+
+    // Thumbnails arrive as their decryption finishes, so they land at genuinely
+    // different moments; fading each one in on arrival turns that into a stagger
+    // instead of a grid of tiles popping.
+    var decoded by remember(id) { mutableStateOf(false) }
+    val thumbAlpha by animateFloatAsState(
+        targetValue = if (decoded) 1f else 0f,
+        animationSpec = tween(durationMillis = 260, easing = LinearOutSlowInEasing),
+        label = "thumbFade",
+    )
+
     Box(
         Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(2.dp))
             .background(SurfaceHigh)
+            .onGloballyPositioned { coords[0] = it }
             .combinedClickable(
-                onClick = { if (selectionMode) onToggleSelect(id) else onOpen(id) },
+                onClick = {
+                    if (selectionMode) {
+                        onToggleSelect(id)
+                    } else {
+                        coords[0]?.takeIf { it.isAttached }?.let { TileAnchor.record(it.boundsInWindow()) }
+                        onOpen(id)
+                    }
+                },
                 onLongClick = { onLongPress(id) },
             )
             .then(if (selected) Modifier.border(2.5.dp, Brass, RoundedCornerShape(2.dp)) else Modifier),
@@ -202,7 +235,9 @@ private fun MediaTile(
             model = VaultMediaKey(id, full = false),
             contentDescription = item.media.originalName,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+            onSuccess = { decoded = true },
+            onError = { decoded = true },
+            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = thumbAlpha },
         )
         item.media.durationMillis?.let { duration ->
             Text(

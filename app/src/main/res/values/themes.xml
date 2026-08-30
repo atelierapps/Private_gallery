@@ -1,14 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base app theme. Compose owns the real styling; this seeds the window. -->
+    <!--
+        Base app theme. Compose owns the real styling; this seeds the window.
+        The colours here must track VaultTheme's `Bg` — this is what paints the
+        split second before Compose draws, so a mismatch shows up as a flash on
+        every launch.
+    -->
     <style name="Theme.Vault" parent="android:Theme.Material.NoActionBar">
-        <item name="android:statusBarColor">#0E1113</item>
-        <item name="android:navigationBarColor">#0E1113</item>
-        <item name="android:windowBackground">#0E1113</item>
+        <item name="android:statusBarColor">#0B0D0F</item>
+        <item name="android:navigationBarColor">#0B0D0F</item>
+        <item name="android:windowBackground">#0B0D0F</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Vault</item>
+    </style>
+
+    <!--
+        Screens fade and scale rather than sliding in from the edge. The slide is
+        the stock Android tell; a screen that settles forward while the one behind
+        it steps back reads as depth, which is what the platform's own photo apps
+        and their iOS counterparts both do.
+    -->
+    <style name="Animation.Vault" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/screen_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/screen_recede</item>
+        <item name="android:activityCloseEnterAnimation">@anim/screen_return</item>
+        <item name="android:activityCloseExitAnimation">@anim/screen_exit</item>
+    </style>
+
+    <!-- A plain fade for the translucent sheet, which must not inherit the
+         scale above: its window contains the scrim, so scaling the window would
+         scale the dimming along with it. -->
+    <style name="Animation.Vault.Sheet" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/sheet_enter</item>
+        <item name="android:activityOpenExitAnimation">@null</item>
+        <item name="android:activityCloseEnterAnimation">@null</item>
+        <item name="android:activityCloseExitAnimation">@anim/sheet_exit</item>
     </style>
 
     <!-- Transparent window for the share receiver's bottom sheet (spec §5). -->
     <style name="Theme.Vault.Transparent" parent="Theme.Vault">
+        <item name="android:windowAnimationStyle">@style/Animation.Vault.Sheet</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowContentOverlay">@null</item>

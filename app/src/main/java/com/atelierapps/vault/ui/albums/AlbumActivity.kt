@@ -16,6 +16,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.atelierapps.vault.ui.viewer.ViewerActivity
 import com.atelierapps.vault.ui.theme.VaultTheme
+import androidx.compose.ui.platform.LocalView
+import com.atelierapps.vault.session.TileAnchor
 
 /** Shows one album's contents (spec §7). FLAG_SECURE like the rest of the vault. */
 class AlbumActivity : ComponentActivity() {
@@ -36,11 +38,17 @@ class AlbumActivity : ComponentActivity() {
 
         setContent {
             VaultTheme {
+                val hostView = LocalView.current
                 Surface(Modifier.fillMaxSize()) {
                     AlbumScreen(
                         vm = vm,
                         albumName = albumName,
-                        onOpen = { id -> startActivity(ViewerActivity.intent(this, id)) },
+                        onOpen = { id ->
+                            startActivity(
+                                ViewerActivity.intent(this, id),
+                                TileAnchor.consumeOptions(hostView),
+                            )
+                        },
                         onExport = { ids ->
                             startActivity(com.atelierapps.vault.ui.export.ExportActivity.intent(this, ids))
                         },

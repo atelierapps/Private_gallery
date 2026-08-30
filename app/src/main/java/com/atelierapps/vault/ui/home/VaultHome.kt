@@ -67,6 +67,7 @@ import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.BrassInk
 import com.atelierapps.vault.ui.theme.Scrim
 import androidx.compose.material.icons.outlined.Add
+import com.atelierapps.vault.session.TileAnchor
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -142,6 +143,8 @@ fun VaultHome(
                         if (order.isNotEmpty()) {
                             com.atelierapps.vault.ui.viewer.ViewerSession.orderedIds = order
                             com.atelierapps.vault.ui.viewer.ViewerSession.startPlaying = true
+                            // Shuffle isn't anchored to a tile, so open the plain way.
+                            TileAnchor.clear()
                             onOpen(order.first())
                         }
                     },
