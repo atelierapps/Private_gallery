@@ -20,6 +20,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.atelierapps.vault.ui.theme.VaultTheme
 import com.atelierapps.vault.ui.lock.FinishOnLock
+import com.atelierapps.vault.ui.edit.ImageEditActivity
 
 /**
  * Hosts the full-screen viewer (spec §8). FLAG_SECURE blocks screenshots here
@@ -79,6 +80,7 @@ class ViewerActivity : ComponentActivity() {
                         onSetTags = { id, names -> vm.setTags(id, names) },
                         onResumePosition = { id, millis -> vm.setResumePosition(id, millis) },
                         onRename = { id, name -> vm.rename(id, name) },
+                        onEdit = { id -> startActivity(ImageEditActivity.intent(this, id)) },
                         onAddToAlbum = { id, albumId -> vm.addToAlbum(id, albumId) },
                         onAddToNewAlbum = { id, name -> vm.addToNewAlbum(id, name) },
                         onShare = { id ->

@@ -109,6 +109,7 @@ fun ViewerScreen(
     onSetTags: (id: String, names: List<String>) -> Unit = { _, _ -> },
     onResumePosition: (id: String, millis: Long?) -> Unit = { _, _ -> },
     onRename: (id: String, name: String) -> Unit = { _, _ -> },
+    onEdit: (id: String) -> Unit = {},
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
     onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
 ) {
@@ -242,6 +243,13 @@ fun ViewerScreen(
                     onTogglePin = { onTogglePin(current.media.id) },
                     onShare = { onShare(current.media.id) },
                     onRename = { renaming = current },
+                    // Videos have no editor yet, so the entry only shows where
+                    // it would actually do something.
+                    onEdit = if (!isVideo) {
+                        fun() { onEdit(current.media.id) }
+                    } else {
+                        null
+                    },
                     onTag = { taggingItem = current },
                     onAddToAlbum = { albumFor = current.media.id },
                     onDelete = { pendingDelete = current.media.id },
@@ -566,6 +574,7 @@ private fun TopBar(
     onTogglePin: () -> Unit,
     onShare: () -> Unit,
     onRename: () -> Unit,
+    onEdit: (() -> Unit)?,
     onTag: () -> Unit,
     onAddToAlbum: () -> Unit,
     onDelete: () -> Unit,
@@ -600,6 +609,12 @@ private fun TopBar(
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Tags…") }, onClick = { menu = false; onTag() })
                 DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
+                if (onEdit != null) {
+                    DropdownMenuItem(
+                        text = { Text("Rotate & crop…") },
+                        onClick = { menu = false; onEdit() },
+                    )
+                }
                 DropdownMenuItem(text = { Text("Add to album…") }, onClick = { menu = false; onAddToAlbum() })
             }
         }

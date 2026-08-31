@@ -192,6 +192,12 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Rotate / crop one item, saving through the normal encrypt pipeline. -->
+        <activity
+            android:name=".ui.edit.ImageEditActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Importer: MediaStore picker + folder import (spec §4, §4.1). -->
         <activity
             android:name=".imports.ImportActivity"
