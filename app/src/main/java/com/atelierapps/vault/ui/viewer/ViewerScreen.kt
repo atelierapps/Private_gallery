@@ -75,6 +75,9 @@ import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.VaultIconButton
 import com.atelierapps.vault.ui.theme.BrassInk
 import com.atelierapps.vault.ui.theme.Scrim
+import androidx.compose.animation.core.animate
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.platform.LocalDensity
 
 /**
  * Programmatic page changes (slideshow advance, prev/next) use an eased glide
@@ -120,6 +123,28 @@ fun ViewerScreen(
     var repeatAll by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
 
+    // Pull down to go back. Reaching the top-left corner one-handed on a tall
+    // phone is the single most-repeated annoyance in the viewer, and this is the
+    // gesture people already expect from every other photo app.
+    val density = LocalDensity.current
+    val dismissTravel = with(density) { 240.dp.toPx() }
+    val dismissThreshold = with(density) { 110.dp.toPx() }
+    var dragY by remember { mutableFloatStateOf(0f) }
+    val dismissProgress = (dragY / dismissTravel).coerceIn(0f, 1f)
+    val onDismissDrag: (Float) -> Unit = { dy -> dragY = dy.coerceAtLeast(0f) }
+    val onDismissEnd: () -> Unit = {
+        if (dragY > dismissThreshold) {
+            onBack()
+        } else {
+            val from = dragY
+            scope.launch {
+                animate(from, 0f, animationSpec = tween(220, easing = FastOutSlowInEasing)) { v, _ ->
+                    dragY = v
+                }
+            }
+        }
+    }
+
     val current = media.getOrNull(pagerState.currentPage)
     val currentIsVideo = current?.media?.mimeType?.startsWith("video/") == true
 
@@ -134,7 +159,7 @@ fun ViewerScreen(
         }
     }
 
-    LaunchedEffect(pagerState.currentPage) { videoControls = false }
+    LaunchedEffect(pagerState.currentPage) { videoControls = false; dragY = 0f }
     // Slideshow: images advance after the interval; videos advance when they end.
     LaunchedEffect(pagerState.currentPage, playMode, intervalSec, currentIsVideo) {
         if (playMode && current != null && !currentIsVideo) {
@@ -144,10 +169,21 @@ fun ViewerScreen(
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                translationY = dragY
+                val shrink = 1f - 0.18f * dismissProgress
+                scaleX = shrink
+                scaleY = shrink
+                alpha = 1f - 0.4f * dismissProgress
+            },
+        ) { page ->
             ViewerPage(
                 item = media[page],
                 active = page == pagerState.currentPage,
+                onDismissDrag = onDismissDrag,
+                onDismissEnd = onDismissEnd,
                 onTap = { chromeVisible = !chromeVisible },
                 onVideoControls = { videoControls = it },
                 autoPlay = (playMode || autoplayPref) && page == pagerState.currentPage,
@@ -366,6 +402,8 @@ private fun ViewerAlbumDialog(
 private fun ViewerPage(
     item: MediaWithTags,
     active: Boolean,
+    onDismissDrag: (Float) -> Unit,
+    onDismissEnd: () -> Unit,
     onTap: () -> Unit,
     onVideoControls: (Boolean) -> Unit,
     autoPlay: Boolean,
@@ -385,6 +423,8 @@ private fun ViewerPage(
             onEnded = onEnded,
             onPrev = onPrev,
             onNext = onNext,
+            onDismissDrag = onDismissDrag,
+            onDismissEnd = onDismissEnd,
         )
         return
     }
@@ -398,14 +438,33 @@ private fun ViewerPage(
         offset = if (scale > 1f) offset + pan else Offset.Zero
     }
     Box(
-        Modifier.fillMaxSize().pointerInput(Unit) {
-            detectTapGestures(
-                onTap = { onTap() },
-                onDoubleTap = {
-                    if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2.5f
-                },
-            )
-        },
+        Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { onTap() },
+                    onDoubleTap = {
+                        if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2.5f
+                    },
+                )
+            }
+            // Zoomed in, a vertical drag is a pan, so this stands down. At rest
+            // nothing else wants a vertical drag — the pager only takes
+            // horizontal — so one thumb is enough to close.
+            .pointerInput(scale > 1f) {
+                if (scale > 1f) return@pointerInput
+                var travelled = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { travelled = 0f },
+                    onDragEnd = { onDismissEnd() },
+                    onDragCancel = { onDismissEnd() },
+                    onVerticalDrag = { change, delta ->
+                        travelled += delta
+                        onDismissDrag(travelled)
+                        change.consume()
+                    },
+                )
+            },
         contentAlignment = Alignment.Center,
     ) {
         // Cached thumbnail shows instantly (no blank screen while the full-res

@@ -1,6 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Public-facing name (launcher, share sheet). Kept inconspicuous.
-         The package id stays com.atelierapps.vault so the Keystore key/data survive. -->
+    <!--
+        Public-facing names. The app ships as "Link" and can be switched to any
+        of the others from Settings; each is an activity-alias, so the launcher
+        label and icon change together. The package id stays
+        com.atelierapps.vault throughout, so the Keystore key and all data
+        survive every switch.
+    -->
     <string name="app_name">Link</string>
+    <string name="disguise_link">Link</string>
+    <string name="disguise_notes">Notes</string>
+    <string name="disguise_calculator">Calculator</string>
+    <string name="disguise_weather">Weather</string>
+    <string name="disguise_files">Files</string>
+    <string name="disguise_clock">Clock</string>
+
+    <!--
+        The share-sheet entry. Deliberately names the action rather than the app:
+        it can't follow the disguise (a share target's label is fixed in the
+        manifest), so a neutral verb is the one label that isn't wrong under any
+        of them.
+    -->
+    <string name="share_target_label">Save</string>
 </resources>

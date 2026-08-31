@@ -62,6 +62,8 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import com.atelierapps.vault.session.TileAnchor
+import com.atelierapps.vault.session.AppDisguise
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * The vault grid — home base (spec §8, §15.2). Three columns, decrypting Coil
@@ -308,7 +310,7 @@ private fun EmptyState(modifier: Modifier, onImport: (() -> Unit)?, onCamera: ((
                 EmptyAction("Take a photo or video", "Captured straight here — never touches the gallery", onCamera)
             }
             Text(
-                "Or share media to Link from any other app.",
+                "Or share media to ${AppDisguise.currentLabel(LocalContext.current)} from any other app.",
                 color = Muted, fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 14.dp),

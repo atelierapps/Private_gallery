@@ -68,6 +68,7 @@ import com.atelierapps.vault.ui.theme.BrassInk
 import com.atelierapps.vault.ui.theme.Scrim
 import androidx.compose.material.icons.outlined.Add
 import com.atelierapps.vault.session.TileAnchor
+import com.atelierapps.vault.session.AppDisguise
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -377,7 +378,7 @@ private fun TopAppRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            "Link",
+            AppDisguise.currentLabel(LocalContext.current),
             color = Ink,
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.weight(1f),

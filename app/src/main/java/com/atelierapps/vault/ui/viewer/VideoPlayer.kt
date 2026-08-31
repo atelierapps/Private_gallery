@@ -126,6 +126,8 @@ fun VideoPlayer(
     onEnded: () -> Unit = {},
     onPrev: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
+    onDismissDrag: (Float) -> Unit = {},
+    onDismissEnd: () -> Unit = {},
 ) {
     // Inactive pages: poster only, no decoder held.
     if (!active) {
@@ -291,23 +293,51 @@ fun VideoPlayer(
             ),
         )
 
-        // Unified gesture surface: two-finger pinch/pan (focal-anchored), and
-        // single-finger vertical drags for volume (right half) / brightness
-        // (left half). Horizontal single-finger drags are left for the pager.
+        // Unified gesture surface: two-finger pinch/pan (focal-anchored),
+        // two-finger pull-down to close, and single-finger vertical drags for
+        // volume (right half) / brightness (left half). Horizontal single-finger
+        // drags are left for the pager.
+        //
+        // A video can't use the single-finger pull-down that images do — that
+        // finger is already spoken for by brightness and volume — so closing is
+        // the two-finger gesture here.
         Box(
             Modifier.fillMaxSize().pointerInput(id) {
                 val slop = viewConfiguration.touchSlop
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    var mode = 0 // 0 undecided, 1 pinch, 2 brightness, 3 volume, 4 pager(bail)
+                    // 0 undecided, 1 pinch, 2 brightness, 3 volume, 4 pager(bail),
+                    // 5 swallowed volume drag while muted, 6 pull-down to close.
+                    var mode = 0
                     val startVol = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
                     var startBright = activity?.window?.attributes?.screenBrightness ?: 0.5f
                     if (startBright < 0f) startBright = 0.5f
+                    // Two-finger evidence, accumulated while undecided.
+                    var twoZoom = 1f
+                    var twoPan = Offset.Zero
+                    var dismissBy = 0f
                     while (true) {
                         val event = awaitPointerEvent()
                         val pressed = event.changes.filter { it.pressed }
                         if (pressed.isEmpty()) break
-                        if (pressed.size >= 2) {
+                        if (pressed.size >= 2 && mode == 0) {
+                            // Two fingers down is either a pinch or a pull-down.
+                            // Gather evidence for a few pixels and commit once,
+                            // rather than zooming first and changing our mind —
+                            // the held-back zoom is under 4%, so nothing is lost.
+                            twoZoom *= event.calculateZoom()
+                            twoPan += event.calculatePan()
+                            if (abs(twoZoom - 1f) > 0.04f) {
+                                mode = 1
+                            } else if (twoPan.y > slop * 1.5f && twoPan.y > abs(twoPan.x)) {
+                                mode = 6
+                            }
+                            event.changes.forEach { it.consume() }
+                        } else if (mode == 6) {
+                            dismissBy += event.calculatePan().y
+                            onDismissDrag(dismissBy)
+                            event.changes.forEach { it.consume() }
+                        } else if (pressed.size >= 2) {
                             mode = 1
                             val zoom = event.calculateZoom()
                             val pan = event.calculatePan()
@@ -320,7 +350,7 @@ fun VideoPlayer(
                             scale = next
                             if (scale <= 1.01f) { scale = 1f; offset = Offset.Zero }
                             event.changes.forEach { it.consume() }
-                        } else if (mode != 1) {
+                        } else if (mode != 1 && mode != 6) {
                             val c = pressed.first()
                             val dx = c.position.x - down.position.x
                             val dy = c.position.y - down.position.y
@@ -361,6 +391,9 @@ fun VideoPlayer(
                             }
                         }
                     }
+                    // Fingers up. A pull-down that got this far hands back to the
+                    // viewer, which decides between closing and springing back.
+                    if (mode == 6) onDismissEnd()
                 }
             }.pointerInput(id) {
                 detectTapGestures(

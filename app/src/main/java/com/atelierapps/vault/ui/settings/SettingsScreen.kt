@@ -51,6 +51,12 @@ import androidx.compose.material.icons.filled.Check
 import com.atelierapps.vault.ui.theme.ScreenHeader
 import com.atelierapps.vault.ui.theme.Hairline
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.Image
+import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import com.atelierapps.vault.session.AppDisguise
+import com.atelierapps.vault.session.Disguise
 
 @Composable
 fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifier = Modifier) {
@@ -61,6 +67,8 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
     var dateHeaders by remember { mutableStateOf(DisplayPrefs.dateHeaders(context)) }
     var columns by remember { mutableIntStateOf(DisplayPrefs.columns(context)) }
     var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
+    var disguise by remember { mutableStateOf(AppDisguise.current(context)) }
+    var pickingDisguise by remember { mutableStateOf(false) }
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     }
@@ -109,6 +117,31 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
                 }
             }
 
+            SettingsCard("Disguise") {
+                Row(
+                    Modifier.fillMaxWidth().clickable { pickingDisguise = true },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    DisguiseIcon(disguise, size = 40)
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text("Home screen name & icon", color = Ink, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Currently \u201c${disguise.label}\u201d",
+                            color = Muted, style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    Icon(Icons.Outlined.KeyboardArrowRight, null, tint = Muted, modifier = Modifier.size(20.dp))
+                }
+                Text(
+                    "Changes what the launcher and your app list show. Your library, " +
+                        "the encryption key and every setting are untouched — only the " +
+                        "label on the icon changes.",
+                    color = Muted, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+
             SettingsCard("Security") {
                 Text("Auto-lock", color = Ink, style = MaterialTheme.typography.bodyLarge)
                 Text(
@@ -137,7 +170,12 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
             }
 
             SettingsCard("About") {
-                Text("Link", color = Ink, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(
+                    disguise.label,
+                    color = Ink,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                )
                 if (version != null) {
                     Text("Version $version", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
                 }
@@ -149,6 +187,74 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
             }
         }
     }
+    if (pickingDisguise) {
+        DisguiseDialog(
+            current = disguise,
+            onPick = {
+                AppDisguise.apply(context, it)
+                disguise = it
+                pickingDisguise = false
+            },
+            onDismiss = { pickingDisguise = false },
+        )
+    }
+}
+
+/**
+ * The real launcher art, drawn the way the launcher will draw it: the same
+ * foreground vector on the same background colour, so what you pick is what
+ * you get rather than a stand-in.
+ */
+@Composable
+private fun DisguiseIcon(disguise: Disguise, size: Int) {
+    Box(
+        Modifier.size(size.dp).clip(RoundedCornerShape((size / 4.5f).dp))
+            .background(colorResource(disguise.previewBackground)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(disguise.previewIcon),
+            contentDescription = null,
+            modifier = Modifier.size((size * 1.5f).dp),
+        )
+    }
+}
+
+@Composable
+private fun DisguiseDialog(current: Disguise, onPick: (Disguise) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Home screen icon") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Disguise.entries.forEach { option ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onPick(option) }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        DisguiseIcon(option, size = 38)
+                        Text(
+                            option.label,
+                            color = Ink,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f).padding(start = 12.dp),
+                        )
+                        if (option == current) {
+                            Icon(Icons.Filled.Check, null, tint = Brass, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+                Text(
+                    "The icon can take a moment to change, and some launchers only " +
+                        "pick it up after a restart.",
+                    color = Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = Brass) } },
+    )
 }
 
 @Composable

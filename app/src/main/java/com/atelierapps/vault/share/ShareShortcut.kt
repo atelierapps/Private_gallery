@@ -5,7 +5,7 @@ import android.content.Intent
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
-import com.atelierapps.vault.R
+import com.atelierapps.vault.session.AppDisguise
 
 /**
  * Publishes a long-lived dynamic sharing shortcut so Vault surfaces in the top
@@ -18,10 +18,10 @@ object ShareShortcut {
 
     fun publish(context: Context) {
         val shortcut = ShortcutInfoCompat.Builder(context, ID)
-            .setShortLabel(context.getString(R.string.app_name))
+            .setShortLabel(AppDisguise.currentLabel(context))
             .setLongLived(true)
             .setCategories(setOf(CATEGORY))
-            .setIcon(IconCompat.createWithResource(context, R.mipmap.ic_launcher))
+            .setIcon(IconCompat.createWithResource(context, AppDisguise.current(context).launcherIcon))
             .setIntent(Intent(Intent.ACTION_VIEW))
             .build()
         runCatching { ShortcutManagerCompat.pushDynamicShortcut(context, shortcut) }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon foreground: a folder. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#CFD8DC"
+        android:pathData="M32,38 a4,4 0 0 1 4,-4 h13 l6,7 h-23 z" />
+    <path android:fillColor="#ECEFF1"
+        android:pathData="M32,44 a4,4 0 0 1 4,-4 h36 a4,4 0 0 1 4,4 v26 a4,4 0 0 1 -4,4 h-36 a4,4 0 0 1 -4,-4 z" />
+</vector>

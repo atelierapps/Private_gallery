@@ -16,6 +16,7 @@ import com.atelierapps.vault.data.entity.SourceType
 import com.atelierapps.vault.media.MediaSaver
 import com.atelierapps.vault.media.SaveRequest
 import com.atelierapps.vault.media.SourceInfo
+import com.atelierapps.vault.session.AppDisguise
 
 /**
  * Encrypts one shared item off the Activity's lifecycle (spec §5). Expedited so
@@ -53,14 +54,15 @@ class SaveMediaWorker(
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val channelId = "vault_save"
+        val appName = AppDisguise.currentLabel(applicationContext)
         val nm = applicationContext.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
-                NotificationChannel(channelId, "Saving to Link", NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel(channelId, "Saving to $appName", NotificationManager.IMPORTANCE_LOW),
             )
         }
         val notification: Notification = Notification.Builder(applicationContext, channelId)
-            .setContentTitle("Saving to Link")
+            .setContentTitle("Saving to $appName")
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setOngoing(true)
             .build()

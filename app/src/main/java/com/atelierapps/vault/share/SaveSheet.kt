@@ -47,6 +47,8 @@ import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.SurfaceHigh
 import androidx.compose.material3.MaterialTheme
 import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.session.AppDisguise
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * The save bottom sheet (spec §5). Renders inside the transparent share Activity.
@@ -88,7 +90,7 @@ fun SaveSheet(
             ) {
                 Column(Modifier.navigationBarsPadding().padding(20.dp)) {
                     Text(
-                        "Save to Link",
+                        "Save to ${AppDisguise.currentLabel(LocalContext.current)}",
                         color = Ink,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
@@ -159,7 +161,7 @@ fun SaveSheet(
                             )
                             Text("  Saving…")
                         } else {
-                            Text("Save to Link")
+                            Text("Save to ${AppDisguise.currentLabel(LocalContext.current)}")
                         }
                     }
                 }

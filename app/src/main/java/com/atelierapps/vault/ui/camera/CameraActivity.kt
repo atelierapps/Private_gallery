@@ -63,6 +63,7 @@ import androidx.compose.material3.Icon
 import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.session.AppDisguise
 
 /**
  * In-app camera: captures photos and videos **straight into the vault** via the
@@ -140,7 +141,7 @@ private fun CameraScreen(lifecycleOwner: LifecycleOwner, audioEnabled: Boolean, 
                 source = SourceInfo(SourceType.CAMERA, null, "Camera", null),
             ),
         )
-        Toast.makeText(context, "Saved to Link", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Saved to ${AppDisguise.currentLabel(context)}", Toast.LENGTH_SHORT).show()
     }
 
     fun takePhoto() {

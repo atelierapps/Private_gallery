@@ -52,6 +52,8 @@ import com.atelierapps.vault.ui.theme.Scrim
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import com.atelierapps.vault.ui.theme.Danger
+import com.atelierapps.vault.session.AppDisguise
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * The importer UI (spec §4, §4.1, §15.5): tabs (all media / by folder), a
@@ -125,7 +127,11 @@ private fun ImportSummaryDialog(summary: ImportProgress, onDismiss: () -> Unit) 
         title = { Text("Import complete") },
         text = {
             Column {
-                Text("${summary.imported} added to Link", color = Ink, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "${summary.imported} added to ${AppDisguise.currentLabel(LocalContext.current)}",
+                    color = Ink,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
                 if (summary.duplicates > 0) {
                     Text(
                         "${summary.duplicates} skipped — already in your library",

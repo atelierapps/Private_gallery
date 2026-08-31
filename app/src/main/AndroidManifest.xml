@@ -35,15 +35,96 @@
         android:hardwareAccelerated="true"
         tools:targetApi="34">
 
+        <!--
+          MainActivity carries no launcher filter of its own. Every launcher
+          entry is an activity-alias below, so the app's name and icon can be
+          swapped at runtime by enabling one alias and disabling the rest
+          (AppDisguise). An alias changes only the launcher entry — the package
+          id stays com.atelierapps.vault, so the Keystore wrap key and every
+          encrypted file survive a switch untouched.
+        -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Vault">
+            android:theme="@style/Theme.Vault" />
+
+        <activity-alias
+            android:name=".Launcher.Link"
+            android:targetActivity=".ui.MainActivity"
+            android:label="@string/disguise_link"
+            android:icon="@mipmap/ic_launcher"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".Launcher.Notes"
+            android:targetActivity=".ui.MainActivity"
+            android:label="@string/disguise_notes"
+            android:icon="@mipmap/ic_alias_notes"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".Launcher.Calculator"
+            android:targetActivity=".ui.MainActivity"
+            android:label="@string/disguise_calculator"
+            android:icon="@mipmap/ic_alias_calculator"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".Launcher.Weather"
+            android:targetActivity=".ui.MainActivity"
+            android:label="@string/disguise_weather"
+            android:icon="@mipmap/ic_alias_weather"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".Launcher.Files"
+            android:targetActivity=".ui.MainActivity"
+            android:label="@string/disguise_files"
+            android:icon="@mipmap/ic_alias_files"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".Launcher.Clock"
+            android:targetActivity=".ui.MainActivity"
+            android:label="@string/disguise_clock"
+            android:icon="@mipmap/ic_alias_clock"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Export / backup + restore (spec §11). -->
         <activity
@@ -120,6 +201,7 @@
         <!-- Save-from-anywhere share target (spec §5). Transparent, no auth to save. -->
         <activity
             android:name=".share.ShareReceiverActivity"
+            android:label="@string/share_target_label"
             android:theme="@style/Theme.Vault.Transparent"
             android:excludeFromRecents="true"
             android:exported="true">
