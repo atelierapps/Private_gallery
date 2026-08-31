@@ -62,6 +62,10 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // Encrypted metadata database (spec §2.1). androidx.sqlite, whose factory
+    // interface this plugs into, already arrives with room-runtime.
+    implementation(libs.sqlcipher.android)
+
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.biometric)
 

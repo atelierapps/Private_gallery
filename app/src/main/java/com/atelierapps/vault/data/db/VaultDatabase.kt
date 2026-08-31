@@ -12,11 +12,17 @@ import com.atelierapps.vault.data.entity.AutoTagRuleEntity
 import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.data.entity.MediaTagCrossRef
 import com.atelierapps.vault.data.entity.TagEntity
+import com.atelierapps.vault.crypto.DbKeyStore
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 /**
  * Metadata store (spec §2). Media blobs and thumbnails are NOT here — only rows.
- * SQLCipher is intentionally out of scope for v1 (§14); the plaintext-DB
- * trade-off is documented in §2.1.
+ *
+ * Encrypted with SQLCipher, closing the plaintext-metadata gap that §2.1
+ * documented as a known v1 trade-off: filenames, tag names, album names and
+ * dates used to sit readable next to the encrypted media they describe. See
+ * [DbCipher] for the one-time migration and [com.atelierapps.vault.crypto.DbKeyStore]
+ * for why the database key, unlike the media key, is not gated on biometrics.
  */
 @Database(
     entities = [
@@ -90,12 +96,21 @@ abstract class VaultDatabase : RoomDatabase() {
 
         fun get(context: Context): VaultDatabase =
             instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    VaultDatabase::class.java,
-                    "vault.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-                    .build().also { instance = it }
+                instance ?: build(context.applicationContext).also { instance = it }
             }
+
+        private fun build(app: Context): VaultDatabase {
+            // Migrates a plaintext database if there is one. Returns false only
+            // when that failed, in which case the file is still plaintext and
+            // must be opened without the cipher — the alternative is an app that
+            // won't start and a library nobody can reach.
+            val encrypted = DbCipher.ensureEncrypted(app)
+            val builder = Room.databaseBuilder(app, VaultDatabase::class.java, "vault.db")
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            if (encrypted) {
+                builder.openHelperFactory(SupportOpenHelperFactory(DbKeyStore.passphrase(app)))
+            }
+            return builder.build()
+        }
     }
 }
