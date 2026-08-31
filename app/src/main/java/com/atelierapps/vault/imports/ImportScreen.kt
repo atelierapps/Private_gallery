@@ -55,6 +55,8 @@ import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.session.AppDisguise
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 
 /**
  * The importer UI (spec §4, §4.1, §15.5): tabs (all media / by folder), a
@@ -71,6 +73,8 @@ fun ImportScreen(
     typeFilter: MediaTypeFilter,
     deleteOriginals: Boolean,
     batchTags: String,
+    existingTags: List<com.atelierapps.vault.data.entity.TagEntity>,
+    pickedTags: Set<String>,
     importing: Boolean,
     progress: ImportProgress,
     summary: ImportProgress?,
@@ -82,6 +86,7 @@ fun ImportScreen(
     onSetType: (MediaTypeFilter) -> Unit,
     onSetDelete: (Boolean) -> Unit,
     onSetTags: (String) -> Unit,
+    onToggleTag: (String) -> Unit,
     onImport: () -> Unit,
     onPickFiles: () -> Unit,
     onDismissSummary: () -> Unit,
@@ -108,9 +113,12 @@ fun ImportScreen(
                 count = selected.size,
                 deleteOriginals = deleteOriginals,
                 tags = batchTags,
+                existingTags = existingTags,
+                pickedTags = pickedTags,
                 enabled = selected.isNotEmpty() && !importing,
                 onSetDelete = onSetDelete,
                 onSetTags = onSetTags,
+                onToggleTag = onToggleTag,
                 onImport = onImport,
             )
         }
@@ -330,19 +338,46 @@ private fun BottomBar(
     count: Int,
     deleteOriginals: Boolean,
     tags: String,
+    existingTags: List<com.atelierapps.vault.data.entity.TagEntity>,
+    pickedTags: Set<String>,
     enabled: Boolean,
     onSetDelete: (Boolean) -> Unit,
     onSetTags: (String) -> Unit,
+    onToggleTag: (String) -> Unit,
     onImport: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().background(SurfaceHigh).padding(16.dp)) {
         // Right here is the only moment you reliably know what this batch is.
         // Afterwards it's mixed into the library and has to be found again
         // before it can be labelled.
+        //
+        // Tags you already have are tapped, not retyped. Retyping is how a
+        // library ends up holding "holiday" and "hoiday" — two tags that look
+        // the same to you and different to everything else. A plain scrolling
+        // Row rather than LazyRow: its `items` would collide with the grid's,
+        // and a tag list is never long enough to need virtualising.
+        if (existingTags.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 8.dp),
+            ) {
+                existingTags.forEach { tag ->
+                    FilterChip(
+                        selected = tag.name in pickedTags,
+                        onClick = { onToggleTag(tag.name) },
+                        label = { Text("#" + tag.name) },
+                    )
+                }
+            }
+        }
         OutlinedTextField(
             value = tags,
             onValueChange = onSetTags,
-            placeholder = { Text("Tag this batch (optional, comma-separated)") },
+            placeholder = {
+                Text(if (existingTags.isEmpty()) "Tag this batch (optional)" else "New tag…")
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
         )

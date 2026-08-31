@@ -651,6 +651,8 @@ private fun MetadataPanel(item: MediaWithTags, modifier: Modifier) {
     ) {
         Text(item.media.originalName, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         source(item)?.let { Text(it, color = Muted, fontSize = 12.sp) }
+        // Dimensions and size were in the row all along and shown nowhere.
+        Text(specs(item), color = Muted, fontSize = 12.sp)
         Text(dateOf(item.media.dateTakenMillis), color = Muted, fontSize = 12.sp)
         if (item.tags.isNotEmpty()) {
             Text(item.tags.joinToString(" ") { "#${it.name}" }, color = Brass, fontSize = 13.sp)
@@ -667,6 +669,34 @@ private fun source(item: MediaWithTags): String? {
         label != null -> label
         domain != null -> domain
         else -> null
+    }
+}
+
+/** "4032 × 3024 · 3.1 MB", with a video's running time in front of it. */
+private fun specs(item: MediaWithTags): String {
+    val m = item.media
+    val parts = ArrayList<String>(3)
+    m.durationMillis?.let { parts.add(runtime(it)) }
+    if (m.widthPx > 0 && m.heightPx > 0) parts.add("${m.widthPx} × ${m.heightPx}")
+    parts.add(fileSize(m.sizeBytes))
+    return parts.joinToString(" · ")
+}
+
+private fun runtime(millis: Long): String {
+    val total = millis / 1000
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+}
+
+private fun fileSize(bytes: Long): String {
+    val kb = 1024.0
+    return when {
+        bytes < kb -> "$bytes B"
+        bytes < kb * kb -> "%.0f KB".format(bytes / kb)
+        bytes < kb * kb * kb -> "%.1f MB".format(bytes / (kb * kb))
+        else -> "%.2f GB".format(bytes / (kb * kb * kb))
     }
 }
 

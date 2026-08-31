@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.atelierapps.vault.VaultGraph
+import com.atelierapps.vault.data.entity.TagEntity
 
 enum class ImportTab { DEVICE, FOLDER }
 
@@ -121,12 +123,31 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
      * Tags applied to everything in this batch. Labelling at the moment you
      * import is the only time you reliably know what the batch *is* — afterwards
      * it's mixed into the library and has to be found again first.
+     *
+     * Two inputs, because free text alone is a trap: one mistyped "hoiday" and
+     * the library quietly has two tags that look the same to you and different
+     * to the app. Existing tags are picked, never typed; the field is only for
+     * ones that don't exist yet.
      */
+    val existingTags: StateFlow<List<TagEntity>> =
+        VaultGraph.repository(app).observeTags()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val pickedTags = MutableStateFlow<Set<String>>(emptySet())
     val batchTags = MutableStateFlow("")
+
+    fun toggleTag(name: String) {
+        val cur = pickedTags.value
+        pickedTags.value = if (name in cur) cur - name else cur + name
+    }
+
     fun setBatchTags(value: String) { batchTags.value = value }
 
     private fun parsedTags(): List<String> =
-        batchTags.value.split(",").map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }
+        (pickedTags.value + batchTags.value.split(","))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase() }
 
     private fun loadDevice() {
         viewModelScope.launch(Dispatchers.IO) {
