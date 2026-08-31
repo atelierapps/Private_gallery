@@ -53,25 +53,77 @@ import com.atelierapps.vault.ui.theme.Scrim
 import com.atelierapps.vault.ui.theme.ScrimSoft
 import com.atelierapps.vault.ui.theme.SurfaceHigh
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material3.Icon
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Surface
 
 @Composable
 fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val items by vm.items.collectAsState()
     val working by vm.working.collectAsState()
+    val selectionMode by vm.selectionMode.collectAsState()
+    val selectedIds by vm.selectedIds.collectAsState()
 
     var selected by remember { mutableStateOf<MediaWithTags?>(null) }
     var confirmEmpty by remember { mutableStateOf(false) }
+    var confirmPurge by remember { mutableStateOf(false) }
+
+    // Same rule as everywhere else: back leaves the selection before the screen.
+    BackHandler(enabled = selectionMode) { vm.clearSelection() }
 
     Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
-            ScreenHeader("Recently deleted", onClose) {
-                if (items.isNotEmpty()) {
-                    TextButton(onClick = { confirmEmpty = true }) {
-                        Text("Empty", color = Danger, style = MaterialTheme.typography.labelLarge)
+            if (selectionMode) {
+                Row(
+                    Modifier.fillMaxWidth().background(Surface)
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    VaultIconButton(Icons.Outlined.Close, "Clear selection", vm::clearSelection)
+                    Text(
+                        "${selectedIds.size} selected",
+                        color = Ink,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f).padding(start = 4.dp),
+                    )
+                    VaultIconButton(Icons.Outlined.SelectAll, "Select all", vm::selectAll)
+                    VaultIconButton(
+                        Icons.Outlined.Restore,
+                        "Restore",
+                        { vm.restoreSelected() },
+                        enabled = selectedIds.isNotEmpty(),
+                    )
+                    VaultIconButton(
+                        Icons.Outlined.DeleteForever,
+                        "Delete now",
+                        { confirmPurge = true },
+                        tint = Danger,
+                        enabled = selectedIds.isNotEmpty(),
+                    )
+                }
+            } else {
+                ScreenHeader("Recently deleted", onClose) {
+                    if (items.isNotEmpty()) {
+                        TextButton(onClick = { confirmEmpty = true }) {
+                            Text("Empty", color = Danger, style = MaterialTheme.typography.labelLarge)
+                        }
                     }
                 }
+                ScreenCaption(
+                    "Items are kept for 30 days, then deleted forever. " +
+                        "Long-press to pick several at once.",
+                )
             }
-            ScreenCaption("Items are kept for 30 days, then deleted forever.")
 
             if (items.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -89,7 +141,16 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     items(items, key = { it.media.id }) { item ->
-                        TrashTile(item, onClick = { selected = item })
+                        TrashTile(
+                            item = item,
+                            selected = item.media.id in selectedIds,
+                            selectionMode = selectionMode,
+                            onClick = {
+                                if (selectionMode) vm.toggleSelection(item.media.id)
+                                else selected = item
+                            },
+                            onLongClick = { vm.longPress(item.media.id) },
+                        )
                     }
                 }
             }
@@ -112,6 +173,20 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
         )
     }
 
+    if (confirmPurge) {
+        AlertDialog(
+            onDismissRequest = { confirmPurge = false },
+            title = { Text("Delete ${selectedIds.size} item(s) forever?") },
+            text = { Text("These leave the disk for good. This can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = { confirmPurge = false; vm.purgeSelected() }) {
+                    Text("Delete forever", color = Danger)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmPurge = false }) { Text("Cancel") } },
+        )
+    }
+
     if (confirmEmpty) {
         AlertDialog(
             onDismissRequest = { confirmEmpty = false },
@@ -127,11 +202,20 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TrashTile(item: MediaWithTags, onClick: () -> Unit) {
+private fun TrashTile(
+    item: MediaWithTags,
+    selected: Boolean,
+    selectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
     Box(
         Modifier.aspectRatio(1f).clip(RoundedCornerShape(2.dp))
-            .background(SurfaceHigh).clickable(onClick = onClick),
+            .background(SurfaceHigh)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .then(if (selected) Modifier.border(2.5.dp, Brass, RoundedCornerShape(2.dp)) else Modifier),
     ) {
         AsyncImage(
             model = VaultMediaKey(item.media.id, full = false),
@@ -141,6 +225,17 @@ private fun TrashTile(item: MediaWithTags, onClick: () -> Unit) {
                 rotationZ = (item.media.videoRotationDegrees ?: 0).toFloat()
             },
         )
+        if (selectionMode) {
+            Box(
+                Modifier.align(Alignment.TopStart).padding(4.dp).size(18.dp).clip(CircleShape)
+                    .background(if (selected) Brass else ScrimSoft),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected) {
+                    Icon(Icons.Filled.Check, null, tint = BrassInk, modifier = Modifier.size(13.dp))
+                }
+            }
+        }
         val days = daysLeft(item.media.deletedAtMillis)
         Text(
             if (days <= 0) "Today" else "${days}d",
