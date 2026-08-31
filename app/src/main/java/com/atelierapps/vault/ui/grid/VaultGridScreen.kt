@@ -100,12 +100,6 @@ fun VaultGridScreen(
     // two can't disagree about which bucket an item belongs to across midnight.
     val now = remember(media) { System.currentTimeMillis() }
 
-    // Follow the viewer. Page from item 5 to item 300 and come back, and the
-    // grid is already there rather than where you started. The grid stays
-    // composed under the viewer, so this tracks live and there is nothing to
-    // catch up on when you return. Nothing happens if the item is already on
-    // screen — the common case of opening and immediately closing shouldn't
-    // move the grid at all.
     // Sectioned once and shared: the rendering below, the index lookup and the
     // scrubber's date bubble all have to agree about which slot is which, and
     // the surest way to agree is to be looking at the same list.
@@ -127,6 +121,12 @@ fun VaultGridScreen(
         }
     }
 
+    // Follow the viewer. Page from item 5 to item 300 and come back, and the
+    // grid is already there rather than where you started. The grid stays
+    // composed under the viewer, so this tracks live and there is nothing to
+    // catch up on when you return. Nothing happens if the item is already on
+    // screen — the common case of opening and immediately closing shouldn't
+    // move the grid at all.
     val gridState = rememberLazyGridState()
     val lastViewed by ViewerSession.lastViewedId.collectAsState()
     // Honour each item once. `media` has to be a key — on a cold start the list
@@ -138,7 +138,7 @@ fun VaultGridScreen(
     LaunchedEffect(lastViewed, media, showSectionHeaders) {
         val id = lastViewed ?: return@LaunchedEffect
         if (id == honoured[0]) return@LaunchedEffect
-        val index = lazyIndexOf(media, id, showSectionHeaders, now)
+        val index = lazyIndexOf(media, sections, id, showSectionHeaders)
         if (index < 0) return@LaunchedEffect
         honoured[0] = id
         if (gridState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
@@ -211,18 +211,21 @@ private fun monthLabel(millis: Long): String = MonthFormat.format(java.util.Date
 /**
  * Where an item sits in the lazy list, which is not its index in [media] once
  * section headers are interleaved — each header occupies a slot of its own.
+ * Takes the caller's [sections] rather than re-deriving them, so this can't
+ * disagree with what was actually rendered.
+ *
  * Returns -1 when the item isn't in this list at all, which is the normal case
  * for an album grid after the viewer showed something from the main library.
  */
 private fun lazyIndexOf(
     media: List<MediaWithTags>,
+    sections: List<GridSection>,
     id: String,
     sectioned: Boolean,
-    now: Long,
 ): Int {
     if (!sectioned) return media.indexOfFirst { it.media.id == id }
     var index = 0
-    for (section in sectionize(media, now)) {
+    for (section in sections) {
         index++ // the header itself
         val within = section.items.indexOfFirst { it.media.id == id }
         if (within >= 0) return index + within
