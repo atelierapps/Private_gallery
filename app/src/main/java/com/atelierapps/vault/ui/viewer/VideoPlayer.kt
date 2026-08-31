@@ -85,6 +85,7 @@ import com.atelierapps.vault.ui.theme.Scrim
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.material.icons.outlined.RotateRight
+import androidx.media3.common.VideoSize
 
 private val SPEEDS = floatArrayOf(0.25f, 0.5f, 1f, 1.5f, 2f)
 private const val SPEED_DEFAULT = 2 // index of 1.0×
@@ -214,6 +215,9 @@ fun VideoPlayer(
     // Display-only rotation, for files encoded sideways. The pixels are never
     // touched — this turns the surface, so it costs nothing and is reversible.
     var videoRotation by remember(id) { mutableIntStateOf(((initialRotation % 360) + 360) % 360) }
+    // The video's own shape, which is what a quarter turn has to be fitted
+    // against. Reported by the decoder once the stream is read.
+    var videoAspect by remember(id) { mutableFloatStateOf(0f) }
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
     // Same rule as images: back leaves the zoom before it leaves the video.
@@ -252,6 +256,11 @@ fun VideoPlayer(
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
             override fun onRenderedFirstFrame() { firstFrame = true }
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                val w = videoSize.width * videoSize.pixelWidthHeightRatio
+                val h = videoSize.height.toFloat()
+                if (w > 0f && h > 0f) videoAspect = w / h
+            }
         }
         player.addListener(listener)
         onDispose { player.removeListener(listener) }
@@ -298,7 +307,11 @@ fun VideoPlayer(
     }
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
-        if (videoAlpha < 1f) {
+        // The poster covers the moment before the first frame decodes, but it is
+        // a thumbnail of the *unrotated* video — so on a video you've turned, it
+        // would flash the old orientation and then snap. Black for those few
+        // hundred milliseconds is the lesser of the two.
+        if (videoAlpha < 1f && videoRotation == 0) {
             AsyncImage(
                 model = VaultMediaKey(id, full = false),
                 contentDescription = null,
@@ -312,15 +325,25 @@ fun VideoPlayer(
                     .apply { this.player = player }
             },
             modifier = Modifier.fillMaxSize().graphicsLayer {
-                // A quarter turn swaps which side of the view is against which
-                // side of the box, so it has to shrink by the box's own aspect
-                // to keep fitting. Half turns need no such correction.
+                // What has to fit after a quarter turn is the *video*, not the
+                // view. The view is the whole screen but the video is letterboxed
+                // inside it, so scaling by the screen's own aspect shrank a
+                // landscape clip to a fraction of the room it actually had. Work
+                // out the letterboxed rectangle first, then the scale that makes
+                // it fit once its sides are swapped.
                 val quarter = videoRotation % 180 != 0
                 val fit =
-                    if (quarter && size.width > 0f && size.height > 0f) {
-                        minOf(size.width, size.height) / maxOf(size.width, size.height)
-                    } else {
+                    if (!quarter || size.width <= 0f || size.height <= 0f) {
                         1f
+                    } else if (videoAspect > 0f) {
+                        val wide = size.width / size.height > videoAspect
+                        val shownW = if (wide) size.height * videoAspect else size.width
+                        val shownH = if (wide) size.height else size.width / videoAspect
+                        minOf(size.width / shownH, size.height / shownW)
+                    } else {
+                        // Shape not reported yet: the scale that fits any rotated
+                        // view, corrected on the next frame once the decoder says.
+                        minOf(size.width, size.height) / maxOf(size.width, size.height)
                     }
                 rotationZ = videoRotation.toFloat()
                 scaleX = scale * fit
