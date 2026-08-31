@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RotateLeft
+import androidx.compose.material.icons.outlined.RotateRight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -110,8 +110,8 @@ fun ImageEditScreen(
                 Modifier.fillMaxWidth().padding(top = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                VaultIconButton(Icons.Outlined.Refresh, "Rotate left", { onRotate(-90) })
-                VaultIconButton(Icons.Outlined.Refresh, "Rotate right", { onRotate(90) })
+                VaultIconButton(Icons.Outlined.RotateLeft, "Rotate left", { onRotate(-90) })
+                VaultIconButton(Icons.Outlined.RotateRight, "Rotate right", { onRotate(90) })
                 TextButton(onClick = {
                     onRotate(-state.rotation)
                     onCrop(NormalisedRect.WHOLE)
