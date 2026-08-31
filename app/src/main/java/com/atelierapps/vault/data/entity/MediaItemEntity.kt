@@ -55,4 +55,11 @@ data class MediaItemEntity(
     // nullable columns need none, and declaring DEFAULT NULL risks a Room
     // schema-validation mismatch against what PRAGMA reports.
     val deletedAtMillis: Long? = null,
+
+    // How far into a video you got, so a long one resumes across app restarts
+    // rather than only within a session. Null once it has been watched to the
+    // end, or for anything that isn't a video. Only worth keeping now the
+    // database is encrypted — as a plaintext column this was a log of what you
+    // watched and how far.
+    val resumePositionMillis: Long? = null,
 )

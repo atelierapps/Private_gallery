@@ -107,6 +107,7 @@ fun ViewerScreen(
     albums: List<com.atelierapps.vault.data.entity.AlbumEntity> = emptyList(),
     allTags: List<com.atelierapps.vault.data.entity.TagEntity> = emptyList(),
     onSetTags: (id: String, names: List<String>) -> Unit = { _, _ -> },
+    onResumePosition: (id: String, millis: Long?) -> Unit = { _, _ -> },
     onRename: (id: String, name: String) -> Unit = { _, _ -> },
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
     onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
@@ -213,6 +214,7 @@ fun ViewerScreen(
             ViewerPage(
                 item = media[page],
                 active = page == pagerState.currentPage,
+                onResumePosition = onResumePosition,
                 onDismissDrag = onDismissDrag,
                 onDismissEnd = onDismissEnd,
                 onTap = { chromeVisible = !chromeVisible },
@@ -457,6 +459,7 @@ private fun ViewerAlbumDialog(
 private fun ViewerPage(
     item: MediaWithTags,
     active: Boolean,
+    onResumePosition: (id: String, millis: Long?) -> Unit,
     onDismissDrag: (Float) -> Unit,
     onDismissEnd: () -> Unit,
     onTap: () -> Unit,
@@ -480,6 +483,8 @@ private fun ViewerPage(
             onNext = onNext,
             onDismissDrag = onDismissDrag,
             onDismissEnd = onDismissEnd,
+            resumeFrom = item.media.resumePositionMillis ?: 0L,
+            onResumePosition = { onResumePosition(item.media.id, it) },
         )
         return
     }

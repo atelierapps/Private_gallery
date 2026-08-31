@@ -77,6 +77,7 @@ class ViewerActivity : ComponentActivity() {
                         albums = albums,
                         allTags = allTags,
                         onSetTags = { id, names -> vm.setTags(id, names) },
+                        onResumePosition = { id, millis -> vm.setResumePosition(id, millis) },
                         onRename = { id, name -> vm.rename(id, name) },
                         onAddToAlbum = { id, albumId -> vm.addToAlbum(id, albumId) },
                         onAddToNewAlbum = { id, name -> vm.addToNewAlbum(id, name) },

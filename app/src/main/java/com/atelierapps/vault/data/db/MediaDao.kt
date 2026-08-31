@@ -57,6 +57,9 @@ interface MediaDao {
     @Query("UPDATE media SET isPinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: String, pinned: Boolean)
 
+    @Query("UPDATE media SET resumePositionMillis = :millis WHERE id = :id")
+    suspend fun setResumePosition(id: String, millis: Long?)
+
     @Query("UPDATE media SET originalName = :name WHERE id = :id")
     suspend fun rename(id: String, name: String)
 

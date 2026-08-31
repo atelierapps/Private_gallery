@@ -69,6 +69,16 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
      * Set an item's tags from the viewer — including new ones typed on the spot.
      * Keeps the pager's snapshot in sync so the change shows without reopening.
      */
+    /**
+     * Written on player release only, so scrubbing doesn't hammer the database.
+     * Deliberately does not refresh the in-memory list: the snapshot backing the
+     * pager is meant to be stable, and rewriting it mid-playback for a field
+     * nothing on screen reads would be churn for its own sake.
+     */
+    fun setResumePosition(id: String, millis: Long?) {
+        viewModelScope.launch { repo.setResumePosition(id, millis) }
+    }
+
     fun setTags(id: String, names: List<String>) {
         viewModelScope.launch {
             repo.setTagsForMedia(id, names)

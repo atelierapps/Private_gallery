@@ -30,7 +30,7 @@ import android.util.Log
         MediaItemEntity::class, TagEntity::class, MediaTagCrossRef::class,
         AutoTagRuleEntity::class, AlbumEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -97,6 +97,14 @@ abstract class VaultDatabase : RoomDatabase() {
             }
         }
 
+        // Resume positions, which only became storable once the database was
+        // encrypted.
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE media ADD COLUMN resumePositionMillis INTEGER")
+            }
+        }
+
         fun get(context: Context): VaultDatabase =
             instance ?: synchronized(this) {
                 instance ?: build(context.applicationContext).also { instance = it }
@@ -119,7 +127,10 @@ abstract class VaultDatabase : RoomDatabase() {
 
         private fun open(app: Context, cipher: Boolean): VaultDatabase? {
             val builder = Room.databaseBuilder(app, VaultDatabase::class.java, "vault.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                )
             if (cipher) {
                 builder.openHelperFactory(SupportOpenHelperFactory(DbKeyStore.passphraseBytes(app)))
             }

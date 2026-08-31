@@ -65,6 +65,9 @@ class VaultRepository(
         withContext(Dispatchers.IO) { mediaDao.setPinned(id, pinned) }
 
     /** Rename an item. Only the display name changes — the blob is untouched. */
+    /** Where you got to in a video; null once it has been watched to the end. */
+    suspend fun setResumePosition(id: String, millis: Long?) = mediaDao.setResumePosition(id, millis)
+
     suspend fun renameMedia(id: String, name: String) =
         withContext(Dispatchers.IO) {
             val clean = name.trim()

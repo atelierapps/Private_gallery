@@ -129,6 +129,10 @@ fun VideoPlayer(
     onNext: (() -> Unit)? = null,
     onDismissDrag: (Float) -> Unit = {},
     onDismissEnd: () -> Unit = {},
+    /** Where a previous run of the app left off, 0 for the start. */
+    resumeFrom: Long = 0L,
+    /** Persist where this run left off; null means watched to the end. */
+    onResumePosition: (Long?) -> Unit = {},
 ) {
     // Inactive pages: poster only, no decoder held.
     if (!active) {
@@ -167,7 +171,9 @@ fun VideoPlayer(
                 setMediaItem(MediaItem.fromUri(VaultCtrDataSource.uriFor(id)))
                 prepare()
                 // Resume where the clip was left off (in-memory only).
-                (ViewerSession.positions[id] ?: 0L).let { if (it > 0) seekTo(it) }
+                // This session's position wins — you may have moved since the
+                // stored one was written — and the stored one covers a restart.
+                (ViewerSession.positions[id] ?: resumeFrom).let { if (it > 0) seekTo(it) }
                 playWhenReady = autoPlay
                 // Never start in repeat-one: a repeating player never emits
                 // STATE_ENDED, which is what slideshow advance listens for.
@@ -243,11 +249,15 @@ fun VideoPlayer(
     }
     DisposableEffect(id) {
         onDispose {
-            // Remember the spot unless we're basically at the end.
+            // Remember the spot unless we're basically at the end. Written both
+            // to the in-memory map, which survives a lock, and to the row, which
+            // survives the process — the second only on release, so scrubbing
+            // doesn't hammer the database.
             val pos = player.currentPosition
             val dur = player.duration
-            if (dur > 0 && pos in 1 until (dur - 1500)) ViewerSession.positions[id] = pos
-            else ViewerSession.positions.remove(id)
+            val keep = dur > 0 && pos in 1 until (dur - 1500)
+            if (keep) ViewerSession.positions[id] = pos else ViewerSession.positions.remove(id)
+            onResumePosition(if (keep) pos else null)
             player.release()
         }
     }
