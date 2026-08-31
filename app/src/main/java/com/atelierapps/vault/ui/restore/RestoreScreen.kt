@@ -56,21 +56,41 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.atelierapps.vault.ui.theme.Danger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import com.atelierapps.vault.ui.theme.FailureList
 
 enum class RestorePhase { PICK, PASSPHRASE, RUNNING, DONE }
 
-class RestoreViewModel(app: Application) : AndroidViewModel(app) {
+/**
+ * The run itself, kept outside the ViewModel so leaving the screen doesn't kill
+ * it. Restoring a few hundred files from a cloud folder takes long enough that
+ * sitting and watching it is not a reasonable ask; this way you can use the
+ * rest of the app and come back to the same run rather than restarting it.
+ *
+ * Does not survive the process being killed — that needs WorkManager and a
+ * visible notification, which this app deliberately avoids.
+ */
+private object RestoreRun {
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val phase = MutableStateFlow(RestorePhase.PICK)
     val progress = MutableStateFlow(RestoreProgress(0, 0, 0, 0))
     val result = MutableStateFlow<RestoreResult?>(null)
+    val wrongPassphrase = MutableStateFlow(false)
+    var pending: Uri? = null
+}
+
+class RestoreViewModel(app: Application) : AndroidViewModel(app) {
+    val phase = RestoreRun.phase
+    val progress = RestoreRun.progress
+    val result = RestoreRun.result
 
     /** Set when the chosen folder turned out to be an encrypted backup. */
-    val wrongPassphrase = MutableStateFlow(false)
-    private var pending: Uri? = null
+    val wrongPassphrase = RestoreRun.wrongPassphrase
 
     fun pick(treeUri: Uri) {
         if (phase.value == RestorePhase.RUNNING) return
-        pending = treeUri
+        RestoreRun.pending = treeUri
         // Ask before starting rather than failing partway: an encrypted folder
         // announces itself, so there is no reason to guess.
         if (VaultRestorer.isEncrypted(getApplication(), treeUri)) {
@@ -80,12 +100,13 @@ class RestoreViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun run(treeUri: Uri? = pending, passphrase: CharArray?) {
+    fun run(treeUri: Uri? = RestoreRun.pending, passphrase: CharArray?) {
         val uri = treeUri ?: return
         if (phase.value == RestorePhase.RUNNING) return
         wrongPassphrase.value = false
         phase.value = RestorePhase.RUNNING
-        viewModelScope.launch(Dispatchers.IO) {
+        result.value = null
+        RestoreRun.scope.launch {
             val r = runCatching {
                 VaultRestorer.restoreAll(getApplication(), uri, passphrase) { progress.value = it }
             }
@@ -177,7 +198,9 @@ private fun RestoreBody(
                         "Choose the folder your backup was written to. Everything in it is " +
                             "saved back in with its tags and source, and anything already " +
                             "here is skipped.\n\nIf it was made with a passphrase you'll be " +
-                            "asked for it next.",
+                            "asked for it next.\n\nReading from a cloud folder is slow — " +
+                            "minutes per file is normal for Drive, against seconds from an " +
+                            "SD card. You can leave this screen; it keeps going.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
                     Button(onClick = onPick) { Text("Choose backup folder") }
@@ -226,6 +249,7 @@ private fun RestoreBody(
                             if (r.failed > 0) " · ${r.failed} skipped/failed" else ""
                     }
                     Text(msg, color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                    FailureList(r?.failures.orEmpty())
                     Button(onClick = onClose) { Text("Done") }
                 }
             }

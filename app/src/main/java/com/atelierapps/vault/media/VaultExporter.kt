@@ -12,7 +12,13 @@ import org.json.JSONObject
 import javax.crypto.SecretKey
 
 data class ExportProgress(val done: Int, val total: Int, val failed: Int)
-data class ExportResult(val exported: Int, val failed: Int, val total: Int)
+data class ExportResult(
+    val exported: Int,
+    val failed: Int,
+    val total: Int,
+    /** Which items didn't make it, and why. Empty when everything did. */
+    val failures: List<TransferFailure> = emptyList(),
+)
 
 /**
  * Exports the whole vault to a user-picked folder (spec §11) — the only backup.
@@ -57,19 +63,39 @@ object VaultExporter {
         }
 
         val manifest = JSONArray()
+        val failures = ArrayList<TransferFailure>()
         var done = 0
-        var failed = 0
         for (mwt in items) {
-            val entry = runCatching { exportOne(context, tree, mwt, key) }.getOrNull()
-            if (entry != null) manifest.put(entry) else failed++
+            val attempt = runCatching { exportOne(context, tree, mwt, key) }
+            val entry = attempt.getOrNull()
+            if (entry != null) {
+                manifest.put(entry)
+            } else {
+                // Never swallow this. A count on its own can't tell you whether
+                // three thumbnails or three irreplaceable videos are missing.
+                val error = attempt.exceptionOrNull()
+                Log.e(TAG, "export failed: " + mwt.media.originalName, error)
+                failures.add(
+                    TransferFailure(
+                        mwt.media.originalName,
+                        if (attempt.isSuccess) "the folder wouldn't accept a new file"
+                        else TransferFailure.describe(error),
+                    ),
+                )
+            }
             done++
-            onProgress(ExportProgress(done, items.size, failed))
+            onProgress(ExportProgress(done, items.size, failures.size))
         }
 
         runCatching { writeManifest(context, tree, manifest, key) }
             .onFailure { Log.e(TAG, "manifest write failed", it) }
 
-        return ExportResult(exported = done - failed, failed = failed, total = items.size)
+        return ExportResult(
+            exported = done - failures.size,
+            failed = failures.size,
+            total = items.size,
+            failures = failures,
+        )
     }
 
     /** Writes one item and returns its manifest entry, or null if it failed. */

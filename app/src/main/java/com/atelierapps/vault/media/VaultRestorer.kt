@@ -8,9 +8,16 @@ import com.atelierapps.vault.data.entity.SourceType
 import org.json.JSONObject
 import java.io.File
 import javax.crypto.SecretKey
+import android.util.Log
 
 data class RestoreProgress(val done: Int, val total: Int, val imported: Int, val failed: Int)
-data class RestoreResult(val imported: Int, val failed: Int, val total: Int, val hadManifest: Boolean)
+data class RestoreResult(
+    val imported: Int,
+    val failed: Int,
+    val total: Int,
+    val hadManifest: Boolean,
+    val failures: List<TransferFailure> = emptyList(),
+)
 
 /**
  * Rebuilds the vault from an export folder (spec §11 round-trip). Reads
@@ -60,19 +67,35 @@ object VaultRestorer {
 
         val byName = tree.listFiles().filter { it.isFile }.associateBy { it.name }
         val saver = MediaSaver(context)
+        val failures = ArrayList<TransferFailure>()
         var imported = 0
-        var failed = 0
         for (i in 0 until items.length()) {
             val obj = items.getJSONObject(i)
             // Encrypted entries carry their own opaque filename; plaintext ones
             // are still found by the name they were written under.
+            val shown = obj.optString("name", "item " + (i + 1))
             val doc = byName[obj.optString(if (key == null) "name" else "file")]
-            val ok = doc != null &&
-                runCatching { restoreOne(context, saver, doc, obj, key) }.getOrDefault(false)
-            if (ok) imported++ else failed++
-            onProgress(RestoreProgress(i + 1, items.length(), imported, failed))
+            if (doc == null) {
+                failures.add(TransferFailure(shown, "not in the folder — was it copied whole?"))
+            } else {
+                val attempt = runCatching { restoreOne(context, saver, doc, obj, key) }
+                when {
+                    attempt.getOrDefault(false) -> imported++
+                    else -> {
+                        Log.e(TAG, "restore failed: " + shown, attempt.exceptionOrNull())
+                        failures.add(
+                            TransferFailure(
+                                shown,
+                                if (attempt.isSuccess) "couldn't be saved back in"
+                                else TransferFailure.describe(attempt.exceptionOrNull()),
+                            ),
+                        )
+                    }
+                }
+            }
+            onProgress(RestoreProgress(i + 1, items.length(), imported, failures.size))
         }
-        return RestoreResult(imported, failed, items.length(), hadManifest = true)
+        return RestoreResult(imported, failures.size, items.length(), true, failures)
     }
 
     private suspend fun restoreOne(
@@ -133,6 +156,8 @@ object VaultRestorer {
         }
         return temp
     }
+
+    private const val TAG = "VaultRestorer"
 
     private fun JSONObject.optStringOrNull(key: String): String? =
         if (isNull(key) || !has(key)) null else optString(key).ifBlank { null }

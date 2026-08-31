@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.atelierapps.vault.ui.theme.FailureList
 
 /** Biometric gate shown before the export flow (spec §11). */
 @Composable
@@ -97,7 +98,10 @@ fun ExportScreen(
 
                     Text(
                         "Everything is written out to a folder you choose, with a manifest " +
-                            "that restores tags and sources later.",
+                            "that restores tags and sources later.\n\nA local folder or SD " +
+                            "card takes minutes; a cloud folder like Drive uploads every " +
+                            "file and can take hours. You can leave this screen either way " +
+                            "— it keeps going.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
 
@@ -181,6 +185,9 @@ fun ExportScreen(
                             if (r.failed > 0) " · ${r.failed} failed" else "",
                         color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center,
                     )
+                    // Named, not just counted: a backup missing three files you
+                    // can't identify isn't a backup you can rely on.
+                    FailureList(r?.failures.orEmpty())
                     Text(
                         "That folder is independent of this app now — it survives an " +
                             "uninstall, and copying it off the phone is what makes it a " +
