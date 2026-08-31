@@ -69,6 +69,7 @@ import com.atelierapps.vault.ui.theme.Scrim
 import androidx.compose.material.icons.outlined.Add
 import com.atelierapps.vault.session.TileAnchor
 import com.atelierapps.vault.session.AppDisguise
+import androidx.activity.compose.BackHandler
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -120,6 +121,18 @@ fun VaultHome(
     var searchOpen by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var showAlbumDialog by remember { mutableStateOf(false) }
+
+    // Back should undo the mode you're in before it leaves the app. Without
+    // this, backing out of a 40-item selection closed the vault outright — and
+    // on a gesture-navigation phone that is one careless swipe from the edge.
+    // One handler rather than several: two enabled BackHandlers race on
+    // registration order, and this makes the priority explicit.
+    BackHandler(enabled = selectionMode || searchOpen) {
+        when {
+            selectionMode -> vm.clearSelection()
+            else -> { searchOpen = false; vm.setQuery("") }
+        }
+    }
 
     Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {

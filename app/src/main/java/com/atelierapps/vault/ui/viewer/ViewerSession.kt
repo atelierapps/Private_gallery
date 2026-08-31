@@ -1,5 +1,7 @@
 package com.atelierapps.vault.ui.viewer
 
+import kotlinx.coroutines.flow.MutableStateFlow
+
 /**
  * Hands the viewer the exact ordered set the grid is currently showing (after
  * filter / search / tag / sort / pin), so paging and slideshow play *in that
@@ -32,6 +34,15 @@ object ViewerSession {
     @Volatile
     var startPlaying: Boolean = false
 
+    /**
+     * The item the viewer is showing. The grid watches this and scrolls to match,
+     * so paging from item 5 to item 300 and coming back doesn't drop you at item
+     * 5 again. A flow rather than a plain field because the grid is still
+     * composed underneath the viewer and can follow along live — by the time you
+     * are back, it is already in the right place.
+     */
+    val lastViewedId = MutableStateFlow<String?>(null)
+
     fun consumeStartPlaying(): Boolean {
         val v = startPlaying
         startPlaying = false
@@ -40,6 +51,7 @@ object ViewerSession {
 
     /** Drop per-session playback state (called when the vault locks). */
     fun clear() {
+        lastViewedId.value = null
         positions.clear()
         playbackSpeed = 1f
         startPlaying = false

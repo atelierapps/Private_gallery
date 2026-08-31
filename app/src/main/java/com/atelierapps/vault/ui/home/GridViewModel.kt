@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.atelierapps.vault.session.DisplayPrefs
 
 /** Grid ordering options. */
 enum class SortOrder(val label: String) {
@@ -54,7 +55,13 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     private val _filter = MutableStateFlow(MediaFilter())
     val filter: StateFlow<MediaFilter> = _filter
 
-    private val _sort = MutableStateFlow(SortOrder.NEWEST)
+    // Sort sticks across launches, like every other display preference. Picking
+    // "Longest first" once and having it silently revert to Newest next launch
+    // was the odd one out.
+    private val _sort = MutableStateFlow(
+        DisplayPrefs.sort(app)?.let { name -> SortOrder.entries.firstOrNull { it.name == name } }
+            ?: SortOrder.NEWEST,
+    )
     val sort: StateFlow<SortOrder> = _sort
 
     private val _query = MutableStateFlow("")
@@ -120,7 +127,10 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun setType(t: com.atelierapps.vault.filter.MediaTypeFilter) {
         _filter.value = _filter.value.withType(t)
     }
-    fun setSort(s: SortOrder) { _sort.value = s }
+    fun setSort(s: SortOrder) {
+        _sort.value = s
+        DisplayPrefs.setSort(getApplication(), s.name)
+    }
 
     private var lastShuffle: List<String> = emptyList()
 

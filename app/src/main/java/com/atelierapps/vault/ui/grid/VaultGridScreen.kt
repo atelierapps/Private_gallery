@@ -64,6 +64,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import com.atelierapps.vault.session.TileAnchor
 import com.atelierapps.vault.session.AppDisguise
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import com.atelierapps.vault.ui.viewer.ViewerSession
 
 /**
  * The vault grid — home base (spec §8, §15.2). Three columns, decrypting Coil
@@ -91,7 +95,38 @@ fun VaultGridScreen(
     // Pinch to change column count (2–6). Two-finger only, so single-finger
     // scrolling is untouched.
     var columns by remember(initialColumns) { mutableIntStateOf(initialColumns) }
+
+    // One `now` for both the section headers and the index lookup below, so the
+    // two can't disagree about which bucket an item belongs to across midnight.
+    val now = remember(media) { System.currentTimeMillis() }
+
+    // Follow the viewer. Page from item 5 to item 300 and come back, and the
+    // grid is already there rather than where you started. The grid stays
+    // composed under the viewer, so this tracks live and there is nothing to
+    // catch up on when you return. Nothing happens if the item is already on
+    // screen — the common case of opening and immediately closing shouldn't
+    // move the grid at all.
+    val gridState = rememberLazyGridState()
+    val lastViewed by ViewerSession.lastViewedId.collectAsState()
+    // Honour each item once. `media` has to be a key — on a cold start the list
+    // arrives after this first runs, and the index isn't findable until it does
+    // — but without this guard every later change to the library (an import
+    // finishing, a delete) would re-run the effect and drag you back here after
+    // you had scrolled away. Not snapshot state: it must not recompose.
+    val honoured = remember { arrayOfNulls<String>(1) }
+    LaunchedEffect(lastViewed, media, showSectionHeaders) {
+        val id = lastViewed ?: return@LaunchedEffect
+        if (id == honoured[0]) return@LaunchedEffect
+        val index = lazyIndexOf(media, id, showSectionHeaders, now)
+        if (index < 0) return@LaunchedEffect
+        honoured[0] = id
+        if (gridState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+            gridState.scrollToItem(index)
+        }
+    }
+
     LazyVerticalGrid(
+        state = gridState,
         columns = GridCells.Fixed(columns),
         modifier = modifier.fillMaxSize().background(Bg)
             .pointerInput(Unit) {
@@ -131,7 +166,6 @@ fun VaultGridScreen(
             )
         }
         if (showSectionHeaders) {
-            val now = System.currentTimeMillis()
             sectionize(media, now).forEachIndexed { idx, section ->
                 item(span = { GridItemSpan(maxLineSpan) }, key = "hdr:$idx:${section.title}") {
                     SectionHeader(section.title)
@@ -142,6 +176,29 @@ fun VaultGridScreen(
             items(media, key = { it.media.id }) { tile(it) }
         }
     }
+}
+
+/**
+ * Where an item sits in the lazy list, which is not its index in [media] once
+ * section headers are interleaved — each header occupies a slot of its own.
+ * Returns -1 when the item isn't in this list at all, which is the normal case
+ * for an album grid after the viewer showed something from the main library.
+ */
+private fun lazyIndexOf(
+    media: List<MediaWithTags>,
+    id: String,
+    sectioned: Boolean,
+    now: Long,
+): Int {
+    if (!sectioned) return media.indexOfFirst { it.media.id == id }
+    var index = 0
+    for (section in sectionize(media, now)) {
+        index++ // the header itself
+        val within = section.items.indexOfFirst { it.media.id == id }
+        if (within >= 0) return index + within
+        index += section.items.size
+    }
+    return -1
 }
 
 private data class GridSection(val title: String, val items: List<MediaWithTags>)

@@ -78,6 +78,7 @@ import com.atelierapps.vault.ui.theme.Scrim
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.platform.LocalDensity
+import androidx.activity.compose.BackHandler
 
 /**
  * Programmatic page changes (slideshow advance, prev/next) use an eased glide
@@ -160,6 +161,9 @@ fun ViewerScreen(
     }
 
     LaunchedEffect(pagerState.currentPage) { videoControls = false; dragY = 0f }
+    LaunchedEffect(current?.media?.id) {
+        current?.media?.id?.let { ViewerSession.lastViewedId.value = it }
+    }
     // Slideshow: images advance after the interval; videos advance when they end.
     LaunchedEffect(pagerState.currentPage, playMode, intervalSec, currentIsVideo) {
         if (playMode && current != null && !currentIsVideo) {
@@ -436,6 +440,13 @@ private fun ViewerPage(
     val transform = rememberTransformableState { zoom, pan, _ ->
         scale = (scale * zoom).coerceIn(1f, 5f)
         offset = if (scale > 1f) offset + pan else Offset.Zero
+    }
+    // Zoomed in, back should get you out of the zoom, not out of the photo.
+    // Only the page you're looking at may claim it — every other page sits at
+    // 1x, so their handlers are disabled and can't compete for the press.
+    BackHandler(enabled = active && scale > 1f) {
+        scale = 1f
+        offset = Offset.Zero
     }
     Box(
         Modifier

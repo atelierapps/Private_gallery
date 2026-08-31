@@ -82,6 +82,7 @@ import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.atelierapps.vault.ui.theme.Scrim
+import androidx.activity.compose.BackHandler
 
 private val SPEEDS = floatArrayOf(0.25f, 0.5f, 1f, 1.5f, 2f)
 private const val SPEED_DEFAULT = 2 // index of 1.0×
@@ -200,6 +201,11 @@ fun VideoPlayer(
     var muted by remember(id) { mutableStateOf(VideoPrefs.muted(context)) }
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
+    // Same rule as images: back leaves the zoom before it leaves the video.
+    BackHandler(enabled = active && scale > 1f) {
+        scale = 1f
+        offset = Offset.Zero
+    }
     var hud by remember(id) { mutableStateOf<String?>(null) }
     // The surface is black until the decoder produces a frame. On an autoplay
     // advance that black gap is what reads as a jolt, so hold the thumbnail
