@@ -103,7 +103,16 @@ fun ExportScreen(
                             if (r.failed > 0) " · ${r.failed} failed" else "",
                         color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center,
                     )
-                    Text("A manifest.json was written alongside your files.", color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+                    Text(
+                        "Your files and a manifest.json are in that folder. It is " +
+                            "independent of this app now — it survives an uninstall, and " +
+                            "copying it off the phone is what makes it a real backup.\n\n" +
+                            "To bring it back on a fresh install: menu → Restore from " +
+                            "backup, then pick this folder.",
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                    )
                     Button(onClick = onClose) { Text("Done") }
                 }
             }

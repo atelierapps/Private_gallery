@@ -54,6 +54,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.session.AppDisguise
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.OutlinedTextField
 
 /**
  * The importer UI (spec §4, §4.1, §15.5): tabs (all media / by folder), a
@@ -69,6 +70,7 @@ fun ImportScreen(
     selected: Set<Uri>,
     typeFilter: MediaTypeFilter,
     deleteOriginals: Boolean,
+    batchTags: String,
     importing: Boolean,
     progress: ImportProgress,
     summary: ImportProgress?,
@@ -79,6 +81,7 @@ fun ImportScreen(
     onToggle: (Uri) -> Unit,
     onSetType: (MediaTypeFilter) -> Unit,
     onSetDelete: (Boolean) -> Unit,
+    onSetTags: (String) -> Unit,
     onImport: () -> Unit,
     onPickFiles: () -> Unit,
     onDismissSummary: () -> Unit,
@@ -104,8 +107,10 @@ fun ImportScreen(
             BottomBar(
                 count = selected.size,
                 deleteOriginals = deleteOriginals,
+                tags = batchTags,
                 enabled = selected.isNotEmpty() && !importing,
                 onSetDelete = onSetDelete,
+                onSetTags = onSetTags,
                 onImport = onImport,
             )
         }
@@ -324,11 +329,23 @@ private fun PickTile(item: DeviceMedia, selected: Boolean, onToggle: (Uri) -> Un
 private fun BottomBar(
     count: Int,
     deleteOriginals: Boolean,
+    tags: String,
     enabled: Boolean,
     onSetDelete: (Boolean) -> Unit,
+    onSetTags: (String) -> Unit,
     onImport: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().background(SurfaceHigh).padding(16.dp)) {
+        // Right here is the only moment you reliably know what this batch is.
+        // Afterwards it's mixed into the library and has to be found again
+        // before it can be labelled.
+        OutlinedTextField(
+            value = tags,
+            onValueChange = onSetTags,
+            placeholder = { Text("Tag this batch (optional, comma-separated)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Delete originals after import", color = Ink, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
             Switch(checked = deleteOriginals, onCheckedChange = onSetDelete)

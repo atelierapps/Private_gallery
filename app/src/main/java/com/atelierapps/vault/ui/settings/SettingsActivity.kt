@@ -31,6 +31,14 @@ class SettingsActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize()) {
                     SettingsScreen(
                         onClose = { finish() },
+                        onBackUp = {
+                            startActivity(
+                                android.content.Intent(
+                                    this,
+                                    com.atelierapps.vault.ui.export.ExportActivity::class.java,
+                                ),
+                            )
+                        },
                         onStorage = {
                             startActivity(
                                 android.content.Intent(

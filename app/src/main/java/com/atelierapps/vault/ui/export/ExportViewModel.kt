@@ -10,6 +10,7 @@ import com.atelierapps.vault.media.VaultExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import com.atelierapps.vault.session.BackupPrefs
 
 enum class ExportPhase { PICK, RUNNING, DONE }
 
@@ -27,6 +28,13 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
         phase.value = ExportPhase.RUNNING
         viewModelScope.launch(Dispatchers.IO) {
             val r = VaultExporter.exportAll(getApplication(), treeUri, scopeIds) { progress.value = it }
+            // Only a whole-library run with nothing failed is a backup you could
+            // actually rebuild from. A scoped export is a share, and a partial
+            // one leaves gaps — recording either as "backed up" would be a
+            // comfortable lie the user later pays for.
+            if (scopeIds == null && r.failed == 0 && r.exported > 0) {
+                BackupPrefs.recordFullBackup(getApplication())
+            }
             result.value = r
             phase.value = ExportPhase.DONE
         }

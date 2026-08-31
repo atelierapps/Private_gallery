@@ -23,6 +23,9 @@ import kotlinx.coroutines.withContext
 
 /** Grid ordering options. */
 enum class SortOrder(val label: String) {
+    // First, and the default, because it is the one that matches how media
+    // actually arrives here. See the sort block below for why.
+    RECENT("Recently added"),
     NEWEST("Newest"),
     OLDEST("Oldest"),
     NAME("Name A–Z"),
@@ -61,7 +64,7 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     // was the odd one out.
     private val _sort = MutableStateFlow(
         DisplayPrefs.sort(app)?.let { name -> SortOrder.entries.firstOrNull { it.name == name } }
-            ?: SortOrder.NEWEST,
+            ?: SortOrder.RECENT,
     )
     val sort: StateFlow<SortOrder> = _sort
 
@@ -102,6 +105,12 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
                 out = out.filter { matchesQuery(it, ql) }
             }
             val sorted = when (s) {
+                // Two different questions that look like one. `dateTaken` is when
+                // the photo was made — for something downloaded today that can be
+                // years ago, so a batch of forty imports scatters through the
+                // whole grid and the things you just added are the hardest to
+                // find. `importedAt` is when it landed here.
+                SortOrder.RECENT -> out.sortedByDescending { it.media.importedAtMillis }
                 SortOrder.NEWEST -> out.sortedByDescending { it.media.dateTakenMillis }
                 SortOrder.OLDEST -> out.sortedBy { it.media.dateTakenMillis }
                 SortOrder.NAME -> out.sortedBy { it.media.originalName.lowercase() }

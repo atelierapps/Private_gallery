@@ -49,7 +49,7 @@ class ImportWorker(
                         mimeType = entry.mimeType,
                         originalName = entry.displayName,
                         dateTakenMillis = entry.dateTakenMillis,
-                        tagNames = emptyList(),
+                        tagNames = entry.tagNames,
                         // The item's own gallery folder is its provenance.
                         source = SourceInfo(entry.origin, null, entry.bucketName, null),
                     ),

@@ -84,6 +84,10 @@ fun VaultGridScreen(
     onToggleSelect: (id: String) -> Unit,
     modifier: Modifier = Modifier,
     showSectionHeaders: Boolean = false,
+    // Which date the sections and the scrubber label read. Sorting by "Recently
+    // added" orders on importedAt, so bucketing on dateTaken would head a run of
+    // today's imports with "Older" — the headers have to follow the sort.
+    dateOf: (MediaWithTags) -> Long = { it.media.dateTakenMillis },
     initialColumns: Int = 3,
     onImport: (() -> Unit)? = null,
     onCamera: (() -> Unit)? = null,
@@ -104,7 +108,7 @@ fun VaultGridScreen(
     // scrubber's date bubble all have to agree about which slot is which, and
     // the surest way to agree is to be looking at the same list.
     val sections = remember(media, showSectionHeaders, now) {
-        if (showSectionHeaders) sectionize(media, now) else emptyList()
+        if (showSectionHeaders) sectionize(media, now, dateOf) else emptyList()
     }
     // A label per lazy slot, headers included, so the scrubber can name where it
     // is without re-deriving the layout.
@@ -117,7 +121,7 @@ fun VaultGridScreen(
                 }
             }
         } else {
-            media.map { monthLabel(it.media.dateTakenMillis) }
+            media.map { monthLabel(dateOf(it)) }
         }
     }
 
@@ -237,12 +241,16 @@ private fun lazyIndexOf(
 private data class GridSection(val title: String, val items: List<MediaWithTags>)
 
 /** Group the already-sorted list into a Pinned run + rolling date buckets. */
-private fun sectionize(media: List<MediaWithTags>, now: Long): List<GridSection> {
+private fun sectionize(
+    media: List<MediaWithTags>,
+    now: Long,
+    dateOf: (MediaWithTags) -> Long,
+): List<GridSection> {
     val out = ArrayList<GridSection>()
     var key: String? = null
     var cur = ArrayList<MediaWithTags>()
     for (m in media) {
-        val k = if (m.media.isPinned) "Pinned" else dateBucket(m.media.dateTakenMillis, now)
+        val k = if (m.media.isPinned) "Pinned" else dateBucket(dateOf(m), now)
         if (k != key) {
             if (cur.isNotEmpty()) out.add(GridSection(key!!, cur))
             cur = ArrayList()

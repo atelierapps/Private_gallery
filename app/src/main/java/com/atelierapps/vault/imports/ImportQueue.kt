@@ -27,6 +27,8 @@ object ImportQueue {
         val dateTakenMillis: Long,
         val origin: SourceType,
         val bucketName: String?,
+        /** Tags to apply on save — typed once for the batch, carried per item. */
+        val tagNames: List<String> = emptyList(),
     )
 
     /** A snapshot of queue + counters, for progress reporting. */
@@ -72,6 +74,7 @@ object ImportQueue {
         put("d", e.dateTakenMillis)
         put("o", e.origin.name)
         put("b", e.bucketName ?: JSONObject.NULL)
+        if (e.tagNames.isNotEmpty()) put("t", JSONArray(e.tagNames))
     }
 
     private fun fromJson(o: JSONObject): Entry = Entry(
@@ -81,6 +84,11 @@ object ImportQueue {
         dateTakenMillis = o.optLong("d", System.currentTimeMillis()),
         origin = runCatching { SourceType.valueOf(o.optString("o")) }.getOrDefault(SourceType.UNKNOWN),
         bucketName = if (o.isNull("b")) null else o.optString("b"),
+        // Absent on a queue written before batch tagging existed, so an import
+        // already in flight across an app update still drains cleanly.
+        tagNames = o.optJSONArray("t")?.let { arr ->
+            (0 until arr.length()).map { arr.getString(it) }
+        }.orEmpty(),
     )
 
     /** Append work. Counters accumulate so a second batch extends the same run. */

@@ -78,6 +78,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.navigationBarsPadding
 import kotlinx.coroutines.launch
 import com.atelierapps.vault.ui.lock.FloatingLockButton
+import com.atelierapps.vault.session.BackupPrefs
+import androidx.compose.runtime.LaunchedEffect
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -130,6 +132,20 @@ fun VaultHome(
     var showTagDialog by remember { mutableStateOf(false) }
     var showAlbumDialog by remember { mutableStateOf(false) }
     var confirmMove by remember { mutableStateOf(false) }
+
+    // Said once, when there is finally something to lose. A vault whose only
+    // copy dies with the install has to tell you that before it happens, not
+    // in a help page you would have to go looking for. Shown at fifteen items
+    // rather than the first, so it lands when it means something.
+    var backupNotice by remember { mutableStateOf(false) }
+    LaunchedEffect(media.size) {
+        if (media.size >= 15 &&
+            BackupPrefs.lastBackupAtMillis.value == 0L &&
+            !BackupPrefs.warned(context)
+        ) {
+            backupNotice = true
+        }
+    }
 
     // Bulk actions used to complete in total silence — thirty items would
     // vanish with nothing to say it worked, or that it hadn't.
@@ -231,7 +247,13 @@ fun VaultHome(
                 onLongPress = vm::longPress,
                 onToggleSelect = vm::toggleSelection,
                 modifier = Modifier.weight(1f),
-                showSectionHeaders = dateHeadersPref && (sort == SortOrder.NEWEST || sort == SortOrder.OLDEST),
+                showSectionHeaders = dateHeadersPref &&
+                    (sort == SortOrder.RECENT || sort == SortOrder.NEWEST || sort == SortOrder.OLDEST),
+                dateOf = if (sort == SortOrder.RECENT) {
+                    { it.media.importedAtMillis }
+                } else {
+                    { it.media.dateTakenMillis }
+                },
                 initialColumns = columnsPref,
                 onImport = onImport,
                 onCamera = onCamera,
@@ -316,6 +338,34 @@ fun VaultHome(
                 }
             },
             dismissButton = { TextButton(onClick = { confirmMove = false }) { Text("Cancel") } },
+        )
+    }
+
+    if (backupNotice) {
+        AlertDialog(
+            onDismissRequest = { backupNotice = false; BackupPrefs.setWarned(context) },
+            title = { Text("If you uninstall, this is gone") },
+            text = {
+                Text(
+                    "Your ${media.size} items live in this app's private storage, and the " +
+                        "key that decrypts them belongs to this install. Uninstalling " +
+                        "deletes both. There is no cloud copy, no account, and no way to " +
+                        "get any of it back afterwards — not by reinstalling, not by any " +
+                        "other means.\n\nAn export writes everything to a folder you " +
+                        "choose, which survives on its own and can be restored later. " +
+                        "It's the only copy that outlives the app.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { backupNotice = false; BackupPrefs.setWarned(context); onExport() }) {
+                    Text("Back up now", color = Brass)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { backupNotice = false; BackupPrefs.setWarned(context) }) {
+                    Text("Later", color = Muted)
+                }
+            },
         )
     }
 

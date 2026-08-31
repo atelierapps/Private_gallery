@@ -63,9 +63,17 @@ import androidx.compose.runtime.mutableFloatStateOf
 import com.atelierapps.vault.session.HomeShortcut
 import com.atelierapps.vault.session.LockButtonPrefs
 import com.atelierapps.vault.ui.theme.Faint
+import androidx.compose.runtime.collectAsState
+import com.atelierapps.vault.session.BackupPrefs
+import com.atelierapps.vault.ui.theme.Danger
 
 @Composable
-fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    onClose: () -> Unit,
+    onStorage: () -> Unit,
+    onBackUp: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
 
     var autoplay by remember { mutableStateOf(VideoPrefs.autoplay(context)) }
@@ -78,6 +86,7 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
     var namingShortcut by remember { mutableStateOf(false) }
     var lockButton by remember { mutableStateOf(LockButtonPrefs.enabled.value) }
     var lockOpacity by remember { mutableFloatStateOf(LockButtonPrefs.opacity.value) }
+    val lastBackup by BackupPrefs.lastBackupAtMillis.collectAsState()
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     }
@@ -90,6 +99,37 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            SettingsCard("Backup") {
+                Text(
+                    if (lastBackup == 0L) "Never backed up" else "Last backup ${backupDate(lastBackup)}",
+                    color = if (lastBackup == 0L) Danger else Ink,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    "Everything here lives in this app's private storage, and the key " +
+                        "that decrypts it belongs to this install. Uninstalling the app " +
+                        "deletes both — there is no cloud copy and no way to recover it " +
+                        "afterwards, by any means. An export is the only copy that " +
+                        "survives.",
+                    color = Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onBackUp).padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Back up now",
+                        color = Brass,
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(Icons.Outlined.KeyboardArrowRight, null, tint = Brass, modifier = Modifier.size(20.dp))
+                }
+            }
+
             SettingsCard("Playback") {
                 ToggleRow(
                     title = "Autoplay videos",
@@ -406,6 +446,10 @@ private fun DisguiseDialog(current: Disguise, onPick: (Disguise) -> Unit, onDism
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = Brass) } },
     )
 }
+
+private fun backupDate(millis: Long): String =
+    java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault())
+        .format(java.util.Date(millis))
 
 @Composable
 private fun SettingsCard(title: String, content: @Composable () -> Unit) {

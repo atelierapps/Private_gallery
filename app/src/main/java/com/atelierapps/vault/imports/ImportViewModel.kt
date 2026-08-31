@@ -117,6 +117,17 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setDeleteOriginals(value: Boolean) { deleteOriginals.value = value }
 
+    /**
+     * Tags applied to everything in this batch. Labelling at the moment you
+     * import is the only time you reliably know what the batch *is* — afterwards
+     * it's mixed into the library and has to be found again first.
+     */
+    val batchTags = MutableStateFlow("")
+    fun setBatchTags(value: String) { batchTags.value = value }
+
+    private fun parsedTags(): List<String> =
+        batchTags.value.split(",").map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }
+
     private fun loadDevice() {
         viewModelScope.launch(Dispatchers.IO) {
             allItems.value = DeviceMediaSource.queryDevice(getApplication(), limit = 2000, offset = 0)
@@ -133,6 +144,7 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
     fun startImport() {
         val chosen = allItems.value.filter { it.uri in selected.value }
         if (chosen.isEmpty()) return
+        val tags = parsedTags()
         val entries = chosen.map {
             ImportQueue.Entry(
                 uri = it.uri,
@@ -141,6 +153,7 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
                 dateTakenMillis = it.dateTakenMillis,
                 origin = it.origin,
                 bucketName = it.bucketName,
+                tagNames = tags,
             )
         }
         startedHere = true
@@ -161,6 +174,7 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun importDocumentUris(uris: List<Uri>) {
         if (uris.isEmpty()) return
+        val tags = parsedTags()
         startedHere = true
         importing.value = true
         progress.value = ImportProgress(0, uris.size)
@@ -184,7 +198,7 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
                         }
                     }
                 }
-                ImportQueue.Entry(uri, mime, name, modified, SourceType.LOCAL_IMPORT, null)
+                ImportQueue.Entry(uri, mime, name, modified, SourceType.LOCAL_IMPORT, null, tags)
             }
             // Picked files are already outside the gallery; never offer to delete them.
             ImportWorker.enqueue(getApplication(), entries, deleteOriginals = false)

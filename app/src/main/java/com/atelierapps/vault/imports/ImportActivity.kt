@@ -72,6 +72,7 @@ class ImportActivity : ComponentActivity() {
                 val selected by vm.selected.collectAsState()
                 val typeFilter by vm.typeFilter.collectAsState()
                 val deleteOriginals by vm.deleteOriginals.collectAsState()
+                val batchTags by vm.batchTags.collectAsState()
                 val importing by vm.importing.collectAsState()
                 val progress by vm.progress.collectAsState()
                 val finished by vm.finished.collectAsState()
@@ -89,6 +90,7 @@ class ImportActivity : ComponentActivity() {
                     selected = selected,
                     typeFilter = typeFilter,
                     deleteOriginals = deleteOriginals,
+                    batchTags = batchTags,
                     importing = importing,
                     progress = progress,
                     summary = summary,
@@ -105,6 +107,7 @@ class ImportActivity : ComponentActivity() {
                     onToggle = vm::toggle,
                     onSetType = vm::setType,
                     onSetDelete = vm::setDeleteOriginals,
+                    onSetTags = vm::setBatchTags,
                     onImport = vm::startImport,
                     onPickFiles = { filesLauncher.launch(arrayOf("image/*", "video/*")) },
                     onDismissSummary = vm::dismissSummary,
