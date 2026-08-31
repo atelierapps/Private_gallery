@@ -52,6 +52,7 @@ import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.Scrim
 import com.atelierapps.vault.ui.theme.ScrimSoft
 import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.ui.graphics.graphicsLayer
 
 @Composable
 fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -136,7 +137,9 @@ private fun TrashTile(item: MediaWithTags, onClick: () -> Unit) {
             model = VaultMediaKey(item.media.id, full = false),
             contentDescription = item.media.originalName,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                rotationZ = (item.media.videoRotationDegrees ?: 0).toFloat()
+            },
         )
         val days = daysLeft(item.media.deletedAtMillis)
         Text(

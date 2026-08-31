@@ -337,7 +337,15 @@ private fun MediaTile(
             contentScale = ContentScale.Crop,
             onSuccess = { decoded = true },
             onError = { decoded = true },
-            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = thumbAlpha },
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                alpha = thumbAlpha
+                // A video you've turned in the viewer should look turned here
+                // too. The tile is square and the image is cropped to fill it,
+                // so a quarter turn maps the square onto itself and needs no
+                // rescaling — unlike the player, where the video is letterboxed
+                // inside a screen-shaped view.
+                rotationZ = (item.media.videoRotationDegrees ?: 0).toFloat()
+            },
         )
         item.media.durationMillis?.let { duration ->
             Text(
