@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.atelierapps.vault.session.DisplayPrefs
 import kotlinx.coroutines.withContext
+import com.atelierapps.vault.media.NameTemplate
 
 /** Grid ordering options. */
 enum class SortOrder(val label: String) {
@@ -234,6 +235,49 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
             working.value = false
             clearSelection()
             onDone(ids.size)
+        }
+    }
+
+    /**
+     * Name, tag and file a whole selection in one pass.
+     *
+     * Deliberately one operation rather than three trips through the selection
+     * bar: a batch that has just arrived needs all three doing, and doing them
+     * separately means finding the same forty items three times.
+     *
+     * Numbering follows the order on screen, so what the preview showed is what
+     * lands — the visible order is the one the user was looking at when they
+     * chose the template.
+     */
+    fun organiseSelected(
+        template: String,
+        dateFormat: String,
+        tagNames: List<String>,
+        sourceLabel: String?,
+        onDone: (Int) -> Unit = {},
+    ) {
+        val ids = selectedIds.value
+        if (ids.isEmpty()) return
+        val ordered = media.value.filter { it.media.id in ids }
+        val tags = tagNames.map { it.trim() }.filter { it.isNotEmpty() }
+        val label = sourceLabel?.trim()?.takeIf { it.isNotEmpty() }
+        working.value = true
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                ordered.forEachIndexed { index, item ->
+                    if (template.isNotBlank()) {
+                        repo.renameMedia(
+                            item.media.id,
+                            NameTemplate.expand(template, item, index, ordered.size, dateFormat),
+                        )
+                    }
+                    if (tags.isNotEmpty()) repo.addTags(item.media.id, tags)
+                    if (label != null) repo.setSourceLabel(item.media.id, label)
+                }
+            }
+            working.value = false
+            clearSelection()
+            onDone(ordered.size)
         }
     }
 

@@ -80,6 +80,7 @@ import kotlinx.coroutines.launch
 import com.atelierapps.vault.ui.lock.FloatingLockButton
 import com.atelierapps.vault.session.BackupPrefs
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.outlined.Edit
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -132,6 +133,7 @@ fun VaultHome(
     var showTagDialog by remember { mutableStateOf(false) }
     var showAlbumDialog by remember { mutableStateOf(false) }
     var confirmMove by remember { mutableStateOf(false) }
+    var organising by remember { mutableStateOf(false) }
 
     // Said once, when there is finally something to lose. A vault whose only
     // copy dies with the install has to tell you that before it happens, not
@@ -187,6 +189,7 @@ fun VaultHome(
                     onTag = { showTagDialog = true },
                     onAlbum = { showAlbumDialog = true },
                     onMove = { confirmMove = true },
+                    onOrganise = { organising = true },
                     onExport = { onExportSelection(selectedIds) },
                     onDelete = { confirmDelete = true },
                 )
@@ -366,6 +369,20 @@ fun VaultHome(
                     Text("Later", color = Muted)
                 }
             },
+        )
+    }
+
+    if (organising) {
+        OrganiseDialog(
+            selection = media.filter { it.media.id in selectedIds },
+            existingTags = tags,
+            onApply = { template, dateFormat, tagNames, source ->
+                organising = false
+                vm.organiseSelected(template, dateFormat, tagNames, source) { n ->
+                    say("$n item(s) organised")
+                }
+            },
+            onDismiss = { organising = false },
         )
     }
 
@@ -584,6 +601,7 @@ private fun SelectionBar(
     onTag: () -> Unit,
     onAlbum: () -> Unit,
     onMove: () -> Unit,
+    onOrganise: () -> Unit,
     onExport: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -608,6 +626,10 @@ private fun SelectionBar(
         Box {
             VaultIconButton(Icons.Outlined.MoreVert, "More", { more = true }, enabled = count > 0)
             DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                MenuRow(Icons.Outlined.Edit, "Rename & organise…") {
+                    more = false
+                    onOrganise()
+                }
                 MenuRow(Icons.Outlined.Upload, "Export selection…") { more = false; onExport() }
                 MenuRow(Icons.Outlined.PhotoLibrary, "Move back to gallery") { more = false; onMove() }
             }

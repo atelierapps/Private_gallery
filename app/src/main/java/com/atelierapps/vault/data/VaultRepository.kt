@@ -65,6 +65,9 @@ class VaultRepository(
         withContext(Dispatchers.IO) { mediaDao.setPinned(id, pinned) }
 
     /** Rename an item. Only the display name changes — the blob is untouched. */
+    /** Override where an item is filed as having come from. */
+    suspend fun setSourceLabel(id: String, label: String?) = mediaDao.setSourceLabel(id, label)
+
     /** Where you got to in a video; null once it has been watched to the end. */
     suspend fun setResumePosition(id: String, millis: Long?) = mediaDao.setResumePosition(id, millis)
 

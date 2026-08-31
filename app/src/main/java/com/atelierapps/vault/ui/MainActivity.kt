@@ -42,6 +42,10 @@ import com.atelierapps.vault.ui.theme.VaultTheme
 import androidx.compose.ui.platform.LocalView
 import com.atelierapps.vault.session.TileAnchor
 import com.atelierapps.vault.ui.viewer.ViewerSession
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import com.atelierapps.vault.ui.theme.Bg
 
 /**
  * Host for the vault UI (spec §8, §9). Shows the lock screen until a successful
@@ -50,6 +54,20 @@ import com.atelierapps.vault.ui.viewer.ViewerSession
  * FragmentActivity because androidx BiometricPrompt requires it.
  */
 class MainActivity : FragmentActivity() {
+
+    /**
+     * True between unlocking into a video and the viewer actually covering us.
+     * Without it the grid composes for the frame or two that startActivity takes,
+     * so unlocking flashes the library before the video you were watching —
+     * brief, but it is the wrong thing to show and it draws the eye.
+     */
+    private var resumingToViewer by mutableStateOf(false)
+
+    override fun onResume() {
+        super.onResume()
+        // We are visible again, so the viewer has been and gone.
+        resumingToViewer = false
+    }
 
     private val repository by lazy { VaultGraph.repository(this) }
 
@@ -69,6 +87,10 @@ class MainActivity : FragmentActivity() {
                             // Auto-prompt biometrics on open (spec §15.1). Re-runs if we re-lock.
                             LaunchedEffect(Unit) { promptUnlock() }
                             LockScreen(onUnlock = ::promptUnlock)
+                        } else if (resumingToViewer) {
+                            // Hold an empty surface rather than the grid for the
+                            // moment before the viewer arrives on top.
+                            Box(Modifier.fillMaxSize().background(Bg))
                         } else {
                             VaultHome(
                                 onOpen = { id ->
@@ -126,6 +148,7 @@ class MainActivity : FragmentActivity() {
                 // the keys are already being cached by the time the viewer asks
                 // for them — and so it fires exactly once, on a real unlock.
                 ViewerSession.consumeResume()?.let { id ->
+                    resumingToViewer = true
                     startActivity(ViewerActivity.intent(this, id))
                 }
             },
