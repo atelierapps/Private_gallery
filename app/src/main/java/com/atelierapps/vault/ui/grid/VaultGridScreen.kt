@@ -106,6 +106,27 @@ fun VaultGridScreen(
     // catch up on when you return. Nothing happens if the item is already on
     // screen — the common case of opening and immediately closing shouldn't
     // move the grid at all.
+    // Sectioned once and shared: the rendering below, the index lookup and the
+    // scrubber's date bubble all have to agree about which slot is which, and
+    // the surest way to agree is to be looking at the same list.
+    val sections = remember(media, showSectionHeaders, now) {
+        if (showSectionHeaders) sectionize(media, now) else emptyList()
+    }
+    // A label per lazy slot, headers included, so the scrubber can name where it
+    // is without re-deriving the layout.
+    val slotLabels = remember(sections, media, showSectionHeaders) {
+        if (showSectionHeaders) {
+            buildList {
+                sections.forEach { section ->
+                    add(section.title)
+                    repeat(section.items.size) { add(section.title) }
+                }
+            }
+        } else {
+            media.map { monthLabel(it.media.dateTakenMillis) }
+        }
+    }
+
     val gridState = rememberLazyGridState()
     val lastViewed by ViewerSession.lastViewedId.collectAsState()
     // Honour each item once. `media` has to be a key — on a cold start the list
@@ -125,58 +146,67 @@ fun VaultGridScreen(
         }
     }
 
-    LazyVerticalGrid(
-        state = gridState,
-        columns = GridCells.Fixed(columns),
-        modifier = modifier.fillMaxSize().background(Bg)
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    var lastDistance = 0f
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val pressed = event.changes.filter { it.pressed }
-                        if (pressed.size < 2) {
-                            if (pressed.isEmpty()) break else { lastDistance = 0f; continue }
+    Box(modifier.fillMaxSize()) {
+        LazyVerticalGrid(
+            state = gridState,
+            columns = GridCells.Fixed(columns),
+            modifier = Modifier.fillMaxSize().background(Bg)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        var lastDistance = 0f
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val pressed = event.changes.filter { it.pressed }
+                            if (pressed.size < 2) {
+                                if (pressed.isEmpty()) break else { lastDistance = 0f; continue }
+                            }
+                            val distance = (pressed[0].position - pressed[1].position).getDistance()
+                            if (lastDistance != 0f) {
+                                val delta = distance - lastDistance
+                                if (delta > 80f) { columns = (columns - 1).coerceAtLeast(2); lastDistance = distance }
+                                else if (delta < -80f) { columns = (columns + 1).coerceAtMost(6); lastDistance = distance }
+                            } else {
+                                lastDistance = distance
+                            }
+                            pressed.forEach { it.consume() } // claim the pinch so the grid doesn't scroll
                         }
-                        val distance = (pressed[0].position - pressed[1].position).getDistance()
-                        if (lastDistance != 0f) {
-                            val delta = distance - lastDistance
-                            if (delta > 80f) { columns = (columns - 1).coerceAtLeast(2); lastDistance = distance }
-                            else if (delta < -80f) { columns = (columns + 1).coerceAtMost(6); lastDistance = distance }
-                        } else {
-                            lastDistance = distance
-                        }
-                        pressed.forEach { it.consume() } // claim the pinch so the grid doesn't scroll
                     }
-                }
-            },
-        contentPadding = PaddingValues(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        val tile: @Composable (MediaWithTags) -> Unit = { item ->
-            MediaTile(
-                item = item,
-                selectionMode = selectionMode,
-                selected = item.media.id in selectedIds,
-                onOpen = onOpen,
-                onLongPress = onLongPress,
-                onToggleSelect = onToggleSelect,
-            )
-        }
-        if (showSectionHeaders) {
-            sectionize(media, now).forEachIndexed { idx, section ->
-                item(span = { GridItemSpan(maxLineSpan) }, key = "hdr:$idx:${section.title}") {
-                    SectionHeader(section.title)
-                }
-                items(section.items, key = { it.media.id }) { tile(it) }
+                },
+            contentPadding = PaddingValues(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            val tile: @Composable (MediaWithTags) -> Unit = { item ->
+                MediaTile(
+                    item = item,
+                    selectionMode = selectionMode,
+                    selected = item.media.id in selectedIds,
+                    onOpen = onOpen,
+                    onLongPress = onLongPress,
+                    onToggleSelect = onToggleSelect,
+                )
             }
-        } else {
-            items(media, key = { it.media.id }) { tile(it) }
+            if (showSectionHeaders) {
+                sections.forEachIndexed { idx, section ->
+                    item(span = { GridItemSpan(maxLineSpan) }, key = "hdr:$idx:${section.title}") {
+                        SectionHeader(section.title)
+                    }
+                    items(section.items, key = { it.media.id }) { tile(it) }
+                }
+            } else {
+                items(media, key = { it.media.id }) { tile(it) }
+            }
         }
+
+        FastScroller(state = gridState, labelFor = { slotLabels.getOrNull(it) })
     }
 }
+
+/** "Mar 2025" — enough to know where a scrub has landed, without the noise. */
+private val MonthFormat = java.text.SimpleDateFormat("MMM yyyy", java.util.Locale.getDefault())
+
+private fun monthLabel(millis: Long): String = MonthFormat.format(java.util.Date(millis))
 
 /**
  * Where an item sits in the lazy list, which is not its index in [media] once

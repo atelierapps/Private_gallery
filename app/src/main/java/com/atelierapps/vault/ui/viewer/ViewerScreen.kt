@@ -80,6 +80,9 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.platform.LocalDensity
 import androidx.activity.compose.BackHandler
 import com.atelierapps.vault.ui.lock.FloatingLockButton
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.alpha
 
 /**
  * Programmatic page changes (slideshow advance, prev/next) use an eased glide
@@ -168,6 +171,17 @@ fun ViewerScreen(
     // brings it back, along with moving to another item — the moments you might
     // want it. Two seconds is enough to find with a thumb and short enough not
     // to be part of the picture.
+    // Where you are in the run. It matters most right after a swipe and not at
+    // all a moment later, so it behaves like the swipe itself: appears with the
+    // move, gone before it's furniture. Shuffle is where this earns its keep —
+    // there is otherwise no way to tell a long random run from an endless one.
+    var indexVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(pagerState.currentPage) {
+        indexVisible = true
+        delay(1400)
+        indexVisible = false
+    }
+
     var lockVisible by remember { mutableStateOf(true) }
     LaunchedEffect(pagerState.currentPage, chromeVisible, videoControls) {
         lockVisible = true
@@ -234,6 +248,28 @@ fun ViewerScreen(
             if (chromeVisible && !isVideo) {
                 MetadataPanel(current, Modifier.align(Alignment.BottomStart))
             }
+        }
+
+        if (media.size > 1) {
+            val showIndex = indexVisible || chromeVisible || videoControls
+            val indexAlpha by animateFloatAsState(
+                targetValue = if (showIndex) 1f else 0f,
+                animationSpec = tween(if (showIndex) 120 else 400),
+                label = "indexFade",
+            )
+            Text(
+                "${pagerState.currentPage + 1} / ${media.size}",
+                color = Ink,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 10.dp)
+                    .alpha(indexAlpha)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Scrim)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            )
         }
 
         FloatingLockButton(visible = lockVisible, onLocked = onBack)
