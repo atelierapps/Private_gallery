@@ -104,35 +104,10 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
                 val ql = q.trim().lowercase()
                 out = out.filter { matchesQuery(it, ql) }
             }
-            val sorted = when (s) {
-                // Two different questions that look like one. `dateTaken` is when
-                // the photo was made — for something downloaded today that can be
-                // years ago, so a batch of forty imports scatters through the
-                // whole grid and the things you just added are the hardest to
-                // find. `importedAt` is when it landed here.
-                SortOrder.RECENT -> out.sortedByDescending { it.media.importedAtMillis }
-                SortOrder.NEWEST -> out.sortedByDescending { it.media.dateTakenMillis }
-                SortOrder.OLDEST -> out.sortedBy { it.media.dateTakenMillis }
-                SortOrder.NAME -> out.sortedBy { it.media.originalName.lowercase() }
-                // Images have no duration; park them after the videos either way
-                // rather than letting a null masquerade as length zero.
-                SortOrder.LONGEST -> out.sortedByDescending { it.media.durationMillis ?: -1L }
-                SortOrder.SHORTEST -> out.sortedWith(
-                    compareBy(
-                        { it.media.durationMillis == null },
-                        { it.media.durationMillis ?: Long.MAX_VALUE },
-                    ),
-                )
-            }
-            // Pinned items float to the top (stable — keeps sort order within groups).
-            sorted.sortedByDescending { it.media.isPinned }
+            out.sortedFor(s)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private fun matchesQuery(item: MediaWithTags, ql: String): Boolean =
-        item.media.originalName.lowercase().contains(ql) ||
-            item.media.sourceLabel?.lowercase()?.contains(ql) == true ||
-            item.media.sourceDomain?.lowercase()?.contains(ql) == true ||
-            item.tags.any { it.name.lowercase().contains(ql) }
+    private fun matchesQuery(item: MediaWithTags, ql: String): Boolean = item.matchesQuery(ql)
 
     fun setType(t: com.atelierapps.vault.filter.MediaTypeFilter) {
         _filter.value = _filter.value.withType(t)
@@ -320,6 +295,45 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun setDate(bucket: DateBucket) { _filter.value = _filter.value.withDate(bucket) }
     fun clearAll() { _filter.value = MediaFilter() }
 }
+
+/**
+ * The grid's ordering, shared rather than reimplemented.
+ *
+ * Albums used to be hardcoded to newest-first with no search, so the same
+ * library answered the same question two different ways depending on which
+ * screen asked. Both now call this.
+ */
+fun List<MediaWithTags>.sortedFor(order: SortOrder): List<MediaWithTags> {
+    val sorted = when (order) {
+        // Two different questions that look like one. `dateTaken` is when the
+        // photo was made — for something downloaded today that can be years
+        // ago, so a batch of forty imports scatters through the whole grid and
+        // the things you just added are the hardest to find. `importedAt` is
+        // when it landed here.
+        SortOrder.RECENT -> sortedByDescending { it.media.importedAtMillis }
+        SortOrder.NEWEST -> sortedByDescending { it.media.dateTakenMillis }
+        SortOrder.OLDEST -> sortedBy { it.media.dateTakenMillis }
+        SortOrder.NAME -> sortedBy { it.media.originalName.lowercase() }
+        // Images have no duration; park them after the videos either way rather
+        // than letting a null masquerade as length zero.
+        SortOrder.LONGEST -> sortedByDescending { it.media.durationMillis ?: -1L }
+        SortOrder.SHORTEST -> sortedWith(
+            compareBy(
+                { it.media.durationMillis == null },
+                { it.media.durationMillis ?: Long.MAX_VALUE },
+            ),
+        )
+    }
+    // Pinned items float to the top (stable — keeps sort order within groups).
+    return sorted.sortedByDescending { it.media.isPinned }
+}
+
+/** Name, source or tag contains [ql], which must already be lowercased. */
+fun MediaWithTags.matchesQuery(ql: String): Boolean =
+    media.originalName.lowercase().contains(ql) ||
+        media.sourceLabel?.lowercase()?.contains(ql) == true ||
+        media.sourceDomain?.lowercase()?.contains(ql) == true ||
+        tags.any { it.name.lowercase().contains(ql) }
 
 /** Deterministic, muted chip color per source package. */
 object SourceColors {

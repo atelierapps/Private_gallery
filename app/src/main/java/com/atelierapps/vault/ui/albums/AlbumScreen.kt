@@ -39,6 +39,15 @@ import com.atelierapps.vault.ui.theme.SurfaceHigh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
+import com.atelierapps.vault.ui.home.SortOrder
+import com.atelierapps.vault.ui.theme.Hairline
+import com.atelierapps.vault.ui.theme.Muted
 
 @Composable
 fun AlbumScreen(
@@ -53,11 +62,19 @@ fun AlbumScreen(
     val selectionMode by vm.selectionMode.collectAsState()
     val selectedIds by vm.selectedIds.collectAsState()
     val working by vm.working.collectAsState()
+    val query by vm.query.collectAsState()
+    val sort by vm.sort.collectAsState()
     var confirmDelete by remember { mutableStateOf(false) }
+    var searchOpen by remember { mutableStateOf(false) }
 
     // Same rule as the main grid: back leaves the selection before it leaves
     // the album.
-    BackHandler(enabled = selectionMode) { vm.clearSelection() }
+    BackHandler(enabled = selectionMode || searchOpen) {
+        when {
+            selectionMode -> vm.clearSelection()
+            else -> { searchOpen = false; vm.setQuery("") }
+        }
+    }
 
     Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
@@ -92,10 +109,41 @@ fun AlbumScreen(
                     icon = Icons.AutoMirrored.Outlined.ArrowBack,
                     backDescription = "Back",
                 ) {
-                    HeaderAction(
-                        "Export",
-                        onClick = { onExport(media.map { it.media.id }.toSet()) },
-                        enabled = media.isNotEmpty(),
+                    VaultIconButton(Icons.Outlined.Search, "Search this album") {
+                        searchOpen = !searchOpen
+                        if (!searchOpen) vm.setQuery("")
+                    }
+                    Box {
+                        var menu by remember { mutableStateOf(false) }
+                        VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true })
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            SortOrder.entries.forEach { order ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            order.label,
+                                            color = if (order == sort) Brass else Ink,
+                                        )
+                                    },
+                                    onClick = { menu = false; vm.setSort(order) },
+                                )
+                            }
+                            HorizontalDivider(color = Hairline)
+                            DropdownMenuItem(
+                                text = { Text("Export album", color = Ink) },
+                                onClick = { menu = false; onExport(media.map { it.media.id }.toSet()) },
+                            )
+                        }
+                    }
+                }
+                if (searchOpen) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = vm::setQuery,
+                        placeholder = { Text("Search this album", color = Muted) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 4.dp),
                     )
                 }
             }

@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.atelierapps.vault.ui.home.SortOrder
+import com.atelierapps.vault.ui.home.matchesQuery
+import com.atelierapps.vault.ui.home.sortedFor
 
 /** Contents of a single album (spec §7): the member grid plus multi-select. */
 class AlbumViewModel(app: Application) : AndroidViewModel(app) {
@@ -23,14 +26,31 @@ class AlbumViewModel(app: Application) : AndroidViewModel(app) {
     val selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val working = MutableStateFlow(false)
 
+    // Search and sort, because a three-hundred-item album was a wall you
+    // scrolled: the main grid had both and this screen had neither, so the same
+    // library answered the same question differently depending on where you
+    // asked. Unlike the grid's, these are per-visit — an album is somewhere you
+    // arrive looking for something, not a view you live in.
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query
+
+    private val _sort = MutableStateFlow(SortOrder.NEWEST)
+    val sort: StateFlow<SortOrder> = _sort
+
+    fun setQuery(q: String) { _query.value = q }
+    fun setSort(s: SortOrder) { _sort.value = s }
+
     val media: StateFlow<List<MediaWithTags>> =
-        combine(repo.observeAll(), albumId) { list, aid ->
+        combine(repo.observeAll(), albumId, _query, _sort) { list, aid, q, s ->
             if (aid == null) {
                 emptyList()
             } else {
-                list.filter { it.media.albumId == aid }
-                    .sortedByDescending { it.media.dateTakenMillis }
-                    .sortedByDescending { it.media.isPinned }
+                var out = list.filter { it.media.albumId == aid }
+                if (q.isNotBlank()) {
+                    val ql = q.trim().lowercase()
+                    out = out.filter { it.matchesQuery(ql) }
+                }
+                out.sortedFor(s)
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
