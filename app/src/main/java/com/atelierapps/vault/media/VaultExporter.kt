@@ -9,6 +9,7 @@ import com.atelierapps.vault.crypto.MediaCrypto
 import com.atelierapps.vault.data.entity.MediaWithTags
 import org.json.JSONArray
 import org.json.JSONObject
+import javax.crypto.SecretKey
 
 data class ExportProgress(val done: Int, val total: Int, val failed: Int)
 data class ExportResult(val exported: Int, val failed: Int, val total: Int)
@@ -34,6 +35,7 @@ object VaultExporter {
         context: Context,
         treeUri: Uri,
         onlyIds: Set<String>? = null,
+        passphrase: CharArray? = null,
         onProgress: (ExportProgress) -> Unit,
     ): ExportResult {
         val tree = DocumentFile.fromTreeUri(context, treeUri)
@@ -41,32 +43,76 @@ object VaultExporter {
         val all = VaultGraph.repository(context).allMedia()
         val items = if (onlyIds == null) all else all.filter { it.media.id in onlyIds }
 
+        // The header goes down first. Written last, a run interrupted halfway
+        // would leave a folder of ciphertext with nothing saying how to open it.
+        val key = passphrase?.let {
+            val (header, derived) = BackupCrypto.newHeader(it)
+            tree.findFile(BackupCrypto.HEADER)?.delete()
+            val file = tree.createFile("application/json", BackupCrypto.HEADER)
+                ?: return ExportResult(0, 0, items.size)
+            context.contentResolver.openOutputStream(file.uri)!!.use { out ->
+                out.write(BackupCrypto.headerToJson(header).toByteArray())
+            }
+            derived
+        }
+
         val manifest = JSONArray()
         var done = 0
         var failed = 0
         for (mwt in items) {
-            val ok = runCatching { exportOne(context, tree, mwt) }.getOrDefault(false)
-            if (ok) manifest.put(manifestEntry(mwt)) else failed++
+            val entry = runCatching { exportOne(context, tree, mwt, key) }.getOrNull()
+            if (entry != null) manifest.put(entry) else failed++
             done++
             onProgress(ExportProgress(done, items.size, failed))
         }
 
-        runCatching { writeManifest(context, tree, manifest) }
+        runCatching { writeManifest(context, tree, manifest, key) }
             .onFailure { Log.e(TAG, "manifest write failed", it) }
 
         return ExportResult(exported = done - failed, failed = failed, total = items.size)
     }
 
-    private fun exportOne(context: Context, tree: DocumentFile, mwt: MediaWithTags): Boolean {
+    /** Writes one item and returns its manifest entry, or null if it failed. */
+    private fun exportOne(
+        context: Context,
+        tree: DocumentFile,
+        mwt: MediaWithTags,
+        key: SecretKey?,
+    ): JSONObject? {
         val item = mwt.media
-        val name = ensureExtension(item.originalName, item.mimeType)
-        val target = tree.createFile(item.mimeType, name) ?: return false
+        // Encrypted backups are named by id, not by title: a directory listing
+        // of holiday-2019.jpg would give away everything the ciphertext hides.
+        val name =
+            if (key == null) ensureExtension(item.originalName, item.mimeType)
+            else item.id + ".bin"
+        val type = if (key == null) item.mimeType else "application/octet-stream"
+        val target = tree.createFile(type, name) ?: return null
         val blob = VaultGraph.storage(context).blob(item.id)
+
+        var plaintextBytes = 0L
         context.contentResolver.openOutputStream(target.uri)!!.use { out ->
-            if (item.mimeType.startsWith("video/")) MediaCrypto.decryptCtrTo(blob, out)
-            else out.write(MediaCrypto.decryptGcmFile(blob))
+            if (key == null) {
+                if (item.mimeType.startsWith("video/")) MediaCrypto.decryptCtrTo(blob, out)
+                else out.write(MediaCrypto.decryptGcmFile(blob))
+            } else {
+                // The vault's decryption writes straight into the backup's
+                // cipher, so the plaintext exists only in flight between the two
+                // and is never buffered whole or written anywhere.
+                plaintextBytes = BackupCrypto.encryptTo(key, out) { sink ->
+                    if (item.mimeType.startsWith("video/")) MediaCrypto.decryptCtrTo(blob, sink)
+                    else sink.write(MediaCrypto.decryptGcmFile(blob))
+                }
+            }
         }
-        return true
+        return manifestEntry(mwt).apply {
+            if (key != null) {
+                put("file", name)
+                // Checked on restore: CipherInputStream reports a failed tag as
+                // end-of-stream rather than an error, so length is what turns a
+                // truncated file back into a visible failure.
+                put("plainBytes", plaintextBytes)
+            }
+        }
     }
 
     private fun manifestEntry(mwt: MediaWithTags): JSONObject {
@@ -83,16 +129,25 @@ object VaultExporter {
         }
     }
 
-    private fun writeManifest(context: Context, tree: DocumentFile, manifest: JSONArray) {
-        tree.findFile("manifest.json")?.delete()
-        val file = tree.createFile("application/json", "manifest.json") ?: return
+    private fun writeManifest(
+        context: Context,
+        tree: DocumentFile,
+        manifest: JSONArray,
+        key: SecretKey?,
+    ) {
+        val name = if (key == null) "manifest.json" else BackupCrypto.MANIFEST
+        tree.findFile(name)?.delete()
+        val file = tree.createFile("application/octet-stream", name) ?: return
         val root = JSONObject().apply {
             put("app", "Vault")
             put("version", 1)
             put("items", manifest)
         }
+        val bytes = root.toString(2).toByteArray()
         context.contentResolver.openOutputStream(file.uri)!!.use { out ->
-            out.write(root.toString(2).toByteArray())
+            // The manifest holds names, tags and sources — the same metadata the
+            // database encrypts — so it is never written in the clear either.
+            out.write(if (key == null) bytes else BackupCrypto.encryptBytes(key, bytes))
         }
     }
 

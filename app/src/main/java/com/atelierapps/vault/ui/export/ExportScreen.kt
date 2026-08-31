@@ -26,6 +26,14 @@ import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import androidx.compose.material3.MaterialTheme
 import com.atelierapps.vault.ui.theme.Danger
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 /** Biometric gate shown before the export flow (spec §11). */
 @Composable
@@ -55,6 +63,9 @@ fun ExportAuthGate(
     }
 }
 
+/** Shortest passphrase worth calling one; below this the KDF is doing the work alone. */
+private const val MIN_PASSPHRASE = 8
+
 /** Export UI (spec §11): pick a destination, watch progress, see the verified count. */
 @Composable
 fun ExportScreen(
@@ -62,7 +73,7 @@ fun ExportScreen(
     phase: ExportPhase,
     progress: ExportProgress,
     result: ExportResult?,
-    onPickFolder: () -> Unit,
+    onPickFolder: (passphrase: String?) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -78,13 +89,80 @@ fun ExportScreen(
             )
             when (phase) {
                 ExportPhase.PICK -> {
+                    var protect by remember { mutableStateOf(true) }
+                    var phrase by remember { mutableStateOf("") }
+                    var confirm by remember { mutableStateOf("") }
+                    val mismatch = protect && confirm.isNotEmpty() && phrase != confirm
+                    val ready = !protect || (phrase.length >= MIN_PASSPHRASE && phrase == confirm)
+
                     Text(
-                        "Choose a folder to back up to. Everything is decrypted to its " +
-                            "original files, plus a manifest.json that can restore tags and " +
-                            "sources on re-import.\n\nThis backup is unencrypted — keep it somewhere safe.",
+                        "Everything is written out to a folder you choose, with a manifest " +
+                            "that restores tags and sources later.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
-                    Button(onClick = onPickFolder) { Text("Choose folder") }
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Protect with a passphrase", color = Ink, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                if (protect) {
+                                    "Files and the manifest are encrypted, and named so the " +
+                                        "folder gives nothing away."
+                                } else {
+                                    "Written in the clear — anyone who finds the folder can " +
+                                        "read all of it."
+                                },
+                                color = if (protect) Muted else Danger,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                        Switch(checked = protect, onCheckedChange = { protect = it })
+                    }
+
+                    if (protect) {
+                        OutlinedTextField(
+                            value = phrase,
+                            onValueChange = { phrase = it },
+                            placeholder = { Text("Passphrase") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = confirm,
+                            onValueChange = { confirm = it },
+                            placeholder = { Text("Type it again") },
+                            singleLine = true,
+                            isError = mismatch,
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        // Twice, because there is genuinely no way back from a
+                        // typo here — not a reset, not a support line, nothing.
+                        Text(
+                            when {
+                                mismatch -> "Those don't match."
+                                phrase.isNotEmpty() && phrase.length < MIN_PASSPHRASE ->
+                                    "At least $MIN_PASSPHRASE characters."
+                                else ->
+                                    "Write it down somewhere. If you lose it this backup is " +
+                                        "lost with it — the key is made from the passphrase " +
+                                        "and nothing else, so there is nothing to recover from."
+                            },
+                            color = if (mismatch) Danger else Muted,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+
+                    Button(
+                        onClick = { onPickFolder(if (protect) phrase else null) },
+                        enabled = ready,
+                    ) { Text("Choose folder") }
                     TextButton(onClick = onClose) { Text("Cancel", color = Muted) }
                 }
                 ExportPhase.RUNNING -> {
@@ -104,11 +182,11 @@ fun ExportScreen(
                         color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center,
                     )
                     Text(
-                        "Your files and a manifest.json are in that folder. It is " +
-                            "independent of this app now — it survives an uninstall, and " +
-                            "copying it off the phone is what makes it a real backup.\n\n" +
-                            "To bring it back on a fresh install: menu → Restore from " +
-                            "backup, then pick this folder.",
+                        "That folder is independent of this app now — it survives an " +
+                            "uninstall, and copying it off the phone is what makes it a " +
+                            "real backup.\n\nTo bring it back on a fresh install: menu → " +
+                            "Restore from backup, then pick this folder. If you set a " +
+                            "passphrase you will need it then, and only then.",
                         color = Muted,
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,

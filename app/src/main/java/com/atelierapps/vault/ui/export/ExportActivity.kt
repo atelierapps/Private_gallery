@@ -80,7 +80,12 @@ class ExportActivity : FragmentActivity() {
                             phase = phase,
                             progress = progress,
                             result = result,
-                            onPickFolder = { treeLauncher.launch(null) },
+                            onPickFolder = { phrase ->
+                                // Held until the folder picker returns, then
+                                // consumed and wiped by the export itself.
+                                vm.passphrase = phrase?.toCharArray()
+                                treeLauncher.launch(null)
+                            },
                             onClose = { finish() },
                             modifier = Modifier.safeDrawingPadding(),
                         )

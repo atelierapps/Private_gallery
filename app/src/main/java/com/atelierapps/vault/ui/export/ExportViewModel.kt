@@ -23,11 +23,20 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
     /** Ids to export, or null for the whole library. */
     var scopeIds: Set<String>? = null
 
+    /** Passphrase for an encrypted backup, or null to write plaintext. */
+    var passphrase: CharArray? = null
+
     fun run(treeUri: Uri) {
         if (phase.value == ExportPhase.RUNNING) return
         phase.value = ExportPhase.RUNNING
         viewModelScope.launch(Dispatchers.IO) {
-            val r = VaultExporter.exportAll(getApplication(), treeUri, scopeIds) { progress.value = it }
+            val r = VaultExporter.exportAll(
+                getApplication(), treeUri, scopeIds, passphrase,
+            ) { progress.value = it }
+            // The derived key is gone with the export; don't leave the phrase
+            // that makes it sitting in memory for the rest of the session.
+            passphrase?.fill('\u0000')
+            passphrase = null
             // Only a whole-library run with nothing failed is a backup you could
             // actually rebuild from. A scoped export is a share, and a partial
             // one leaves gaps — recording either as "backed up" would be a

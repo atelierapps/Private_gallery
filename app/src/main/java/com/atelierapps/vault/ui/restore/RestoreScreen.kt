@@ -49,21 +49,61 @@ import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.VaultTheme
 import androidx.compose.material3.MaterialTheme
 import com.atelierapps.vault.ui.lock.FinishOnLock
+import com.atelierapps.vault.media.BackupCrypto
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.atelierapps.vault.ui.theme.Danger
 
-enum class RestorePhase { PICK, RUNNING, DONE }
+enum class RestorePhase { PICK, PASSPHRASE, RUNNING, DONE }
 
 class RestoreViewModel(app: Application) : AndroidViewModel(app) {
     val phase = MutableStateFlow(RestorePhase.PICK)
     val progress = MutableStateFlow(RestoreProgress(0, 0, 0, 0))
     val result = MutableStateFlow<RestoreResult?>(null)
 
-    fun run(treeUri: Uri) {
+    /** Set when the chosen folder turned out to be an encrypted backup. */
+    val wrongPassphrase = MutableStateFlow(false)
+    private var pending: Uri? = null
+
+    fun pick(treeUri: Uri) {
         if (phase.value == RestorePhase.RUNNING) return
+        pending = treeUri
+        // Ask before starting rather than failing partway: an encrypted folder
+        // announces itself, so there is no reason to guess.
+        if (VaultRestorer.isEncrypted(getApplication(), treeUri)) {
+            phase.value = RestorePhase.PASSPHRASE
+        } else {
+            run(treeUri, null)
+        }
+    }
+
+    fun run(treeUri: Uri? = pending, passphrase: CharArray?) {
+        val uri = treeUri ?: return
+        if (phase.value == RestorePhase.RUNNING) return
+        wrongPassphrase.value = false
         phase.value = RestorePhase.RUNNING
         viewModelScope.launch(Dispatchers.IO) {
-            val r = VaultRestorer.restoreAll(getApplication(), treeUri) { progress.value = it }
-            result.value = r
-            phase.value = RestorePhase.DONE
+            val r = runCatching {
+                VaultRestorer.restoreAll(getApplication(), uri, passphrase) { progress.value = it }
+            }
+            val failure = r.exceptionOrNull()
+            when {
+                failure is BackupCrypto.WrongPassphrase -> {
+                    wrongPassphrase.value = true
+                    phase.value = RestorePhase.PASSPHRASE
+                }
+                r.isSuccess -> {
+                    result.value = r.getOrNull()
+                    phase.value = RestorePhase.DONE
+                }
+                else -> {
+                    result.value = RestoreResult(0, 0, 0, hadManifest = false)
+                    phase.value = RestorePhase.DONE
+                }
+            }
         }
     }
 }
@@ -81,7 +121,7 @@ class RestoreActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             uri ?: return@registerForActivityResult
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            vm.run(uri)
+            vm.pick(uri)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,9 +138,12 @@ class RestoreActivity : ComponentActivity() {
                     val phase by vm.phase.collectAsState()
                     val progress by vm.progress.collectAsState()
                     val result by vm.result.collectAsState()
+                    val wrong by vm.wrongPassphrase.collectAsState()
                     RestoreBody(
                         phase, progress, result,
+                        wrongPassphrase = wrong,
                         onPick = { treeLauncher.launch(null) },
+                        onPassphrase = { vm.run(passphrase = it.toCharArray()) },
                         onClose = { finish() },
                         modifier = Modifier.safeDrawingPadding(),
                     )
@@ -115,7 +158,9 @@ private fun RestoreBody(
     phase: RestorePhase,
     progress: RestoreProgress,
     result: RestoreResult?,
+    wrongPassphrase: Boolean,
     onPick: () -> Unit,
+    onPassphrase: (String) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -129,12 +174,39 @@ private fun RestoreBody(
             when (phase) {
                 RestorePhase.PICK -> {
                     Text(
-                        "Choose the folder that contains your manifest.json. Every file it " +
-                            "lists is re-encrypted and saved back in with its tags and source. " +
-                            "Items already saved are skipped.",
+                        "Choose the folder your backup was written to. Everything in it is " +
+                            "saved back in with its tags and source, and anything already " +
+                            "here is skipped.\n\nIf it was made with a passphrase you'll be " +
+                            "asked for it next.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
                     Button(onClick = onPick) { Text("Choose backup folder") }
+                    TextButton(onClick = onClose) { Text("Cancel", color = Muted) }
+                }
+                RestorePhase.PASSPHRASE -> {
+                    var entry by remember { mutableStateOf("") }
+                    Text(
+                        "This backup is encrypted. Enter the passphrase you set when you " +
+                            "made it — there is no way to open it without one.",
+                        color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
+                    )
+                    OutlinedTextField(
+                        value = entry,
+                        onValueChange = { entry = it },
+                        placeholder = { Text("Passphrase") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (wrongPassphrase) {
+                        Text(
+                            "That passphrase doesn't open this backup.",
+                            color = Danger, style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Button(onClick = { onPassphrase(entry) }, enabled = entry.isNotEmpty()) {
+                        Text("Restore")
+                    }
                     TextButton(onClick = onClose) { Text("Cancel", color = Muted) }
                 }
                 RestorePhase.RUNNING -> {
