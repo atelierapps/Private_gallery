@@ -65,6 +65,9 @@ class VaultRepository(
         withContext(Dispatchers.IO) { mediaDao.setPinned(id, pinned) }
 
     /** Rename an item. Only the display name changes — the blob is untouched. */
+    /** Display rotation for a video encoded the wrong way up. */
+    suspend fun setVideoRotation(id: String, degrees: Int?) = mediaDao.setVideoRotation(id, degrees)
+
     /** Override where an item is filed as having come from. */
     suspend fun setSourceLabel(id: String, label: String?) = mediaDao.setSourceLabel(id, label)
 

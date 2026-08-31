@@ -83,6 +83,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.atelierapps.vault.ui.theme.Scrim
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material.icons.outlined.RotateRight
 
 private val SPEEDS = floatArrayOf(0.25f, 0.5f, 1f, 1.5f, 2f)
 private const val SPEED_DEFAULT = 2 // index of 1.0×
@@ -133,6 +135,10 @@ fun VideoPlayer(
     resumeFrom: Long = 0L,
     /** Persist where this run left off; null means watched to the end. */
     onResumePosition: (Long?) -> Unit = {},
+    /** Stored display rotation for this video, in degrees. */
+    initialRotation: Int = 0,
+    /** Persist a new display rotation; null once it is back to upright. */
+    onRotationChanged: (Int?) -> Unit = {},
 ) {
     // Inactive pages: poster only, no decoder held.
     if (!active) {
@@ -205,6 +211,9 @@ fun VideoPlayer(
     var speedMenu by remember(id) { mutableStateOf(false) }
     // Global mute: persisted, so it holds across videos and app launches.
     var muted by remember(id) { mutableStateOf(VideoPrefs.muted(context)) }
+    // Display-only rotation, for files encoded sideways. The pixels are never
+    // touched — this turns the surface, so it costs nothing and is reversible.
+    var videoRotation by remember(id) { mutableIntStateOf(((initialRotation % 360) + 360) % 360) }
     var scale by remember(id) { mutableFloatStateOf(1f) }
     var offset by remember(id) { mutableStateOf(Offset.Zero) }
     // Same rule as images: back leaves the zoom before it leaves the video.
@@ -302,11 +311,24 @@ fun VideoPlayer(
                 (LayoutInflater.from(ctx).inflate(R.layout.vault_player_view, null) as PlayerView)
                     .apply { this.player = player }
             },
-            modifier = Modifier.fillMaxSize().graphicsLayer(
-                scaleX = scale, scaleY = scale,
-                translationX = offset.x, translationY = offset.y,
-                alpha = videoAlpha,
-            ),
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                // A quarter turn swaps which side of the view is against which
+                // side of the box, so it has to shrink by the box's own aspect
+                // to keep fitting. Half turns need no such correction.
+                val quarter = videoRotation % 180 != 0
+                val fit =
+                    if (quarter && size.width > 0f && size.height > 0f) {
+                        minOf(size.width, size.height) / maxOf(size.width, size.height)
+                    } else {
+                        1f
+                    }
+                rotationZ = videoRotation.toFloat()
+                scaleX = scale * fit
+                scaleY = scale * fit
+                translationX = offset.x
+                translationY = offset.y
+                alpha = videoAlpha
+            },
         )
 
         // Unified gesture surface: two-finger pinch/pan (focal-anchored),
@@ -524,6 +546,20 @@ fun VideoPlayer(
                             }
                         }
                     }
+                    // One tap per quarter turn, for files that were encoded the
+                    // wrong way up — which no amount of phone auto-rotate fixes,
+                    // because the phone is not the thing that is sideways.
+                    CtlIcon(
+                        Icons.Outlined.RotateRight,
+                        "Rotate video",
+                        Modifier.weight(1f),
+                        tint = if (videoRotation != 0) Brass else Color(0x99FFFFFF),
+                    ) {
+                        videoRotation = (videoRotation + 90) % 360
+                        onRotationChanged(videoRotation.takeIf { it != 0 })
+                        hud = if (videoRotation == 0) "Upright" else "" + videoRotation + "°"
+                    }
+
                     // Loop is unavailable during a slideshow — it would stop the
                     // clip from ever ending, which is what advances the show.
                     CtlIcon(

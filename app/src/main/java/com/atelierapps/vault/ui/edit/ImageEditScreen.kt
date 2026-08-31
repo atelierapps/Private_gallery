@@ -49,7 +49,10 @@ import kotlin.math.abs
 import kotlin.math.min
 import androidx.compose.runtime.rememberUpdatedState
 
-/** Crop presets. Free leaves the box alone; the rest reshape it, centred. */
+/**
+ * Crop presets. Free insets the box so there is something to drag; the rest
+ * reshape it to that ratio, centred and as large as fits.
+ */
 private val RATIOS = listOf(
     "Free" to null,
     "1:1" to 1f,
@@ -85,7 +88,10 @@ fun ImageEditScreen(
                 state.saving -> CircularProgressIndicator(color = Brass)
                 preview == null -> CircularProgressIndicator(color = Brass)
                 else -> CropCanvas(
-                    bitmap = preview.asImageBitmap(),
+                    // Remembered against the source Bitmap: asImageBitmap()
+                    // hands back a fresh wrapper each call, and this one is used
+                    // as a gesture key downstream.
+                    bitmap = remember(preview) { preview.asImageBitmap() },
                     crop = state.crop,
                     onCrop = onCrop,
                 )
@@ -150,7 +156,13 @@ private fun CropCanvas(
     crop: NormalisedRect,
     onCrop: (NormalisedRect) -> Unit,
 ) {
-    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    // Padding so the image never reaches the edge of the touch area: a box at
+    // full extent puts its handles exactly on the image border, and on the
+    // border of the screen they cannot be hit.
+    BoxWithConstraints(
+        Modifier.fillMaxSize().padding(20.dp),
+        contentAlignment = Alignment.Center,
+    ) {
         val density = LocalDensity.current
         val canvasW = with(density) { maxWidth.toPx() }
         val canvasH = with(density) { maxHeight.toPx() }
@@ -177,7 +189,11 @@ private fun CropCanvas(
         )
 
         Canvas(
-            Modifier.fillMaxSize().pointerInput(bitmap, drawnW, drawnH) {
+            // Keyed on the drawn size only. Keying on the bitmap restarted the
+            // gesture detector on every recomposition — and every drag delta
+            // causes one — so a drag was cancelled the instant it began, which
+            // is why the box could not be moved or resized.
+            Modifier.fillMaxSize().pointerInput(drawnW, drawnH) {
                 val touchSlop = 48f
                 detectDragGestures(
                     onDragStart = { start ->
@@ -269,6 +285,9 @@ private fun inside(
 /** Never let a frame collapse to nothing — 5% is the floor on both axes. */
 private const val MIN_SIDE = 0.05f
 
+/** How far Free pulls the box in from each edge, so it can be grabbed. */
+private const val FREE_INSET = 0.1f
+
 private fun resize(crop: NormalisedRect, corner: Int, dx: Float, dy: Float): NormalisedRect {
     var l = crop.left
     var t = crop.top
@@ -299,7 +318,11 @@ private fun move(crop: NormalisedRect, dx: Float, dy: Float): NormalisedRect {
  * box is only square in pixels if the normalised space is corrected for it.
  */
 private fun cropFor(ratio: Float?, imageAspect: Float): NormalisedRect {
-    if (ratio == null || imageAspect <= 0f) return NormalisedRect.WHOLE
+    // Free means "no fixed ratio", not "no crop". Returning the whole image
+    // looked like the button did nothing, and left the handles pinned to the
+    // image edge with nothing to take hold of.
+    if (ratio == null) return NormalisedRect(FREE_INSET, FREE_INSET, 1f - FREE_INSET, 1f - FREE_INSET)
+    if (imageAspect <= 0f) return NormalisedRect.WHOLE
     // Normalised width w and height h give a pixel ratio of (w * imageAspect) / h.
     // Solve for the largest w, h <= 1 with that ratio equal to `ratio`.
     var w = 1f

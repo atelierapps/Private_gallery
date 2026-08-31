@@ -108,6 +108,7 @@ fun ViewerScreen(
     allTags: List<com.atelierapps.vault.data.entity.TagEntity> = emptyList(),
     onSetTags: (id: String, names: List<String>) -> Unit = { _, _ -> },
     onResumePosition: (id: String, millis: Long?) -> Unit = { _, _ -> },
+    onVideoRotation: (id: String, degrees: Int?) -> Unit = { _, _ -> },
     onRename: (id: String, name: String) -> Unit = { _, _ -> },
     onEdit: (id: String) -> Unit = {},
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
@@ -216,6 +217,7 @@ fun ViewerScreen(
                 item = media[page],
                 active = page == pagerState.currentPage,
                 onResumePosition = onResumePosition,
+                onVideoRotation = onVideoRotation,
                 onDismissDrag = onDismissDrag,
                 onDismissEnd = onDismissEnd,
                 onTap = { chromeVisible = !chromeVisible },
@@ -468,6 +470,7 @@ private fun ViewerPage(
     item: MediaWithTags,
     active: Boolean,
     onResumePosition: (id: String, millis: Long?) -> Unit,
+    onVideoRotation: (id: String, degrees: Int?) -> Unit,
     onDismissDrag: (Float) -> Unit,
     onDismissEnd: () -> Unit,
     onTap: () -> Unit,
@@ -493,6 +496,8 @@ private fun ViewerPage(
             onDismissEnd = onDismissEnd,
             resumeFrom = item.media.resumePositionMillis ?: 0L,
             onResumePosition = { onResumePosition(item.media.id, it) },
+            initialRotation = item.media.videoRotationDegrees ?: 0,
+            onRotationChanged = { onVideoRotation(item.media.id, it) },
         )
         return
     }

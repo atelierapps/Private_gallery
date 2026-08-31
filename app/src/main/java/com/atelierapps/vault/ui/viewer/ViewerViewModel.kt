@@ -79,6 +79,10 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { repo.setResumePosition(id, millis) }
     }
 
+    fun setVideoRotation(id: String, degrees: Int?) {
+        viewModelScope.launch { repo.setVideoRotation(id, degrees) }
+    }
+
     fun setTags(id: String, names: List<String>) {
         viewModelScope.launch {
             repo.setTagsForMedia(id, names)

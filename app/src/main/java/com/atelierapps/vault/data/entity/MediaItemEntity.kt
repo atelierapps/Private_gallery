@@ -62,4 +62,9 @@ data class MediaItemEntity(
     // database is encrypted — as a plaintext column this was a log of what you
     // watched and how far.
     val resumePositionMillis: Long? = null,
+
+    // How far to turn this video on playback. A file that was encoded crooked
+    // stays crooked, so correcting it once should stick rather than being
+    // re-done every time it is opened. Display-only: the bytes aren't touched.
+    val videoRotationDegrees: Int? = null,
 )

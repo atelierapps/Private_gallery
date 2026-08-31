@@ -79,6 +79,7 @@ class ViewerActivity : ComponentActivity() {
                         allTags = allTags,
                         onSetTags = { id, names -> vm.setTags(id, names) },
                         onResumePosition = { id, millis -> vm.setResumePosition(id, millis) },
+                        onVideoRotation = { id, degrees -> vm.setVideoRotation(id, degrees) },
                         onRename = { id, name -> vm.rename(id, name) },
                         onEdit = { id -> startActivity(ImageEditActivity.intent(this, id)) },
                         onAddToAlbum = { id, albumId -> vm.addToAlbum(id, albumId) },
