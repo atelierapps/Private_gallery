@@ -19,6 +19,13 @@
 
     <uses-feature android:name="android.hardware.fingerprint" android:required="false" />
 
+    <!--
+      Held only while an export or restore is running. A backup of a few hundred
+      files takes long enough that the screen will go off partway through, and
+      without this the work stops there and the whole run is wasted.
+    -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- In-app camera: capture straight into the vault (never touches the gallery). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

@@ -58,6 +58,9 @@ class ExportActivity : FragmentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        // These screens exist only to run a transfer, and a transfer dies if
+        // the device sleeps. Watching it should be enough to keep it alive.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContent {
             FinishOnLock { finish() }

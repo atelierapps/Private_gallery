@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import com.atelierapps.vault.session.BackupPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import com.atelierapps.vault.media.TransferWake
 
 enum class ExportPhase { PICK, RUNNING, DONE }
 
@@ -54,9 +55,14 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
         phase.value = ExportPhase.RUNNING
         result.value = null
         ExportRun.scope.launch {
-            val r = VaultExporter.exportAll(
-                getApplication(), treeUri, scopeIds, passphrase,
-            ) { progress.value = it }
+            TransferWake.acquire(getApplication())
+            val r = try {
+                VaultExporter.exportAll(
+                    getApplication(), treeUri, scopeIds, passphrase,
+                ) { progress.value = it }
+            } finally {
+                TransferWake.release()
+            }
             // The derived key is gone with the export; don't leave the phrase
             // that makes it sitting in memory for the rest of the session.
             passphrase?.fill('\u0000')

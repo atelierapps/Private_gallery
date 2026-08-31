@@ -59,6 +59,7 @@ import com.atelierapps.vault.ui.theme.Danger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import com.atelierapps.vault.ui.theme.FailureList
+import com.atelierapps.vault.media.TransferWake
 
 enum class RestorePhase { PICK, PASSPHRASE, RUNNING, DONE }
 
@@ -107,8 +108,13 @@ class RestoreViewModel(app: Application) : AndroidViewModel(app) {
         phase.value = RestorePhase.RUNNING
         result.value = null
         RestoreRun.scope.launch {
-            val r = runCatching {
-                VaultRestorer.restoreAll(getApplication(), uri, passphrase) { progress.value = it }
+            TransferWake.acquire(getApplication())
+            val r = try {
+                runCatching {
+                    VaultRestorer.restoreAll(getApplication(), uri, passphrase) { progress.value = it }
+                }
+            } finally {
+                TransferWake.release()
             }
             val failure = r.exceptionOrNull()
             when {
@@ -152,6 +158,9 @@ class RestoreActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
         )
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        // These screens exist only to run a transfer, and a transfer dies if
+        // the device sleeps. Watching it should be enough to keep it alive.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent {
             FinishOnLock { finish() }
             VaultTheme {
