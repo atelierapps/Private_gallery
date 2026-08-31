@@ -37,6 +37,9 @@ import androidx.compose.foundation.layout.padding
  * every bar in the app feels like the same hand made it — and a real vector
  * instead of an emoji glyph, which renders differently on every device and is
  * the quickest way for an interface to look improvised.
+ *
+ * Note that [onClick] is the third parameter, not the last: this takes no
+ * trailing lambda, and one written anyway binds silently to [size].
  */
 @Composable
 fun VaultIconButton(

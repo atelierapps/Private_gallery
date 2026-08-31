@@ -109,10 +109,16 @@ fun AlbumScreen(
                     icon = Icons.AutoMirrored.Outlined.ArrowBack,
                     backDescription = "Back",
                 ) {
-                    VaultIconButton(Icons.Outlined.Search, "Search this album") {
-                        searchOpen = !searchOpen
-                        if (!searchOpen) vm.setQuery("")
-                    }
+                    // onClick is the third parameter, not the last, so this
+                    // cannot take a trailing lambda — that binds to `size`.
+                    VaultIconButton(
+                        Icons.Outlined.Search,
+                        "Search this album",
+                        {
+                            searchOpen = !searchOpen
+                            if (!searchOpen) vm.setQuery("")
+                        },
+                    )
                     Box {
                         var menu by remember { mutableStateOf(false) }
                         VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true })
