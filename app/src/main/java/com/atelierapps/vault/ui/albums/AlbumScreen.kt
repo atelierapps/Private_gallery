@@ -38,6 +38,7 @@ import com.atelierapps.vault.ui.theme.Scrim
 import com.atelierapps.vault.ui.theme.SurfaceHigh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.activity.compose.BackHandler
 
 @Composable
 fun AlbumScreen(
@@ -53,6 +54,10 @@ fun AlbumScreen(
     val selectedIds by vm.selectedIds.collectAsState()
     val working by vm.working.collectAsState()
     var confirmDelete by remember { mutableStateOf(false) }
+
+    // Same rule as the main grid: back leaves the selection before it leaves
+    // the album.
+    BackHandler(enabled = selectionMode) { vm.clearSelection() }
 
     Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
@@ -103,7 +108,7 @@ fun AlbumScreen(
                     ViewerSession.orderedIds = media.map { it.media.id }
                     onOpen(id)
                 },
-                onLongPress = vm::startSelection,
+                onLongPress = vm::longPress,
                 onToggleSelect = vm::toggleSelection,
                 modifier = Modifier.weight(1f),
             )

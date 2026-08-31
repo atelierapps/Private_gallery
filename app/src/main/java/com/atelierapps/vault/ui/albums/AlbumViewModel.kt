@@ -36,12 +36,32 @@ class AlbumViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setAlbum(id: String) { albumId.value = id }
 
+    // Range-select anchor — same behaviour as the main grid, so the gesture
+    // means the same thing wherever you are.
+    private var anchorId: String? = null
+
+    /** Long-press: starts selection, or extends it from the anchor to here. */
+    fun longPress(id: String) {
+        if (selectionMode.value) selectRangeTo(id) else startSelection(id)
+    }
+
+    private fun selectRangeTo(id: String) {
+        val visible = media.value.map { it.media.id }
+        val from = visible.indexOf(anchorId ?: id)
+        val to = visible.indexOf(id)
+        if (from < 0 || to < 0) { toggleSelection(id); return }
+        selectedIds.value = selectedIds.value + visible.subList(minOf(from, to), maxOf(from, to) + 1)
+        anchorId = id
+    }
+
     fun startSelection(id: String) {
         selectionMode.value = true
         selectedIds.value = setOf(id)
+        anchorId = id
     }
 
     fun toggleSelection(id: String) {
+        anchorId = id
         val next = selectedIds.value.let { if (id in it) it - id else it + id }
         selectedIds.value = next
         if (next.isEmpty()) selectionMode.value = false
@@ -58,6 +78,7 @@ class AlbumViewModel(app: Application) : AndroidViewModel(app) {
     fun clearSelection() {
         selectedIds.value = emptySet()
         selectionMode.value = false
+        anchorId = null
     }
 
     /** Pin the single selected item as this album's cover. */

@@ -70,6 +70,13 @@ import androidx.compose.material.icons.outlined.Add
 import com.atelierapps.vault.session.TileAnchor
 import com.atelierapps.vault.session.AppDisguise
 import androidx.activity.compose.BackHandler
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.navigationBarsPadding
+import kotlinx.coroutines.launch
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -121,6 +128,25 @@ fun VaultHome(
     var searchOpen by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var showAlbumDialog by remember { mutableStateOf(false) }
+    var confirmMove by remember { mutableStateOf(false) }
+
+    // Bulk actions used to complete in total silence — thirty items would
+    // vanish with nothing to say it worked, or that it hadn't.
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    fun say(message: String, action: String? = null, onAction: () -> Unit = {}) {
+        scope.launch {
+            // One at a time: a queue of stale confirmations is worse than none.
+            snackbar.currentSnackbarData?.dismiss()
+            val result = snackbar.showSnackbar(
+                message = message,
+                actionLabel = action,
+                withDismissAction = action == null,
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) onAction()
+        }
+    }
 
     // Back should undo the mode you're in before it leaves the app. Without
     // this, backing out of a 40-item selection closed the vault outright — and
@@ -143,7 +169,7 @@ fun VaultHome(
                     onSelectAll = vm::selectAll,
                     onTag = { showTagDialog = true },
                     onAlbum = { showAlbumDialog = true },
-                    onMove = vm::moveSelectedToGallery,
+                    onMove = { confirmMove = true },
                     onExport = { onExportSelection(selectedIds) },
                     onDelete = { confirmDelete = true },
                 )
@@ -201,7 +227,7 @@ fun VaultHome(
                     com.atelierapps.vault.ui.viewer.ViewerSession.orderedIds = media.map { it.media.id }
                     onOpen(id)
                 },
-                onLongPress = vm::startSelection,
+                onLongPress = vm::longPress,
                 onToggleSelect = vm::toggleSelection,
                 modifier = Modifier.weight(1f),
                 showSectionHeaders = dateHeadersPref && (sort == SortOrder.NEWEST || sort == SortOrder.OLDEST),
@@ -230,15 +256,25 @@ fun VaultHome(
                 CircularProgressIndicator(color = Brass)
             }
         }
+
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+        )
     }
 
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Delete ${selectedIds.size} item(s)?") },
-            text = { Text("They'll be permanently removed. This can't be undone.") },
+            text = { Text("They move to Recently deleted, where you can restore them for 30 days.") },
             confirmButton = {
-                TextButton(onClick = { confirmDelete = false; vm.deleteSelected() }) {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    vm.deleteSelected { ids ->
+                        say("${ids.size} moved to Recently deleted", "Undo") { vm.restoreTrashed(ids) }
+                    }
+                }) {
                     Text("Delete", color = Danger)
                 }
             },
@@ -248,10 +284,43 @@ fun VaultHome(
         )
     }
 
+    // Unlike delete, this one really is one-way: the media is written to the
+    // gallery and purged here, so there is nothing left to undo it from. Ask
+    // before, since we can't offer a way back after.
+    if (confirmMove) {
+        AlertDialog(
+            onDismissRequest = { confirmMove = false },
+            title = { Text("Move ${selectedIds.size} item(s) out?") },
+            text = {
+                Text(
+                    "They're decrypted into your device gallery and removed from here. " +
+                        "This does not go to Recently deleted and can't be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmMove = false
+                    vm.moveSelectedToGallery { moved, failed ->
+                        say(
+                            if (failed == 0) "$moved moved to your gallery"
+                            else "$moved moved, $failed couldn't be",
+                        )
+                    }
+                }) {
+                    Text("Move out", color = Danger)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmMove = false }) { Text("Cancel") } },
+        )
+    }
+
     if (showTagDialog) {
         TagDialog(
             existingTags = tags,
-            onApply = { names -> vm.tagSelected(names); showTagDialog = false },
+            onApply = { names ->
+                vm.tagSelected(names) { n -> say("Tagged $n item(s)") }
+                showTagDialog = false
+            },
             onDismiss = { showTagDialog = false },
         )
     }
@@ -259,8 +328,17 @@ fun VaultHome(
     if (showAlbumDialog) {
         AlbumPickerDialog(
             albums = albums,
-            onPick = { id -> vm.addSelectedToAlbum(id); showAlbumDialog = false },
-            onCreate = { name -> vm.addSelectedToNewAlbum(name); showAlbumDialog = false },
+            onPick = { id ->
+                val name = albums.firstOrNull { it.id == id }?.name
+                vm.addSelectedToAlbum(id) { n ->
+                    say(if (name != null) "$n added to $name" else "$n added to album")
+                }
+                showAlbumDialog = false
+            },
+            onCreate = { name ->
+                vm.addSelectedToNewAlbum(name) { n -> say("$n added to $name") }
+                showAlbumDialog = false
+            },
             onDismiss = { showAlbumDialog = false },
         )
     }

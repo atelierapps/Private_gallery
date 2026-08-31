@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.atelierapps.vault.session.DisplayPrefs
+import kotlinx.coroutines.withContext
 
 /** Grid ordering options. */
 enum class SortOrder(val label: String) {
@@ -155,13 +156,39 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- selection actions ----
 
+    // Where a range starts. Set by the long-press that opened selection and by
+    // every tap after it, so "long-press here" always means "from the last thing
+    // I touched to here".
+    private var anchorId: String? = null
+
+    /**
+     * Long-press: opens selection on the first item, then selects everything
+     * between the anchor and this one. Picking out forty consecutive clips was
+     * forty taps before this.
+     */
+    fun longPress(id: String) {
+        if (selectionMode.value) selectRangeTo(id) else startSelection(id)
+    }
+
+    private fun selectRangeTo(id: String) {
+        val visible = media.value.map { it.media.id }
+        val from = visible.indexOf(anchorId ?: id)
+        val to = visible.indexOf(id)
+        if (from < 0 || to < 0) { toggleSelection(id); return }
+        val range = visible.subList(minOf(from, to), maxOf(from, to) + 1)
+        selectedIds.value = selectedIds.value + range
+        anchorId = id
+    }
+
     fun startSelection(id: String) {
         selectionMode.value = true
         selectedIds.value = setOf(id)
+        anchorId = id
     }
 
     fun toggleSelection(id: String) {
         val cur = selectedIds.value
+        anchorId = id
         val next = if (id in cur) cur - id else cur + id
         selectedIds.value = next
         if (next.isEmpty()) selectionMode.value = false
@@ -170,6 +197,7 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun clearSelection() {
         selectedIds.value = emptySet()
         selectionMode.value = false
+        anchorId = null
     }
 
     /** Select every currently-visible item. */
@@ -182,72 +210,93 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Apply tags to every selected item (retroactive/bulk tagging, spec §7 v2). */
-    fun tagSelected(tagNames: List<String>) {
+    fun tagSelected(tagNames: List<String>, onDone: (Int) -> Unit = {}) {
         val ids = selectedIds.value
         val clean = tagNames.map { it.trim() }.filter { it.isNotEmpty() }
         if (ids.isEmpty() || clean.isEmpty()) return
         working.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            ids.forEach { repo.addTags(it, clean) }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { ids.forEach { repo.addTags(it, clean) } }
             working.value = false
             clearSelection()
+            onDone(ids.size)
         }
     }
 
     /** Add the selected items to an existing album (retroactive, spec §7). */
-    fun addSelectedToAlbum(albumId: String) {
+    fun addSelectedToAlbum(albumId: String, onDone: (Int) -> Unit = {}) {
         val ids = selectedIds.value
         if (ids.isEmpty()) return
         working.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            repo.setAlbumForItems(ids, albumId)
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { repo.setAlbumForItems(ids, albumId) }
             working.value = false
             clearSelection()
+            onDone(ids.size)
         }
     }
 
     /** Create a new album and drop the current selection into it. */
-    fun addSelectedToNewAlbum(name: String) {
+    fun addSelectedToNewAlbum(name: String, onDone: (Int) -> Unit = {}) {
         val ids = selectedIds.value
         val clean = name.trim()
         if (ids.isEmpty() || clean.isEmpty()) return
         working.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            val albumId = repo.createAlbum(clean)
-            repo.setAlbumForItems(ids, albumId)
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val albumId = repo.createAlbum(clean)
+                repo.setAlbumForItems(ids, albumId)
+            }
             working.value = false
             clearSelection()
+            onDone(ids.size)
         }
     }
 
     /** Move the selected items to the recycle bin (soft delete; blobs kept). */
-    fun deleteSelected() {
-        val ids = selectedIds.value
+    fun deleteSelected(onDone: (List<String>) -> Unit = {}) {
+        val ids = selectedIds.value.toList()
         if (ids.isEmpty()) return
         working.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            val now = System.currentTimeMillis()
-            ids.forEach { id -> repo.trashMedia(id, now) }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val now = System.currentTimeMillis()
+                ids.forEach { id -> repo.trashMedia(id, now) }
+            }
             working.value = false
             clearSelection()
+            onDone(ids)
         }
     }
 
+    /** Undo a soft delete — the ids come straight back from [deleteSelected]. */
+    fun restoreTrashed(ids: List<String>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) { ids.forEach { repo.restoreMedia(it) } }
+    }
+
     /** Decrypt the selected items back into the device gallery, then remove from the vault. */
-    fun moveSelectedToGallery() {
+    fun moveSelectedToGallery(onDone: (moved: Int, failed: Int) -> Unit = { _, _ -> }) {
         val ids = selectedIds.value
         if (ids.isEmpty()) return
         val byId = media.value.associateBy { it.media.id }
         working.value = true
-        viewModelScope.launch(Dispatchers.IO) {
-            ids.forEach { id ->
-                val entity = byId[id]?.media ?: return@forEach
-                // Moving out of the vault is a real removal, not a recycle-bin
-                // trip — the media now lives in the gallery, so purge the blobs.
-                if (MediaExporter.toGallery(getApplication(), entity)) purgeFromVault(id)
+        viewModelScope.launch {
+            var moved = 0
+            withContext(Dispatchers.IO) {
+                ids.forEach { id ->
+                    val entity = byId[id]?.media ?: return@forEach
+                    // Moving out of the vault is a real removal, not a recycle-bin
+                    // trip — the media now lives in the gallery, so purge the blobs.
+                    if (MediaExporter.toGallery(getApplication(), entity)) {
+                        purgeFromVault(id)
+                        moved++
+                    }
+                }
             }
             working.value = false
             clearSelection()
+            onDone(moved, ids.size - moved)
         }
     }
 
