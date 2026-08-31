@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.atelierapps.vault.ui.theme.VaultTheme
+import com.atelierapps.vault.ui.lock.FinishOnLock
 
 /** Hosts the auto-tag rules manager (spec §7). FLAG_SECURE like the rest. */
 class RulesActivity : ComponentActivity() {
@@ -28,6 +29,7 @@ class RulesActivity : ComponentActivity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 
         setContent {
+            FinishOnLock { finish() }
             VaultTheme {
                 Surface(Modifier.fillMaxSize()) {
                     RulesScreen(vm = vm, onClose = { finish() }, modifier = Modifier.safeDrawingPadding())

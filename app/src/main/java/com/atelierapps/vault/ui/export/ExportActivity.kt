@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import com.atelierapps.vault.auth.BiometricAuth
 import com.atelierapps.vault.ui.theme.VaultTheme
+import com.atelierapps.vault.ui.lock.FinishOnLock
 
 /**
  * Hosts the export flow (spec §11). Exporting decrypts the **entire** vault to a
@@ -59,6 +60,7 @@ class ExportActivity : FragmentActivity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 
         setContent {
+            FinishOnLock { finish() }
             VaultTheme {
                 Surface(Modifier.fillMaxSize()) {
                     if (!authed) {

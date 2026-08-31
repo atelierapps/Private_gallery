@@ -57,6 +57,12 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import com.atelierapps.vault.session.AppDisguise
 import com.atelierapps.vault.session.Disguise
+import androidx.compose.material3.Slider
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.mutableFloatStateOf
+import com.atelierapps.vault.session.HomeShortcut
+import com.atelierapps.vault.session.LockButtonPrefs
+import com.atelierapps.vault.ui.theme.Faint
 
 @Composable
 fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifier = Modifier) {
@@ -69,6 +75,9 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
     var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
     var disguise by remember { mutableStateOf(AppDisguise.current(context)) }
     var pickingDisguise by remember { mutableStateOf(false) }
+    var namingShortcut by remember { mutableStateOf(false) }
+    var lockButton by remember { mutableStateOf(LockButtonPrefs.enabled.value) }
+    var lockOpacity by remember { mutableFloatStateOf(LockButtonPrefs.opacity.value) }
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     }
@@ -140,6 +149,23 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
                     color = Muted, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 10.dp),
                 )
+
+                HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 12.dp))
+
+                Row(
+                    Modifier.fillMaxWidth().clickable { namingShortcut = true },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Any name you like", color = Ink, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Add a home screen icon with a name you type yourself",
+                            color = Muted, style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    Icon(Icons.Outlined.KeyboardArrowRight, null, tint = Muted, modifier = Modifier.size(20.dp))
+                }
             }
 
             SettingsCard("Security") {
@@ -150,6 +176,33 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
                 )
                 LockPrefs.Delay.entries.forEach { d ->
                     RadioRow(d.label, d == lockDelay) { lockDelay = d; LockPrefs.set(context, d) }
+                }
+
+                HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 10.dp))
+                ToggleRow(
+                    title = "Floating lock button",
+                    subtitle = "A lock within thumb reach. Drag it anywhere; it fades " +
+                        "away a couple of seconds after a photo or video opens",
+                    checked = lockButton,
+                    onCheckedChange = { lockButton = it; LockButtonPrefs.setEnabled(context, it) },
+                )
+                if (lockButton) {
+                    Text(
+                        "How visible",
+                        color = Ink, style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(top = 10.dp),
+                    )
+                    Text(
+                        "Faint enough to ignore, solid enough to find",
+                        color = Muted, style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                    Slider(
+                        value = lockOpacity,
+                        onValueChange = { lockOpacity = it },
+                        onValueChangeFinished = { LockButtonPrefs.setOpacity(context, lockOpacity) },
+                        valueRange = LockButtonPrefs.MIN_OPACITY..LockButtonPrefs.MAX_OPACITY,
+                    )
                 }
             }
 
@@ -187,6 +240,17 @@ fun SettingsScreen(onClose: () -> Unit, onStorage: () -> Unit, modifier: Modifie
             }
         }
     }
+    if (namingShortcut) {
+        CustomNameDialog(
+            initialIcon = disguise,
+            onAdd = { name, icon ->
+                HomeShortcut.pin(context, name, icon)
+                namingShortcut = false
+            },
+            onDismiss = { namingShortcut = false },
+        )
+    }
+
     if (pickingDisguise) {
         DisguiseDialog(
             current = disguise,
@@ -218,6 +282,92 @@ private fun DisguiseIcon(disguise: Disguise, size: Int) {
             modifier = Modifier.size((size * 1.5f).dp),
         )
     }
+}
+
+/**
+ * Type a name, pick an icon, and the launcher is asked to place it. This is the
+ * only way to get an arbitrary name onto the home screen — a launcher entry's
+ * own label has to come from the manifest, which is why the list above is a
+ * fixed set and this isn't.
+ */
+@Composable
+private fun CustomNameDialog(
+    initialIcon: Disguise,
+    onAdd: (String, Disguise) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    var name by remember { mutableStateOf("") }
+    var icon by remember { mutableStateOf(initialIcon) }
+    val canPin = remember { HomeShortcut.supported(context) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Name it yourself") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    placeholder = { Text("e.g. Receipts") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "Icon",
+                    color = Muted, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 14.dp, bottom = 6.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Disguise.entries.forEach { option ->
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(11.dp))
+                                .clickable { icon = option }
+                                .padding(2.dp),
+                        ) {
+                            DisguiseIcon(option, size = 36)
+                            if (option == icon) {
+                                Box(
+                                    Modifier.matchParentSize().clip(RoundedCornerShape(9.dp))
+                                        .background(Brass.copy(alpha = 0.28f)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        null,
+                                        tint = Ink,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Text(
+                    if (canPin) {
+                        "This adds a home screen icon. Your app list still shows the name " +
+                            "picked above — a launcher entry can't be renamed from inside the app."
+                    } else {
+                        "This launcher won't let apps place icons. You may need to allow " +
+                            "shortcuts for this app in your launcher or system settings first."
+                    },
+                    color = Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 14.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onAdd(name, icon) },
+                enabled = name.isNotBlank() && canPin,
+            ) {
+                Text("Add to home screen", color = if (name.isNotBlank() && canPin) Brass else Faint)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

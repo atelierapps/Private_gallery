@@ -48,6 +48,7 @@ import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.VaultTheme
 import androidx.compose.material3.MaterialTheme
+import com.atelierapps.vault.ui.lock.FinishOnLock
 
 enum class RestorePhase { PICK, RUNNING, DONE }
 
@@ -91,6 +92,7 @@ class RestoreActivity : ComponentActivity() {
         )
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         setContent {
+            FinishOnLock { finish() }
             VaultTheme {
                 Surface(Modifier.fillMaxSize()) {
                     val phase by vm.phase.collectAsState()

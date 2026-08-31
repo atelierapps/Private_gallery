@@ -77,6 +77,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.navigationBarsPadding
 import kotlinx.coroutines.launch
+import com.atelierapps.vault.ui.lock.FloatingLockButton
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -261,6 +262,10 @@ fun VaultHome(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
         )
+
+        // Stood down during selection: the selection bar already owns the top of
+        // the screen and a stray tap there would throw the selection away.
+        FloatingLockButton(visible = !selectionMode)
     }
 
     if (confirmDelete) {

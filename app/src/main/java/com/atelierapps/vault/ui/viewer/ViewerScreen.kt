@@ -79,6 +79,7 @@ import androidx.compose.animation.core.animate
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.platform.LocalDensity
 import androidx.activity.compose.BackHandler
+import com.atelierapps.vault.ui.lock.FloatingLockButton
 
 /**
  * Programmatic page changes (slideshow advance, prev/next) use an eased glide
@@ -161,6 +162,18 @@ fun ViewerScreen(
     }
 
     LaunchedEffect(pagerState.currentPage) { videoControls = false; dragY = 0f }
+
+    // Over media the lock button shows itself and then gets out of the way, so
+    // it isn't sitting on the photo for as long as you look at it. Every tap
+    // brings it back, along with moving to another item — the moments you might
+    // want it. Two seconds is enough to find with a thumb and short enough not
+    // to be part of the picture.
+    var lockVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(pagerState.currentPage, chromeVisible, videoControls) {
+        lockVisible = true
+        delay(2000)
+        lockVisible = false
+    }
     LaunchedEffect(current?.media?.id) {
         current?.media?.id?.let { ViewerSession.lastViewedId.value = it }
     }
@@ -222,6 +235,8 @@ fun ViewerScreen(
                 MetadataPanel(current, Modifier.align(Alignment.BottomStart))
             }
         }
+
+        FloatingLockButton(visible = lockVisible, onLocked = onBack)
 
         // Slideshow controls are image-only; videos have their own control bar,
         // so don't double up the bottom of the screen for them.

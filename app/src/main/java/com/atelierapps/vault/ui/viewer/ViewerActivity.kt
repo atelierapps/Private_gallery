@@ -19,6 +19,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.atelierapps.vault.ui.theme.VaultTheme
+import com.atelierapps.vault.ui.lock.FinishOnLock
 
 /**
  * Hosts the full-screen viewer (spec §8). FLAG_SECURE blocks screenshots here
@@ -54,6 +55,7 @@ class ViewerActivity : ComponentActivity() {
         vm.load()
 
         setContent {
+            FinishOnLock { finish() }
             VaultTheme {
                 val media by vm.media.collectAsState()
                 val loaded by vm.loaded.collectAsState()

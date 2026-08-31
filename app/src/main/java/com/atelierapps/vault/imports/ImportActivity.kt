@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.atelierapps.vault.ui.theme.VaultTheme
+import com.atelierapps.vault.ui.lock.FinishOnLock
 
 /**
  * Hosts the importer (spec §4, §4.1). Owns the read-media permission request and
@@ -62,6 +63,7 @@ class ImportActivity : ComponentActivity() {
         else permissionLauncher.launch(MediaPermissions.required())
 
         setContent {
+            FinishOnLock { finish() }
             VaultTheme {
                 val tab by vm.tab.collectAsState()
                 val items by vm.items.collectAsState()

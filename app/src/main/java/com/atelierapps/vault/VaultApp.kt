@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
+import com.atelierapps.vault.session.LockButtonPrefs
 
 /**
  * Application entry point.
@@ -47,6 +48,7 @@ class VaultApp : Application(), SingletonImageLoader.Factory {
         }
         ShareShortcut.publish(this)
         registerAutoLock()
+        LockButtonPrefs.load(this)
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

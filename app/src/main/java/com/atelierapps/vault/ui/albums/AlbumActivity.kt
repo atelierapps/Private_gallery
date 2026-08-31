@@ -18,6 +18,7 @@ import com.atelierapps.vault.ui.viewer.ViewerActivity
 import com.atelierapps.vault.ui.theme.VaultTheme
 import androidx.compose.ui.platform.LocalView
 import com.atelierapps.vault.session.TileAnchor
+import com.atelierapps.vault.ui.lock.FinishOnLock
 
 /** Shows one album's contents (spec §7). FLAG_SECURE like the rest of the vault. */
 class AlbumActivity : ComponentActivity() {
@@ -37,6 +38,7 @@ class AlbumActivity : ComponentActivity() {
         vm.setAlbum(albumId)
 
         setContent {
+            FinishOnLock { finish() }
             VaultTheme {
                 val hostView = LocalView.current
                 Surface(Modifier.fillMaxSize()) {
