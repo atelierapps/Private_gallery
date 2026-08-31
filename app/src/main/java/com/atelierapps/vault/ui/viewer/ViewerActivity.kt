@@ -55,7 +55,12 @@ class ViewerActivity : ComponentActivity() {
         vm.load()
 
         setContent {
-            FinishOnLock { finish() }
+            // Locked out from under us, rather than backed out of: remember the
+            // item so unlocking comes straight back here.
+            FinishOnLock {
+                ViewerSession.resumeId = ViewerSession.lastViewedId.value
+                finish()
+            }
             VaultTheme {
                 val media by vm.media.collectAsState()
                 val loaded by vm.loaded.collectAsState()

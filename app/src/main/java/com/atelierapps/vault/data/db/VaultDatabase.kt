@@ -14,6 +14,7 @@ import com.atelierapps.vault.data.entity.MediaTagCrossRef
 import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.crypto.DbKeyStore
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+import android.util.Log
 
 /**
  * Metadata store (spec §2). Media blobs and thumbnails are NOT here — only rows.
@@ -40,6 +41,8 @@ abstract class VaultDatabase : RoomDatabase() {
     abstract fun albumDao(): AlbumDao
 
     companion object {
+        private const val TAG = "VaultDatabase"
+
         @Volatile private var instance: VaultDatabase? = null
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -102,15 +105,33 @@ abstract class VaultDatabase : RoomDatabase() {
         private fun build(app: Context): VaultDatabase {
             // Migrates a plaintext database if there is one. Returns false only
             // when that failed, in which case the file is still plaintext and
-            // must be opened without the cipher — the alternative is an app that
-            // won't start and a library nobody can reach.
+            // must be opened without the cipher.
             val encrypted = DbCipher.ensureEncrypted(app)
+            // Try the mode we believe the file is in, then the other one. Room
+            // opens lazily, so getting this wrong doesn't fail here — it fails
+            // later at whatever screen happens to query first, as a crash with
+            // no obvious connection to the database. Being wrong is survivable;
+            // being wrong silently is not.
+            return open(app, cipher = encrypted)
+                ?: open(app, cipher = !encrypted)
+                ?: error("vault.db could not be opened encrypted or plaintext")
+        }
+
+        private fun open(app: Context, cipher: Boolean): VaultDatabase? {
             val builder = Room.databaseBuilder(app, VaultDatabase::class.java, "vault.db")
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-            if (encrypted) {
-                builder.openHelperFactory(SupportOpenHelperFactory(DbKeyStore.passphrase(app)))
+            if (cipher) {
+                builder.openHelperFactory(SupportOpenHelperFactory(DbKeyStore.passphraseBytes(app)))
             }
-            return builder.build()
+            val db = builder.build()
+            // Force the open now rather than at the first query, so a bad guess
+            // is caught here where there is still a second option.
+            return runCatching { db.openHelper.readableDatabase.version; db }
+                .getOrElse {
+                    Log.e(TAG, "open failed with cipher=" + cipher, it)
+                    runCatching { db.close() }
+                    null
+                }
         }
     }
 }

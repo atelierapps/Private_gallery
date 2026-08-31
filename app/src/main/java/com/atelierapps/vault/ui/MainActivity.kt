@@ -41,6 +41,7 @@ import kotlinx.coroutines.sync.withPermit
 import com.atelierapps.vault.ui.theme.VaultTheme
 import androidx.compose.ui.platform.LocalView
 import com.atelierapps.vault.session.TileAnchor
+import com.atelierapps.vault.ui.viewer.ViewerSession
 
 /**
  * Host for the vault UI (spec §8, §9). Shows the lock screen until a successful
@@ -120,6 +121,13 @@ class MainActivity : FragmentActivity() {
             onSuccess = {
                 VaultSession.markUnlocked()
                 prewarmDekCache()
+                // Locked out of a video, unlocked back into it. Ordered after
+                // the prewarm rather than driven off a composition effect, so
+                // the keys are already being cached by the time the viewer asks
+                // for them — and so it fires exactly once, on a real unlock.
+                ViewerSession.consumeResume()?.let { id ->
+                    startActivity(ViewerActivity.intent(this, id))
+                }
             },
         )
     }

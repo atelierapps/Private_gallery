@@ -69,9 +69,26 @@ object DbKeyStore {
         return bytes
     }
 
-    /** Hex form, for the PRAGMA/ATTACH raw-key syntax that skips the KDF. */
-    fun passphraseHex(context: Context): String =
+    /**
+     * The passphrase as text, and the only form anything should ever use.
+     *
+     * Every consumer has to feed SQLCipher the *same bytes* or it derives a
+     * different key: Room's factory takes a byte array and runs it through the
+     * KDF, while ATTACH takes a SQL string literal. Hex is the form that is safe
+     * to embed in SQL — no quoting, no escaping, no encoding question — so both
+     * sides agree by construction rather than by luck.
+     *
+     * Deliberately not SQLCipher's raw-key `x'...'` syntax: that bypasses the
+     * KDF on the ATTACH side only, and the factory has no way to opt into it.
+     * Mixing the two is exactly the mismatch that made an earlier attempt at
+     * this write a database Room could not then open.
+     */
+    fun passphraseText(context: Context): String =
         passphrase(context).joinToString("") { "%02x".format(it) }
+
+    /** The same text, as the bytes Room's open-helper factory expects. */
+    fun passphraseBytes(context: Context): ByteArray =
+        passphraseText(context).toByteArray(Charsets.US_ASCII)
 
     private fun seal(plain: ByteArray): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, key()) }

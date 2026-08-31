@@ -49,9 +49,31 @@ object ViewerSession {
         return v
     }
 
-    /** Drop per-session playback state (called when the vault locks). */
+    /**
+     * The item the viewer was showing when the vault locked under it, so
+     * unlocking can put you back rather than dropping you on the grid. Consumed
+     * once — coming back later by hand shouldn't reopen it.
+     */
+    @Volatile
+    var resumeId: String? = null
+
+    fun consumeResume(): String? {
+        val v = resumeId
+        resumeId = null
+        return v
+    }
+
+    /**
+     * Drop per-session playback state. Called when the process is done with a
+     * session, **not** when the vault merely locks: locking used to wipe watch
+     * positions and the current item, which is why locking mid-video and
+     * unlocking landed you at the top of the grid with the position gone. None
+     * of this is ever written to disk, so keeping it across a lock costs
+     * nothing an attacker who can unlock doesn't already have.
+     */
     fun clear() {
         lastViewedId.value = null
+        resumeId = null
         positions.clear()
         playbackSpeed = 1f
         startPlaying = false

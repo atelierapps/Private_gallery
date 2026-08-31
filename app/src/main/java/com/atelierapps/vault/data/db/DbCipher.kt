@@ -26,8 +26,16 @@ object DbCipher {
     private const val TAG = "DbCipher"
     private const val NAME = "vault.db"
 
-    /** A plaintext SQLite file starts with this; an encrypted one starts random. */
-    private val SQLITE_MAGIC = "SQLite format 3 ".toByteArray(Charsets.US_ASCII)
+    /**
+     * A plaintext SQLite file opens with this; an encrypted one opens random.
+     *
+     * The real header is 16 bytes ending in NUL. Comparing the 15 printable
+     * ones instead of writing the terminator out avoids the mistake of typing a
+     * space for it — which is what an earlier version of this did, so every
+     * plaintext database was read as "already encrypted", skipped the
+     * migration, and was then handed to SQLCipher as if it were ciphertext.
+     */
+    private val SQLITE_MAGIC = "SQLite format 3".toByteArray(Charsets.US_ASCII)
 
     private val TABLES = listOf("media", "tags", "media_tag", "auto_tag_rule", "album")
 
@@ -62,7 +70,7 @@ object DbCipher {
     }
 
     private fun migrate(context: Context, plain: File): Boolean {
-        val hex = DbKeyStore.passphraseHex(context)
+        val pass = DbKeyStore.passphraseText(context)
         val tmp = File(plain.parentFile, NAME + ".enc.tmp")
         tmp.delete()
 
@@ -75,7 +83,7 @@ object DbCipher {
         try {
             before = source.rowCounts()
             userVersion = source.version
-            source.rawExecSQL("ATTACH DATABASE '" + tmp.absolutePath + "' AS enc KEY \"x'" + hex + "'\"")
+            source.rawExecSQL("ATTACH DATABASE '" + tmp.absolutePath + "' AS enc KEY '" + pass + "'")
             source.rawExecSQL("SELECT sqlcipher_export('enc')")
             // sqlcipher_export copies tables and rows but not pragmas, and Room
             // reads user_version to decide whether to run migrations. Left at 0
@@ -87,7 +95,7 @@ object DbCipher {
         }
 
         // Verify against the original before anything is destroyed.
-        val check = SQLiteDatabase.openOrCreateDatabase(tmp.absolutePath, "x'" + hex + "'", null, null)
+        val check = SQLiteDatabase.openOrCreateDatabase(tmp.absolutePath, pass, null, null)
         val after: Map<String, Int>
         val checkVersion: Int
         try {

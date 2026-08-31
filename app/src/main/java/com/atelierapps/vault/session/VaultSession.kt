@@ -21,8 +21,9 @@ object VaultSession {
     fun lock() {
         _locked.value = true
         DekCache.clear()
-        // Watch positions and playback speed are session state about what you
-        // viewed — drop them with the keys rather than leaving them in memory.
-        com.atelierapps.vault.ui.viewer.ViewerSession.clear()
+        // Deliberately does NOT clear ViewerSession. The keys are gone, which is
+        // what matters; what stays is where you were and how far into it — in
+        // memory only, dying with the process — so unlocking returns you to the
+        // video you were watching instead of the top of the grid.
     }
 }
