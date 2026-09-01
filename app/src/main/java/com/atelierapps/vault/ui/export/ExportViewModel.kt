@@ -14,6 +14,8 @@ import com.atelierapps.vault.session.BackupPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import com.atelierapps.vault.media.TransferWake
+import com.atelierapps.vault.media.TransferFailure
+import android.util.Log
 
 enum class ExportPhase { PICK, RUNNING, DONE }
 
@@ -38,6 +40,8 @@ private object ExportRun {
     val result = MutableStateFlow<ExportResult?>(null)
 }
 
+private const val TAG = "ExportViewModel"
+
 class ExportViewModel(app: Application) : AndroidViewModel(app) {
 
     val phase = ExportRun.phase
@@ -56,12 +60,29 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
         result.value = null
         ExportRun.scope.launch {
             TransferWake.acquire(getApplication())
-            val r = try {
-                VaultExporter.exportAll(
-                    getApplication(), treeUri, scopeIds, passphrase,
-                ) { progress.value = it }
+            // Caught, not left to propagate. An unhandled throw here escaped the
+            // scope and left `phase` stuck on RUNNING for the life of the
+            // process — after which the screen showed a frozen progress bar and
+            // `run` refused to start again, with no way back short of force-stop.
+            val outcome = try {
+                runCatching {
+                    VaultExporter.exportAll(
+                        getApplication(), treeUri, scopeIds, passphrase,
+                    ) { progress.value = it }
+                }
             } finally {
                 TransferWake.release()
+            }
+            val r = outcome.getOrElse { error ->
+                Log.e(TAG, "export failed outright", error)
+                ExportResult(
+                    exported = 0,
+                    failed = 1,
+                    total = 0,
+                    failures = listOf(
+                        TransferFailure("This backup", TransferFailure.describe(error)),
+                    ),
+                )
             }
             // The derived key is gone with the export; don't leave the phrase
             // that makes it sitting in memory for the rest of the session.

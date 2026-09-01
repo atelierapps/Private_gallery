@@ -24,7 +24,15 @@ object TransferWake {
     private const val TIMEOUT_MS = 4L * 60 * 60 * 1000 // 4 hours
 
     private var lock: PowerManager.WakeLock? = null
-    private var holders = 0
+    @Volatile private var holders = 0
+
+    /**
+     * True while an export or restore is running. The auto-lock consults this:
+     * zeroing the DEK cache mid-backup breaks the rest of the run, because past
+     * the Keystore's 300-second window there is nobody present to re-authorise
+     * the unwrap.
+     */
+    val busy: Boolean get() = holders > 0
 
     @Synchronized
     fun acquire(context: Context) {

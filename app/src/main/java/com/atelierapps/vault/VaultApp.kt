@@ -25,6 +25,10 @@ import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
 import com.atelierapps.vault.session.LockButtonPrefs
 import com.atelierapps.vault.session.BackupPrefs
+import com.atelierapps.vault.media.TransferWake
+
+/** How often the deferred auto-lock re-checks that a transfer has ended. */
+private const val TRANSFER_POLL_MS = 5_000L
 
 /**
  * Application entry point.
@@ -64,6 +68,15 @@ class VaultApp : Application(), SingletonImageLoader.Factory {
                 lockJob = appScope.launch {
                     val delayMs = LockPrefs.delayMs(this@VaultApp)
                     if (delayMs > 0) delay(delayMs)
+                    // A backup keeps running when you leave the screen — that is
+                    // the whole point of the wake lock. Locking on the timer
+                    // would then zero the DEK cache underneath it, and every
+                    // remaining item would fail: the Keystore window has long
+                    // since lapsed and there is nobody there to re-authorise an
+                    // unwrap. So wait the run out. Coming back to the app
+                    // cancels this job anyway, and the lock still lands the
+                    // moment the transfer is done.
+                    while (TransferWake.busy) delay(TRANSFER_POLL_MS)
                     lockNow()
                 }
             }
