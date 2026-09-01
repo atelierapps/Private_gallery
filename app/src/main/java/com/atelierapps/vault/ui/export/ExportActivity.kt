@@ -46,7 +46,7 @@ class ExportActivity : FragmentActivity() {
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
-            vm.run(uri)
+            vm.offer(uri)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,11 +78,15 @@ class ExportActivity : FragmentActivity() {
                         val phase by vm.phase.collectAsState()
                         val progress by vm.progress.collectAsState()
                         val result by vm.result.collectAsState()
+                        val existing by vm.existing.collectAsState()
                         ExportScreen(
                             scopedCount = scoped,
                             phase = phase,
                             progress = progress,
                             result = result,
+                            existing = existing,
+                            onConfirmReplace = vm::confirmReplace,
+                            onCancelReplace = vm::cancelReplace,
                             onPickFolder = { phrase ->
                                 // Held until the folder picker returns, then
                                 // consumed and wiped by the export itself.

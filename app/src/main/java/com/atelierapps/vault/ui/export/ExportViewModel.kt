@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.atelierapps.vault.media.ExportProgress
 import com.atelierapps.vault.media.ExportResult
 import com.atelierapps.vault.media.VaultExporter
+import com.atelierapps.vault.media.ExistingBackup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -17,7 +18,7 @@ import com.atelierapps.vault.media.TransferWake
 import com.atelierapps.vault.media.TransferFailure
 import android.util.Log
 
-enum class ExportPhase { PICK, RUNNING, DONE }
+enum class ExportPhase { PICK, CONFIRM_REPLACE, RUNNING, DONE }
 
 /**
  * State and scope for a run in progress, held outside the ViewModel on purpose.
@@ -38,6 +39,8 @@ private object ExportRun {
     val phase = MutableStateFlow(ExportPhase.PICK)
     val progress = MutableStateFlow(ExportProgress(0, 0, 0))
     val result = MutableStateFlow<ExportResult?>(null)
+    val existing = MutableStateFlow<ExistingBackup?>(null)
+    var pendingTree: Uri? = null
 }
 
 private const val TAG = "ExportViewModel"
@@ -53,6 +56,45 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Passphrase for an encrypted backup, or null to write plaintext. */
     var passphrase: CharArray? = null
+
+    /** Set when the chosen folder already holds a backup, so we can ask first. */
+    val existing = ExportRun.existing
+
+    /**
+     * Folder chosen. Runs straight away unless there is already a backup there,
+     * in which case the user is asked — because a second export re-keys the
+     * folder and the first backup stops opening, passphrase or no passphrase.
+     */
+    fun offer(treeUri: Uri) {
+        if (phase.value == ExportPhase.RUNNING) return
+        ExportRun.scope.launch {
+            val found = runCatching { VaultExporter.existingBackup(getApplication(), treeUri) }
+                .getOrNull()
+            if (found == null) {
+                run(treeUri)
+            } else {
+                ExportRun.pendingTree = treeUri
+                ExportRun.existing.value = found
+                phase.value = ExportPhase.CONFIRM_REPLACE
+            }
+        }
+    }
+
+    fun confirmReplace() {
+        val uri = ExportRun.pendingTree ?: return
+        ExportRun.pendingTree = null
+        ExportRun.existing.value = null
+        run(uri)
+    }
+
+    fun cancelReplace() {
+        ExportRun.pendingTree = null
+        ExportRun.existing.value = null
+        // The phrase was typed for a run that isn't happening; don't keep it.
+        passphrase?.fill('\u0000')
+        passphrase = null
+        phase.value = ExportPhase.PICK
+    }
 
     fun run(treeUri: Uri) {
         if (phase.value == ExportPhase.RUNNING) return

@@ -67,6 +67,7 @@ object VaultRestorer {
 
         val byName = tree.listFiles().filter { it.isFile }.associateBy { it.name }
         val saver = MediaSaver(context)
+        val repo = VaultGraph.repository(context)
         val failures = ArrayList<TransferFailure>()
         var imported = 0
         for (i in 0 until items.length()) {
@@ -74,6 +75,22 @@ object VaultRestorer {
             // Encrypted entries carry their own opaque filename; plaintext ones
             // are still found by the name they were written under.
             val shown = obj.optString("name", "item " + (i + 1))
+
+            // Already here? Then skip it without opening the file at all.
+            //
+            // MediaSaver dedups too, but only after the item has been decrypted
+            // out of the backup and hashed — so re-running a restore that was
+            // interrupted at file 25 of 368 used to decrypt all 25 again before
+            // discarding them. The exported hash makes that a lookup. Absent
+            // from manifests written before this existed, which simply fall
+            // through to the old path.
+            val knownHash = obj.optStringOrNull("sha256")
+            if (knownHash != null && repo.existsByHash(knownHash)) {
+                imported++
+                onProgress(RestoreProgress(i + 1, items.length(), imported, failures.size))
+                continue
+            }
+
             val doc = byName[obj.optString(if (key == null) "name" else "file")]
             if (doc == null) {
                 failures.add(TransferFailure(shown, "not in the folder — was it copied whole?"))

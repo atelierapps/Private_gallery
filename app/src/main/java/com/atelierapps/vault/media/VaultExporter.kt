@@ -20,6 +20,9 @@ data class ExportResult(
     val failures: List<TransferFailure> = emptyList(),
 )
 
+/** A backup already sitting in the folder the user just picked. */
+data class ExistingBackup(val encrypted: Boolean, val items: Int)
+
 /**
  * Exports the whole vault to a user-picked folder (spec §11) — the only backup.
  *
@@ -31,6 +34,36 @@ data class ExportResult(
  * non-media folder, so MIUI's media-folder SAF block doesn't apply.
  */
 object VaultExporter {
+
+    /**
+     * Names an encrypted backup gives its item files: a bare UUID plus `.bin`.
+     * Matched exactly so clearing a folder can only ever remove files this app
+     * wrote — a stray `notes.bin` of someone else's is not going anywhere.
+     */
+    private val ITEM_FILE =
+        Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.bin$")
+
+    /**
+     * What is already in [treeUri], if it holds a backup — so the caller can ask
+     * before overwriting one.
+     *
+     * This matters more than it looks. Every export mints a **fresh salt**, so
+     * the moment a second run writes its header, the first run's files can no
+     * longer be opened by anything, the same passphrase included. Two backups
+     * cannot share a folder; the only question is whether the user knows that
+     * before the second one starts.
+     */
+    fun existingBackup(context: Context, treeUri: Uri): ExistingBackup? {
+        val tree = DocumentFile.fromTreeUri(context, treeUri) ?: return null
+        val names = tree.listFiles().filter { it.isFile }.mapNotNull { it.name }
+        val encrypted = BackupCrypto.HEADER in names
+        val plain = "manifest.json" in names
+        if (!encrypted && !plain) return null
+        return ExistingBackup(
+            encrypted = encrypted,
+            items = if (encrypted) names.count { ITEM_FILE.matches(it) } else names.size - 1,
+        )
+    }
 
     /**
      * Export the vault, or just [onlyIds] when a selection or album was chosen.
@@ -71,6 +104,20 @@ object VaultExporter {
         // loss: the new header above already re-keys the folder, which orphans
         // anything left from the earlier run regardless.
         val existing = tree.listFiles().filter { it.isFile }.associateBy { it.name }
+
+        // An encrypted run additionally clears the previous one's item files.
+        // Not tidiness: an item exported last time and since deleted from the
+        // library is not rewritten now, so it would sit there forever as a file
+        // no passphrase can open, padding the folder and the count. Only exact
+        // `<uuid>.bin` names are touched.
+        if (key != null) {
+            val keeping = items.mapTo(HashSet()) { it.media.id + ".bin" }
+            existing.forEach { (name, doc) ->
+                if (name != null && name !in keeping && ITEM_FILE.matches(name)) {
+                    runCatching { doc.delete() }
+                }
+            }
+        }
 
         val manifest = JSONArray()
         val failures = ArrayList<TransferFailure>()
@@ -164,6 +211,11 @@ object VaultExporter {
             put("sourceLabel", m.sourceLabel ?: JSONObject.NULL)
             put("sourceDomain", m.sourceDomain ?: JSONObject.NULL)
             put("tags", JSONArray().apply { mwt.tags.forEach { put(it.name) } })
+            // The plaintext hash the vault already stores. Recording it lets a
+            // restore recognise an item it already holds *before* decrypting it,
+            // which is what makes resuming an interrupted restore cheap instead
+            // of a second full pass over everything that already landed.
+            m.contentHash?.let { put("sha256", it) }
         }
     }
 

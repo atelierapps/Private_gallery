@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import com.atelierapps.vault.media.ExportProgress
 import com.atelierapps.vault.media.ExportResult
+import com.atelierapps.vault.media.ExistingBackup
 import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Ink
@@ -74,6 +75,9 @@ fun ExportScreen(
     phase: ExportPhase,
     progress: ExportProgress,
     result: ExportResult?,
+    existing: ExistingBackup?,
+    onConfirmReplace: () -> Unit,
+    onCancelReplace: () -> Unit,
     onPickFolder: (passphrase: String?) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -100,8 +104,11 @@ fun ExportScreen(
                         "Everything is written out to a folder you choose, with a manifest " +
                             "that restores tags and sources later.\n\nA local folder or SD " +
                             "card takes minutes; a cloud folder like Drive uploads every " +
-                            "file and can take hours. You can leave this screen either way " +
-                            "— it keeps going.",
+                            "file and can take hours. Leave this screen on — the phone can " +
+                            "stop a backup that is running in the background, and it will " +
+                            "not tell you it did.\n\nUse an empty folder. A folder that " +
+                            "already holds a backup can only hold one, and the new run " +
+                            "replaces it.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
 
@@ -168,6 +175,38 @@ fun ExportScreen(
                         enabled = ready,
                     ) { Text("Choose folder") }
                     TextButton(onClick = onClose) { Text("Cancel", color = Muted) }
+                }
+                ExportPhase.CONFIRM_REPLACE -> {
+                    Text(
+                        "There's already a backup here",
+                        color = Ink, style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        buildString {
+                            append(
+                                if (existing?.encrypted == true) {
+                                    "That folder holds an encrypted backup"
+                                } else {
+                                    "That folder holds a backup"
+                                },
+                            )
+                            val n = existing?.items ?: 0
+                            if (n > 0) append(" of $n file(s)")
+                            append(
+                                ".\n\nA folder can only hold one. Every export makes a new " +
+                                    "key, so the moment this run starts the old backup stops " +
+                                    "opening — with the same passphrase or any other. There " +
+                                    "is no way to undo that and no way to read it afterwards." +
+                                    "\n\nIf the old one still matters, cancel and pick an " +
+                                    "empty folder instead.",
+                            )
+                        },
+                        color = Muted, style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                    Button(onClick = onConfirmReplace) { Text("Replace it") }
+                    TextButton(onClick = onCancelReplace) { Text("Cancel", color = Muted) }
                 }
                 ExportPhase.RUNNING -> {
                     Text("Exporting ${progress.done} / ${progress.total}", color = Ink, style = MaterialTheme.typography.bodyLarge)

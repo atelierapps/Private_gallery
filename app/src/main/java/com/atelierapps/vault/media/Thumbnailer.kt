@@ -50,7 +50,16 @@ object Thumbnailer {
     private fun videoFrame(file: File): Bitmap? =
         MediaMetadataRetriever().use { mmr ->
             mmr.setDataSource(file.absolutePath)
-            val frame = mmr.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            // Decoded straight down to thumbnail size. getFrameAtTime builds the
+            // frame at the video's own resolution first — for a 4K clip that is a
+            // 33 MB bitmap allocated, scaled, and thrown away, once per item. On
+            // a restore of a few hundred videos that is most of the wall clock.
+            // Kept as the fallback because a codec may refuse the scaled call.
+            val frame = runCatching {
+                mmr.getScaledFrameAtTime(
+                    0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, MAX_EDGE, MAX_EDGE,
+                )
+            }.getOrNull() ?: mmr.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
             frame?.let { scaleDown(it, MAX_EDGE) }
         }
 
