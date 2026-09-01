@@ -275,7 +275,15 @@ fun ViewerScreen(
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    // The viewer is immersive, so the status bar is hidden and
+                    // statusBarsPadding() collapses to nothing — which put this
+                    // at the very top of the screen, under the punch-hole
+                    // camera, with the digits behind the lens. The cutout inset
+                    // is the one that survives immersive mode; the top bar
+                    // already pairs the two the same way, and on a phone whose
+                    // bars are hidden the status-bar half contributes zero.
                     .statusBarsPadding()
+                    .displayCutoutPadding()
                     .padding(top = 10.dp)
                     .alpha(indexAlpha)
                     .clip(RoundedCornerShape(10.dp))
