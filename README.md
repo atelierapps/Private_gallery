@@ -5,6 +5,11 @@ no accounts, no analytics, and **no `INTERNET` permission at all**. See
 [`vaultappspec.md`](vaultappspec.md) for the full build spec (v1.2) and
 [`ui-mockup.html`](ui-mockup.html) for the UI decisions.
 
+**Working on this codebase? Start with [`CLAUDE.md`](CLAUDE.md)** — the hard
+constraints, the three-key crypto design, the schema version, and the mistakes
+already made here. The spec below records the original plan; CLAUDE.md records
+where it actually got to.
+
 ## Status
 
 Build-order steps 1–3 of the spec (§13) are implemented: the verified crypto
@@ -28,6 +33,14 @@ target with its save sheet, source capture, and encrypt-on-save pipeline.
 | 10 · Auto-lock on background (configurable delay) + lock now | ✅ implemented |
 | 11 · Export/backup to a folder + manifest.json (biometric-gated) | ✅ implemented |
 | Multi-select (delete + move back to gallery) | ✅ implemented |
+| Recycle bin (30-day retention, bulk restore/purge) | ✅ implemented |
+| Albums, tag manager, auto-tag rules, duplicate finder | ✅ implemented |
+| Encrypted metadata database (SQLCipher, schema v8) | ✅ implemented |
+| Encrypted backup + round-trip restore (passphrase, PBKDF2) | ✅ implemented |
+| App disguise: switchable launcher name/icon + custom shortcut | ✅ implemented |
+| Image rotate/crop; per-video display rotation; resume playback | ✅ implemented |
+| Bulk rename by template, batch tagging at import | ✅ implemented |
+| Video trim / split | ⬜ not started |
 | Restore from backup (re-import manifest.json) | ✅ implemented |
 | Organization: search, bulk/retroactive tagging, select-all | ✅ implemented |
 | In-app camera (capture photos/videos straight into the vault) | ✅ implemented |
