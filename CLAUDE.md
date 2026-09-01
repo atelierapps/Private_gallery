@@ -104,6 +104,11 @@ ui/          one package per screen; ui/theme is the design system
   `weight(1f, fill = false)` and nothing else, so tall content is silently
   clipped at the dialog's edge rather than becoming scrollable. Anything
   list-shaped in a dialog needs its own bounded `verticalScroll`.
+- **`MediaSaver`'s catch block deletes the blob it just wrote.** Everything
+  after the encrypt-and-verify step runs inside that try, so anything cosmetic
+  that throws there discards verified media. Two did (metadata probe, thumbnail
+  frame) and are now non-throwing; keep it that way for anything added below
+  step 2.
 - **Stale captures in gesture handlers.** This has bitten three times. A
   `pointerInput` block captures values from the composition that created it; if
   the value changes every drag delta, the handler keeps using the old one. Use
@@ -172,6 +177,30 @@ backup with round-trip restore, and an uninstall warning.
    leaving the screen (app-scoped coroutine) and screen-off (wake lock), but not
    deep Doze or process death. Fixing that needs WorkManager + a visible
    notification — offered and not yet wanted, because of constraint 3.
+
+### Found by the September audit and deliberately left
+
+Read before "fixing" one of these; each was weighed.
+
+- **`saveMedia` / `addTags` / `setTagsForMedia` are not `@Transaction`.** A
+  failure between the row insert and the tag links leaves an untagged item.
+  Rare, harmless, and the alternative is a transaction spanning a `resolveTag`
+  that can itself insert.
+- **SAF persistable grants are taken and never released.** Every file imported
+  through the document picker holds one for good, against a per-app cap. The fix
+  belongs in `ImportWorker` once an entry is consumed, but it has to tell a
+  document URI from a MediaStore one first.
+- **`SaveMediaWorker` retries a permanently-bad share forever.** `Result.retry()`
+  is unconditional, so a file that can never encrypt keeps coming back with
+  backoff. Costs nothing visible; worth a `runAttemptCount` cap eventually.
+- **`DbCipher` has a one-instruction window** between renaming the plaintext
+  database aside and moving the encrypted one in. A crash exactly there leaves
+  no `vault.db`, and the next launch builds an empty one — blobs intact,
+  metadata gone. Only reachable on a first upgrade from a plaintext database,
+  which this install is long past.
+- **The unlock pre-warm is O(library).** Two RSA unwraps per item at ~18 ms
+  across four workers, and nothing cancels it on lock. Fine at a few thousand
+  items; revisit if it ever feels slow at unlock.
 
 Known, accepted, not bugs:
 
