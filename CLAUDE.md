@@ -89,10 +89,21 @@ ui/          one package per screen; ui/theme is the design system
   type scale, spacing, and a **mapped `darkColorScheme`** so Material components
   don't draw in default purple. Use tokens; never a raw hex.
 - Shared components live in `ui/theme/VaultComponents.kt`: `ScreenHeader`,
-  `VaultIconButton`, `SectionLabel`, `HeaderAction`, `FailureList`.
+  `VaultIconButton`, `SectionLabel`, `HeaderAction`, `FailureList`. Also
+  `ui/theme/TagPicker.kt` — **every** tag-chip picker goes through it. Four
+  dialogs had each hand-rolled the same row and two had capped it at twelve.
 
 ## Traps that have already cost time here
 
+- **An immersive screen's `statusBarsPadding()` is zero.** `ViewerActivity`
+  hides the system bars, so that inset collapses and anything relying on it
+  sits flush against the top edge — which is under the punch-hole camera on
+  the owner's phone. `displayCutoutPadding()` is the inset that survives
+  immersive mode; pair the two, as the viewer's top bar does.
+- **Material's `AlertDialog` does not scroll its body.** The text slot gets
+  `weight(1f, fill = false)` and nothing else, so tall content is silently
+  clipped at the dialog's edge rather than becoming scrollable. Anything
+  list-shaped in a dialog needs its own bounded `verticalScroll`.
 - **Stale captures in gesture handlers.** This has bitten three times. A
   `pointerInput` block captures values from the composition that created it; if
   the value changes every drag delta, the handler keeps using the old one. Use
@@ -116,7 +127,12 @@ ui/          one package per screen; ui/theme is the design system
   device (`adb kill-server`).
 - **Verify third-party APIs rather than guessing.** Downloading an AAR and
   running `javap` on it has settled two questions cleanly (Coil's `onSuccess`
-  overload, SQLCipher's factory signature). The network here allows it.
+  overload, SQLCipher's factory signature). **The AAR route is now blocked** —
+  the agent proxy refuses `dl.google.com` / `maven.google.com`, so Gradle
+  artifacts can't be fetched. `raw.githubusercontent.com` *does* work, so read
+  the library's source at its release tag instead:
+  `https://raw.githubusercontent.com/androidx/media/1.5.1/libraries/.../Foo.java`.
+  That settled the Transformer questions in the open queue below.
 
 ## What exists now
 
@@ -132,9 +148,26 @@ backup with round-trip restore, and an uninstall warning.
 
 1. **Video trim / split** — the one substantial feature not built. Media3
    Transformer, same library the player already uses. The argument is *storage*,
-   not quality: keeping two good minutes of a 500 MB clip. The work isn't the
-   trim, it's feeding Transformer from an encrypted blob through the same custom
-   `DataSource` the player uses.
+   not quality: keeping two good minutes of a 500 MB clip.
+
+   Both halves were checked against media3 1.5.1's actual source:
+
+   - *Input is solved.* `ExoPlayerAssetLoader.Factory(Context, DecoderFactory,
+     Clock, MediaSource.Factory)` exists, so Transformer reads through the same
+     `VaultCtrDataSource` the player uses. Nothing new to build.
+   - *Output is the real problem, and it was the half nobody had costed.*
+     `Transformer.start()` only takes a **file path**, and a custom
+     `Muxer.Factory` doesn't rescue it: `Mp4Muxer.Builder` and
+     `FragmentedMp4Muxer.Builder` both demand a concrete `FileOutputStream`
+     because `Mp4Muxer` seeks via `outputStream.getChannel()` to backfill the
+     moov atom. There is no stream hook to encrypt through.
+
+   So trim **cannot** be done without a plaintext MP4 landing on disk. The
+   least-bad shape is: mux into `cacheDir`, encrypt it into the vault, then
+   shred and delete the temp — plaintext exists only for the length of the
+   run, in app-private storage under the platform's own file-based encryption.
+   That is a weakening of "no plaintext ever hits disk" and is the owner's
+   call to make, not a detail to decide in passing.
 2. **Foreground service for long transfers.** Export/restore currently survive
    leaving the screen (app-scoped coroutine) and screen-off (wake lock), but not
    deep Doze or process death. Fixing that needs WorkManager + a visible
