@@ -2,7 +2,6 @@ package com.atelierapps.vault.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,7 +19,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +60,7 @@ import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.Hairline
 import com.atelierapps.vault.ui.theme.Space
 import com.atelierapps.vault.ui.theme.Surface
+import com.atelierapps.vault.ui.theme.TagPicker
 import com.atelierapps.vault.ui.theme.VaultIconButton
 import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.BrassInk
@@ -478,7 +477,6 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TagDialog(
     existingTags: List<com.atelierapps.vault.data.entity.TagEntity>,
@@ -492,20 +490,17 @@ private fun TagDialog(
         title = { Text("Add tags") },
         text = {
             androidx.compose.foundation.layout.Column {
-                if (existingTags.isNotEmpty()) {
-                    androidx.compose.foundation.layout.FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        existingTags.take(12).forEach { tag ->
-                            val on = picked.contains(tag.name)
-                            androidx.compose.material3.FilterChip(
-                                selected = on,
-                                onClick = { if (on) picked.remove(tag.name) else picked.add(tag.name) },
-                                label = { Text("#${tag.name}") },
-                            )
+                TagPicker(
+                    tags = existingTags,
+                    isPicked = { name -> picked.any { it.equals(name, ignoreCase = true) } },
+                    onToggle = { name ->
+                        if (picked.any { it.equals(name, ignoreCase = true) }) {
+                            picked.removeAll { it.equals(name, ignoreCase = true) }
+                        } else {
+                            picked.add(name)
                         }
-                    }
-                }
+                    },
+                )
                 androidx.compose.material3.OutlinedTextField(
                     value = newTag,
                     onValueChange = { newTag = it },

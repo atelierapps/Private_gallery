@@ -43,6 +43,7 @@ import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.TagPicker
 import com.atelierapps.vault.ui.theme.Muted
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
@@ -198,18 +199,18 @@ private fun AddRuleDialog(
                 }
 
                 Text("Apply tags", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
-                if (existingTags.isNotEmpty()) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        existingTags.take(12).forEach { tag ->
-                            val on = picked.contains(tag.name)
-                            FilterChip(
-                                selected = on,
-                                onClick = { if (on) picked.remove(tag.name) else picked.add(tag.name) },
-                                label = { Text("#${tag.name}") },
-                            )
+                TagPicker(
+                    tags = existingTags,
+                    isPicked = { name -> picked.any { it.equals(name, ignoreCase = true) } },
+                    onToggle = { name ->
+                        if (picked.any { it.equals(name, ignoreCase = true) }) {
+                            picked.removeAll { it.equals(name, ignoreCase = true) }
+                        } else {
+                            picked.add(name)
                         }
-                    }
-                }
+                    },
+                    maxHeight = 180.dp,
+                )
                 OutlinedTextField(
                     value = newTag,
                     onValueChange = { newTag = it },

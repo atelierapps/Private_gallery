@@ -32,6 +32,7 @@ import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.SectionLabel
+import com.atelierapps.vault.ui.theme.TagPicker
 
 /**
  * Name, tag and file a selection in one pass.
@@ -156,26 +157,22 @@ fun OrganiseDialog(
                 }
 
                 SectionLabel("Tags", Modifier.padding(top = 18.dp))
-                if (existingTags.isNotEmpty()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(top = 6.dp),
-                    ) {
-                        existingTags.forEach { tag ->
-                            val on = pickedTags.any { it.equals(tag.name, ignoreCase = true) }
-                            FilterChip(
-                                selected = on,
-                                onClick = {
-                                    if (on) pickedTags.removeAll { it.equals(tag.name, ignoreCase = true) }
-                                    else pickedTags.add(tag.name)
-                                },
-                                label = { Text("#" + tag.name) },
-                            )
+                // Wraps rather than running off sideways, and `maxHeight = null`
+                // because this dialog's body already scrolls — two nested vertical
+                // scrolls would fight over the same drag.
+                TagPicker(
+                    tags = existingTags,
+                    isPicked = { name -> pickedTags.any { it.equals(name, ignoreCase = true) } },
+                    onToggle = { name ->
+                        if (pickedTags.any { it.equals(name, ignoreCase = true) }) {
+                            pickedTags.removeAll { it.equals(name, ignoreCase = true) }
+                        } else {
+                            pickedTags.add(name)
                         }
-                    }
-                }
+                    },
+                    modifier = Modifier.padding(top = 6.dp),
+                    maxHeight = null,
+                )
                 OutlinedTextField(
                     value = newTags,
                     onValueChange = { newTags = it },

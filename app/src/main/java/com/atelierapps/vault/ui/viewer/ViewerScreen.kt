@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.atelierapps.vault.data.entity.MediaWithTags
 import com.atelierapps.vault.ui.image.VaultMediaKey
+import com.atelierapps.vault.ui.theme.TagPicker
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -354,7 +352,6 @@ fun ViewerScreen(
  * state, so this both adds and removes — a mis-tap mid-playback is undoable
  * here rather than only from the grid.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ViewerTagDialog(
     allTags: List<com.atelierapps.vault.data.entity.TagEntity>,
@@ -372,19 +369,17 @@ private fun ViewerTagDialog(
                 if (allTags.isEmpty()) {
                     Text("No tags yet — name one below.", color = Muted, fontSize = 13.sp)
                 } else {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        allTags.forEach { tag ->
-                            val on = picked.any { it.equals(tag.name, ignoreCase = true) }
-                            FilterChip(
-                                selected = on,
-                                onClick = {
-                                    if (on) picked.removeAll { it.equals(tag.name, ignoreCase = true) }
-                                    else picked.add(tag.name)
-                                },
-                                label = { Text("#" + tag.name) },
-                            )
-                        }
-                    }
+                    TagPicker(
+                        tags = allTags,
+                        isPicked = { name -> picked.any { it.equals(name, ignoreCase = true) } },
+                        onToggle = { name ->
+                            if (picked.any { it.equals(name, ignoreCase = true) }) {
+                                picked.removeAll { it.equals(name, ignoreCase = true) }
+                            } else {
+                                picked.add(name)
+                            }
+                        },
+                    )
                 }
                 OutlinedTextField(
                     value = newTag,
