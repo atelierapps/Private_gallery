@@ -6,13 +6,25 @@ import android.media.MediaMetadataRetriever
 import java.io.ByteArrayOutputStream
 import java.io.File
 
-/** Builds a 512px JPEG thumbnail (spec §2, §8). Output is encrypted by the caller. */
+/**
+ * Builds a 512px JPEG thumbnail (spec §2, §8). Output is encrypted by the caller.
+ *
+ * Best-effort, and now actually best-effort: an empty result means "no
+ * thumbnail", which is what MediaSaver has always assumed, but a frame grab that
+ * *threw* — an unparseable container, an image big enough to run the heap out —
+ * escaped instead and took the whole save with it, discarding a blob that had
+ * already been written and verified. A missing thumbnail is a grey tile. A
+ * refused import is a file you don't have.
+ */
 object Thumbnailer {
 
     private const val MAX_EDGE = 512
     private const val JPEG_QUALITY = 82
 
-    fun jpegBytes(file: File, mimeType: String): ByteArray {
+    fun jpegBytes(file: File, mimeType: String): ByteArray =
+        runCatching { encode(file, mimeType) }.getOrDefault(ByteArray(0))
+
+    private fun encode(file: File, mimeType: String): ByteArray {
         val bitmap = (if (mimeType.startsWith("video/")) videoFrame(file) else imageBitmap(file))
             ?: return ByteArray(0)
         return try {

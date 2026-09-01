@@ -12,12 +12,25 @@ data class MediaMeta(
     val dateTakenMillis: Long,
 )
 
-/** Reads dimensions/duration/date from a plaintext file, without decoding pixels. */
+/**
+ * Reads dimensions/duration/date from a plaintext file, without decoding pixels.
+ *
+ * Never throws. What comes back is a nicety — the size under a photo, the length
+ * on a video tile — and MediaMetadataRetriever rejects more files than the player
+ * does. Letting it throw meant a clip it could not parse failed the whole save,
+ * blob and all, so the vault refused to store media it was perfectly able to
+ * keep. Unknown metadata is a blank field; it is not a reason to lose the file.
+ */
 object MediaProbe {
 
     fun probe(file: File, mimeType: String, fallbackDateMillis: Long): MediaMeta =
-        if (mimeType.startsWith("video/")) probeVideo(file, fallbackDateMillis)
-        else probeImage(file, fallbackDateMillis)
+        if (mimeType.startsWith("video/")) {
+            runCatching { probeVideo(file, fallbackDateMillis) }
+                .getOrDefault(MediaMeta(0, 0, null, fallbackDateMillis))
+        } else {
+            runCatching { probeImage(file, fallbackDateMillis) }
+                .getOrDefault(MediaMeta(0, 0, null, fallbackDateMillis))
+        }
 
     private fun probeImage(file: File, fallbackDate: Long): MediaMeta {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }

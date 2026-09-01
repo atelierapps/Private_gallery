@@ -19,6 +19,9 @@ enum class DateBucket(val label: String, val windowMillis: Long?) {
     }
 }
 
+/** Media-type filter (spec §7). */
+enum class MediaTypeFilter { ALL, IMAGE, VIDEO }
+
 /**
  * The active filter (spec §7). Combining semantics:
  *  - **across** categories → AND (source AND tag AND date),
@@ -29,9 +32,6 @@ enum class DateBucket(val label: String, val windowMillis: Long?) {
  * simple and correct; a Room `@RawQuery` path is a later optimization if a
  * library grows large.
  */
-/** Media-type filter (spec §7). */
-enum class MediaTypeFilter { ALL, IMAGE, VIDEO }
-
 data class MediaFilter(
     val type: MediaTypeFilter = MediaTypeFilter.ALL,
     val sources: Set<String> = emptySet(),   // source keys: sourcePackage, or sourceLabel for imports
