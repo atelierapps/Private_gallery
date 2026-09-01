@@ -81,6 +81,7 @@ import com.atelierapps.vault.ui.lock.FloatingLockButton
 import com.atelierapps.vault.session.BackupPrefs
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ContentCopy
 
 /**
  * Home screen (spec §7, §8): filter bar over the decrypting grid, plus a
@@ -95,6 +96,7 @@ fun VaultHome(
     onRestore: () -> Unit,
     onCamera: () -> Unit,
     onTrash: () -> Unit,
+    onDuplicates: () -> Unit,
     onRules: () -> Unit,
     onAlbums: () -> Unit,
     onTags: () -> Unit,
@@ -527,11 +529,13 @@ private fun TopAppRow(
     onCamera: () -> Unit,
     onShuffle: () -> Unit,
     onTrash: () -> Unit,
+    onDuplicates: () -> Unit,
     onRules: () -> Unit,
     onAlbums: () -> Unit,
     onTags: () -> Unit,
     onSettings: () -> Unit,
     trashCount: Int,
+    duplicateCount: Int,
     onToggleSearch: () -> Unit,
     onLockNow: () -> Unit,
 ) {
@@ -556,6 +560,10 @@ private fun TopAppRow(
                 MenuRow(Icons.Outlined.PhotoAlbum, "Albums") { menu = false; onAlbums() }
                 MenuRow(Icons.Outlined.LocalOffer, "Tags") { menu = false; onTags() }
                 MenuRow(Icons.Outlined.AutoAwesome, "Auto-tag rules") { menu = false; onRules() }
+                MenuRow(
+                    Icons.Outlined.ContentCopy,
+                    "Duplicates" + if (duplicateCount > 0) "  ($duplicateCount)" else "",
+                ) { menu = false; onDuplicates() }
                 MenuRow(
                     Icons.Outlined.DeleteOutline,
                     "Recently deleted" + if (trashCount > 0) "  ($trashCount)" else "",

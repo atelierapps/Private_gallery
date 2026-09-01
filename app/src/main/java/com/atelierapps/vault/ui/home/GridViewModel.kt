@@ -90,6 +90,22 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
         repo.observeTags()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * How many copies could be removed without losing anything — one per group
+     * beyond the first. Shown in the menu so the finder announces itself when
+     * there is something to find, rather than sitting there unexplained.
+     */
+    val duplicateCount: StateFlow<Int> =
+        repo.observeAll()
+            .map { list ->
+                list.filter { it.media.contentHash != null }
+                    .groupingBy { it.media.contentHash }
+                    .eachCount()
+                    .values
+                    .sumOf { (it - 1).coerceAtLeast(0) }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     val trashCount: StateFlow<Int> =
         repo.observeTrashCount()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)

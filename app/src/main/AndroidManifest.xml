@@ -199,6 +199,12 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Byte-identical copies, grouped for review. -->
+        <activity
+            android:name=".ui.duplicates.DuplicatesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Rotate / crop one item, saving through the normal encrypt pipeline. -->
         <activity
             android:name=".ui.edit.ImageEditActivity"

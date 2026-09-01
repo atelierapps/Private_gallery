@@ -46,6 +46,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.duplicates.DuplicatesActivity
 
 /**
  * Host for the vault UI (spec §8, §9). Shows the lock screen until a successful
@@ -113,6 +114,11 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onTrash = {
                                     startActivity(Intent(this@MainActivity, TrashActivity::class.java))
+                                },
+                                onDuplicates = {
+                                    startActivity(
+                                        Intent(this@MainActivity, DuplicatesActivity::class.java),
+                                    )
                                 },
                                 onRules = {
                                     startActivity(Intent(this@MainActivity, RulesActivity::class.java))
