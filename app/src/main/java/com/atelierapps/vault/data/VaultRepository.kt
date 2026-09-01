@@ -39,6 +39,10 @@ class VaultRepository(
     suspend fun allIds(): List<String> =
         withContext(Dispatchers.IO) { mediaDao.allIds() }
 
+    /** Every id, recycle bin included — see [MediaDao.allIdsWithTrashed]. */
+    suspend fun allIdsWithTrashed(): List<String> =
+        withContext(Dispatchers.IO) { mediaDao.allIdsWithTrashed() }
+
     suspend fun allMedia() =
         withContext(Dispatchers.IO) { mediaDao.allWithTags() }
 

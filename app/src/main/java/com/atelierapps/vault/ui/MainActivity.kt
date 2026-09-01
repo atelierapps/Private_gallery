@@ -174,14 +174,20 @@ class MainActivity : FragmentActivity() {
     private fun prewarmDekCache() {
         lifecycleScope.launch(Dispatchers.IO) {
             val storage = VaultGraph.storage(this@MainActivity)
-            val ids = repository.allIds()
+            val live = repository.allIds().toSet()
+            // Thumbnails for everything, bin included. Trashed items were left
+            // out of this list, so opening the recycle bin more than five
+            // minutes after unlocking met a grid of blanks — the Keystore window
+            // had lapsed and a Coil fetch has no way to ask for it again. Their
+            // blobs stay un-warmed: the bin has no viewer to open them with.
+            val everything = repository.allIdsWithTrashed()
             val gate = Semaphore(PREWARM_CONCURRENCY)
             coroutineScope {
-                ids.map { id ->
+                everything.map { id ->
                     async {
                         gate.withPermit {
                             runCatching { MediaCrypto.prewarm(storage.thumb(id)) }
-                            runCatching { MediaCrypto.prewarm(storage.blob(id)) }
+                            if (id in live) runCatching { MediaCrypto.prewarm(storage.blob(id)) }
                         }
                     }
                 }.awaitAll()

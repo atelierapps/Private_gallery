@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -440,14 +443,23 @@ private fun ViewerAlbumDialog(
                 if (albums.isEmpty()) {
                     Text("No albums yet — name one below.", color = Muted, fontSize = 13.sp)
                 } else {
-                    albums.forEach { album ->
-                        Text(
-                            album.name,
-                            color = Ink, fontSize = 15.sp,
-                            modifier = Modifier.fillMaxWidth()
-                                .clickable { onPick(album.id) }
-                                .padding(vertical = 10.dp),
-                        )
+                    // Bounded and scrollable: AlertDialog gives its body
+                    // `weight(1f, fill = false)` and no scroll of its own, so a
+                    // long list is simply cut off at the dialog's edge — taking
+                    // the field below it with it.
+                    Column(
+                        Modifier.heightIn(max = 240.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        albums.forEach { album ->
+                            Text(
+                                album.name,
+                                color = Ink, fontSize = 15.sp,
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable { onPick(album.id) }
+                                    .padding(vertical = 10.dp),
+                            )
+                        }
                     }
                 }
                 OutlinedTextField(

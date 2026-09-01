@@ -2,11 +2,14 @@ package com.atelierapps.vault.ui.tags
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -164,12 +167,21 @@ private fun MergeDialog(
                         "Its ${source.liveCount} item(s) get the tag you pick, and “${source.name}” is removed.",
                         color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp),
                     )
-                    candidates.forEach { t ->
-                        Text(
-                            "#${t.name}",
-                            color = Ink, style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.fillMaxWidth().clickable { onPick(t) }.padding(vertical = 10.dp),
-                        )
+                    // Every other tag you have, so this is the list most likely
+                    // to outgrow the dialog — and AlertDialog clips rather than
+                    // scrolls, which would silently hide half your tags from a
+                    // merge that is meant to tidy them up.
+                    Column(
+                        Modifier.heightIn(max = 260.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        candidates.forEach { t ->
+                            Text(
+                                "#${t.name}",
+                                color = Ink, style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.fillMaxWidth().clickable { onPick(t) }.padding(vertical = 10.dp),
+                            )
+                        }
                     }
                 }
             }

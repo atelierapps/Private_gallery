@@ -89,6 +89,13 @@ interface MediaDao {
     @Query("SELECT id FROM media WHERE deletedAtMillis IS NULL")
     suspend fun allIds(): List<String>
 
+    /**
+     * Every id, recycle bin included. The bin draws thumbnails like any other
+     * screen, so its items need their DEKs pre-warmed as much as live ones do.
+     */
+    @Query("SELECT id FROM media")
+    suspend fun allIdsWithTrashed(): List<String>
+
     @Query("DELETE FROM media WHERE id = :id")
     suspend fun delete(id: String)
 
