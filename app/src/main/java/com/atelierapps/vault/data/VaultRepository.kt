@@ -64,7 +64,6 @@ class VaultRepository(
     suspend fun setPinned(id: String, pinned: Boolean) =
         withContext(Dispatchers.IO) { mediaDao.setPinned(id, pinned) }
 
-    /** Rename an item. Only the display name changes — the blob is untouched. */
     /** Display rotation for a video encoded the wrong way up. */
     suspend fun setVideoRotation(id: String, degrees: Int?) = mediaDao.setVideoRotation(id, degrees)
 
@@ -74,6 +73,7 @@ class VaultRepository(
     /** Where you got to in a video; null once it has been watched to the end. */
     suspend fun setResumePosition(id: String, millis: Long?) = mediaDao.setResumePosition(id, millis)
 
+    /** Rename an item. Only the display name changes — the blob is untouched. */
     suspend fun renameMedia(id: String, name: String) =
         withContext(Dispatchers.IO) {
             val clean = name.trim()

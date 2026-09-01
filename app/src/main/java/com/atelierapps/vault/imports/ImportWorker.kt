@@ -37,15 +37,22 @@ class ImportWorker(
             if (isStopped) return Result.retry() // resume from the queue next run
             val entry = ImportQueue.peek(ctx) ?: break
 
+            // Hoisted so the failure path can clear it. MediaSaver leaves the
+            // spool behind on purpose, for a retry — but nothing retries this
+            // one: the queue entry is consumed either way just below. Left
+            // alone, a failed 500 MB video sat in filesDir as plaintext until
+            // the six-hourly sweep noticed it, which is neither the disk nor the
+            // secrecy this app is supposed to keep.
+            var temp: java.io.File? = null
             val outcome = try {
-                val temp = storage.newTempFile()
+                val spool = storage.newTempFile().also { temp = it }
                 ctx.contentResolver.openInputStream(entry.uri).use { input ->
                     if (input == null) throw IllegalStateException("no stream for ${entry.uri}")
-                    temp.outputStream().use { out -> input.copyTo(out, 64 * 1024) }
+                    spool.outputStream().use { out -> input.copyTo(out, 64 * 1024) }
                 }
                 val result = saver.save(
                     SaveRequest(
-                        tempPath = temp.absolutePath,
+                        tempPath = spool.absolutePath,
                         mimeType = entry.mimeType,
                         originalName = entry.displayName,
                         dateTakenMillis = entry.dateTakenMillis,
@@ -62,6 +69,9 @@ class ImportWorker(
             } catch (t: Throwable) {
                 Log.w(TAG, "import failed for ${entry.uri}", t)
                 ImportQueue.Outcome.FAILED
+            }
+            if (outcome == ImportQueue.Outcome.FAILED) {
+                runCatching { temp?.delete() }
             }
 
             ImportQueue.completeFirst(ctx, outcome, entry.uri)

@@ -18,9 +18,25 @@ import java.util.concurrent.ConcurrentHashMap
 object DekCache {
     private val map = ConcurrentHashMap<String, ByteArray>()
 
+    /**
+     * Bumped by [clear]. An unwrap that started before a lock must not put its
+     * result into the cache afterwards: the post-unlock pre-warm fans out across
+     * thousands of files, so there is almost always one in flight, and without
+     * this a lock reliably left live DEKs behind — the one thing locking is for.
+     */
+    @Volatile private var generation = 0
+
     /** Cached DEK for [key], or [load] it (RSA unwrap) and cache. A rare race just re-unwraps. */
-    fun getOrLoad(key: String, load: () -> ByteArray): ByteArray =
-        map[key] ?: load().also { map[key] = it }
+    fun getOrLoad(key: String, load: () -> ByteArray): ByteArray {
+        map[key]?.let { return it }
+        val startedIn = generation
+        val dek = load()
+        synchronized(this) {
+            // Still the same session? Then it's safe to keep.
+            if (generation == startedIn) map[key] = dek
+        }
+        return dek
+    }
 
     fun size(): Int = map.size
 
@@ -31,8 +47,12 @@ object DekCache {
 
     /** Zero every cached DEK and drop them (spec §9). */
     fun clear() {
-        val values = map.values.toList()
-        map.clear()
+        val values = synchronized(this) {
+            generation++
+            val snapshot = map.values.toList()
+            map.clear()
+            snapshot
+        }
         values.forEach { Arrays.fill(it, 0) }
     }
 }

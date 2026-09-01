@@ -39,8 +39,9 @@ object MediaCrypto {
         val cipher = Cipher.getInstance("AES/CTR/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(dek, "AES"), IvParameterSpec(iv))
         FileInputStream(file).use { input ->
-            var skipped = 0L
-            while (skipped < headerLen) skipped += input.skip(headerLen - skipped)
+            // Positioned, not skipped: InputStream.skip may legally return 0,
+            // and the loop that handled that had no way out of it.
+            input.channel.position(headerLen.toLong())
             val buf = ByteArray(64 * 1024)
             while (true) {
                 val n = input.read(buf)
