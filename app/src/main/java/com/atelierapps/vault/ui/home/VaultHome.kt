@@ -128,6 +128,7 @@ fun VaultHome(
     val working by vm.working.collectAsState()
     val query by vm.query.collectAsState()
     val trashCount by vm.trashCount.collectAsState()
+    val duplicateCount by vm.duplicateCount.collectAsState()
     val albums by vm.albums.collectAsState()
 
     var confirmDelete by remember { mutableStateOf(false) }
@@ -211,11 +212,13 @@ fun VaultHome(
                         }
                     },
                     onTrash = onTrash,
+                    onDuplicates = onDuplicates,
                     onRules = onRules,
                     onAlbums = onAlbums,
                     onTags = onTags,
                     onSettings = onSettings,
                     trashCount = trashCount,
+                    duplicateCount = duplicateCount,
                     onToggleSearch = { searchOpen = !searchOpen; if (!searchOpen) vm.setQuery("") },
                     onLockNow = {
                         VaultSession.lock()
