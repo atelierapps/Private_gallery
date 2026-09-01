@@ -7,7 +7,6 @@ import java.io.OutputStream
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.CipherInputStream
-import javax.crypto.CipherOutputStream
 import javax.crypto.SecretKey
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
@@ -127,28 +126,40 @@ object BackupCrypto {
     fun encryptTo(key: SecretKey, output: OutputStream, write: (OutputStream) -> Unit): Long {
         val cipher = Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, key) }
         output.write(cipher.iv)
-        val counted = CountingSink(CipherOutputStream(output, cipher))
-        counted.use(write)
+        val counted = CountingSink(cipher, output)
+        write(counted)
+        // Deliberately not CipherOutputStream. Its close() is where the GCM tag
+        // gets written, and it wraps that write in `catch (IOException) {}` — so
+        // a destination that fails on the very last block (a full card, a
+        // disconnected drive) produced a tagless file while the export happily
+        // reported success. You would only find out at restore, which is the one
+        // moment it must not be a surprise. Done by hand, that write throws.
+        val tail = cipher.doFinal()
+        if (tail.isNotEmpty()) output.write(tail)
+        output.flush()
         return counted.bytes
     }
 
-    /** Counts plaintext on its way into the cipher, so the manifest can record it. */
-    private class CountingSink(private val delegate: OutputStream) : OutputStream() {
+    /**
+     * Encrypts on the way through and counts the plaintext, so the manifest can
+     * record it. Does not close [out]: the caller still has the tag to write.
+     */
+    private class CountingSink(
+        private val cipher: Cipher,
+        private val out: OutputStream,
+    ) : OutputStream() {
         var bytes = 0L
             private set
 
-        override fun write(b: Int) {
-            delegate.write(b)
-            bytes++
-        }
+        override fun write(b: Int) = write(byteArrayOf(b.toByte()), 0, 1)
 
         override fun write(b: ByteArray, off: Int, len: Int) {
-            delegate.write(b, off, len)
+            if (len == 0) return
+            cipher.update(b, off, len)?.let { if (it.isNotEmpty()) out.write(it) }
             bytes += len
         }
 
-        override fun flush() = delegate.flush()
-        override fun close() = delegate.close()
+        override fun flush() = out.flush()
     }
 
     /**

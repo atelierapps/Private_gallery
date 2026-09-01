@@ -62,11 +62,21 @@ object VaultExporter {
             derived
         }
 
+        // What is already in the folder, listed once. `createFile` does not
+        // overwrite: given a name that exists it invents "name (1)" instead, and
+        // the manifest would still point at the original. Exporting twice into
+        // one folder therefore used to leave every entry resolving to the
+        // *previous* run's ciphertext — encrypted under a different salt, so the
+        // whole backup restored as "truncated". Replacing by name is also no
+        // loss: the new header above already re-keys the folder, which orphans
+        // anything left from the earlier run regardless.
+        val existing = tree.listFiles().filter { it.isFile }.associateBy { it.name }
+
         val manifest = JSONArray()
         val failures = ArrayList<TransferFailure>()
         var done = 0
         for (mwt in items) {
-            val attempt = runCatching { exportOne(context, tree, mwt, key) }
+            val attempt = runCatching { exportOne(context, tree, mwt, key, existing) }
             val entry = attempt.getOrNull()
             if (entry != null) {
                 manifest.put(entry)
@@ -104,6 +114,7 @@ object VaultExporter {
         tree: DocumentFile,
         mwt: MediaWithTags,
         key: SecretKey?,
+        existing: Map<String?, DocumentFile>,
     ): JSONObject? {
         val item = mwt.media
         // Encrypted backups are named by id, not by title: a directory listing
@@ -112,6 +123,7 @@ object VaultExporter {
             if (key == null) ensureExtension(item.originalName, item.mimeType)
             else item.id + ".bin"
         val type = if (key == null) item.mimeType else "application/octet-stream"
+        existing[name]?.delete()
         val target = tree.createFile(type, name) ?: return null
         val blob = VaultGraph.storage(context).blob(item.id)
 
