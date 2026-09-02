@@ -60,6 +60,21 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
     /** Set when the chosen folder already holds a backup, so we can ask first. */
     val existing = ExportRun.existing
 
+    init {
+        // ExportRun outlives the activity on purpose, so a transfer survives
+        // leaving the screen. An unanswered *question* must not survive with it.
+        // The passphrase lives on this view model, not in ExportRun, so a fresh
+        // one starts empty — and answering yesterday's confirmation would then
+        // run with no passphrase at all and write the whole library out in the
+        // clear, having asked for an encrypted backup. Drop the question
+        // instead; picking the folder again costs nothing.
+        if (ExportRun.phase.value == ExportPhase.CONFIRM_REPLACE) {
+            ExportRun.pendingTree = null
+            ExportRun.existing.value = null
+            ExportRun.phase.value = ExportPhase.PICK
+        }
+    }
+
     /**
      * Folder chosen. Runs straight away unless there is already a backup there,
      * in which case the user is asked — because a second export re-keys the
