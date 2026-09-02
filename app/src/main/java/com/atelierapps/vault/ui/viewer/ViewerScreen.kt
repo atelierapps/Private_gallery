@@ -68,7 +68,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.IosShare
-import androidx.compose.material.icons.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -606,7 +606,7 @@ private fun TopBar(
             .padding(horizontal = 2.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        VaultIconButton(Icons.Outlined.KeyboardArrowLeft, "Back", onBack, tint = Ink, size = 44)
+        VaultIconButton(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, "Back", onBack, tint = Ink, size = 44)
         Box(Modifier.weight(1f))
         VaultIconButton(
             if (playMode) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
