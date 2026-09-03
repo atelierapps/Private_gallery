@@ -101,6 +101,16 @@ class RestoreViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Put a finished run away so another can start — see ExportViewModel.reset. */
+    fun reset() {
+        if (phase.value == RestorePhase.RUNNING) return
+        RestoreRun.pending = null
+        RestoreRun.wrongPassphrase.value = false
+        RestoreRun.result.value = null
+        RestoreRun.progress.value = RestoreProgress(0, 0, 0, 0)
+        RestoreRun.phase.value = RestorePhase.PICK
+    }
+
     fun run(treeUri: Uri? = RestoreRun.pending, passphrase: CharArray?) {
         val uri = treeUri ?: return
         if (phase.value == RestorePhase.RUNNING) return
@@ -174,6 +184,7 @@ class RestoreActivity : ComponentActivity() {
                         wrongPassphrase = wrong,
                         onPick = { treeLauncher.launch(null) },
                         onPassphrase = { vm.run(passphrase = it.toCharArray()) },
+                        onRestart = vm::reset,
                         onClose = { finish() },
                         modifier = Modifier.safeDrawingPadding(),
                     )
@@ -191,6 +202,7 @@ private fun RestoreBody(
     wrongPassphrase: Boolean,
     onPick: () -> Unit,
     onPassphrase: (String) -> Unit,
+    onRestart: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -209,7 +221,9 @@ private fun RestoreBody(
                             "here is skipped.\n\nIf it was made with a passphrase you'll be " +
                             "asked for it next.\n\nReading from a cloud folder is slow — " +
                             "minutes per file is normal for Drive, against seconds from an " +
-                            "SD card. You can leave this screen; it keeps going.",
+                            "SD card. Leave this screen on — the phone can stop a " +
+                            "transfer that is running in the background, and it will " +
+                            "not tell you it did.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
                     Button(onClick = onPick) { Text("Choose backup folder") }
@@ -260,6 +274,7 @@ private fun RestoreBody(
                     Text(msg, color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                     FailureList(r?.failures.orEmpty())
                     Button(onClick = onClose) { Text("Done") }
+                    TextButton(onClick = onRestart) { Text("Restore again", color = Brass) }
                 }
             }
         }

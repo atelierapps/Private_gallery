@@ -111,6 +111,25 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
         phase.value = ExportPhase.PICK
     }
 
+    /**
+     * Put a finished run away so another can start.
+     *
+     * The run state lives outside the view model so a transfer survives leaving
+     * the screen, which also meant a finished one survived — DONE stayed DONE
+     * for the life of the process, its only button was "Done", and that just
+     * closed the screen. Re-opening Export landed back on the same old result,
+     * so the app allowed exactly one export per launch and force-stopping it was
+     * the only way to get a second.
+     */
+    fun reset() {
+        if (phase.value == ExportPhase.RUNNING) return
+        ExportRun.pendingTree = null
+        ExportRun.existing.value = null
+        ExportRun.result.value = null
+        ExportRun.progress.value = ExportProgress(0, 0, 0)
+        ExportRun.phase.value = ExportPhase.PICK
+    }
+
     fun run(treeUri: Uri) {
         if (phase.value == ExportPhase.RUNNING) return
         phase.value = ExportPhase.RUNNING

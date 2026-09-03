@@ -79,6 +79,7 @@ fun ExportScreen(
     onConfirmReplace: () -> Unit,
     onCancelReplace: () -> Unit,
     onPickFolder: (passphrase: String?) -> Unit,
+    onRestart: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -238,6 +239,10 @@ fun ExportScreen(
                         textAlign = TextAlign.Center,
                     )
                     Button(onClick = onClose) { Text("Done") }
+                    // Without this the result is a dead end: the run state
+                    // outlives the screen, so re-opening Export comes straight
+                    // back here rather than to the folder picker.
+                    TextButton(onClick = onRestart) { Text("Export again", color = Brass) }
                 }
             }
         }

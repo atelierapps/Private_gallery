@@ -93,6 +93,7 @@ class ExportActivity : FragmentActivity() {
                                 vm.passphrase = phrase?.toCharArray()
                                 treeLauncher.launch(null)
                             },
+                            onRestart = vm::reset,
                             onClose = { finish() },
                             modifier = Modifier.safeDrawingPadding(),
                         )
