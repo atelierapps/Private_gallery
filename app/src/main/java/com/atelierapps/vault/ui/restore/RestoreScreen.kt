@@ -13,6 +13,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -207,10 +209,12 @@ private fun RestoreBody(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize().background(Bg).padding(28.dp), contentAlignment = Alignment.Center) {
+        // Scrolls for the same reason the export screen does: the buttons are
+        // at the bottom of this column, under however many failures a run named.
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize().padding(top = 40.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 40.dp),
         ) {
             Text("Restore from backup", color = Ink, style = MaterialTheme.typography.titleLarge)
             when (phase) {

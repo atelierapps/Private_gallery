@@ -1,6 +1,8 @@
 package com.atelierapps.vault.ui.export
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,10 +86,14 @@ fun ExportScreen(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize().background(Bg).padding(28.dp), contentAlignment = Alignment.Center) {
+            // Scrolls, because this column ends in the buttons. A run that
+            // names half a dozen failures pushes them past the bottom of the
+            // screen otherwise, and "Export again" is how you get back to the
+            // picker at all.
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize().padding(top = 40.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 40.dp),
         ) {
             Text(
                 if (scopedCount == null) "Export library" else "Export $scopedCount item(s)",
