@@ -231,12 +231,21 @@ fun ViewerScreen(
             )
         }
 
+        // Whether the top bar is on screen, and what the counter would say.
+        // Both are needed before either block below: an overlay centred over a
+        // row of buttons will always land on one of them, so when the bar is up
+        // the counter is laid out *inside* it instead of floating over it.
+        val isVideo = currentIsVideo
+        val barVisible = current != null && (if (isVideo) videoControls else chromeVisible)
+        val indexLabel =
+            if (media.size > 1) "" + (pagerState.currentPage + 1) + " / " + media.size else null
+
         if (current != null) {
-            val isVideo = currentIsVideo
-            if (if (isVideo) videoControls else chromeVisible) {
+            if (barVisible) {
                 TopBar(
                     onBack = onBack,
                     isPinned = current.media.isPinned,
+                    indexLabel = indexLabel,
                     onTogglePin = { onTogglePin(current.media.id) },
                     onShare = { onShare(current.media.id) },
                     onRename = { renaming = current },
@@ -282,15 +291,14 @@ fun ViewerScreen(
             }
         }
 
-        if (media.size > 1) {
-            val showIndex = indexVisible || chromeVisible || videoControls
+        if (indexLabel != null && !barVisible) {
             val indexAlpha by animateFloatAsState(
-                targetValue = if (showIndex) 1f else 0f,
-                animationSpec = tween(if (showIndex) 120 else 400),
+                targetValue = if (indexVisible) 1f else 0f,
+                animationSpec = tween(if (indexVisible) 120 else 400),
                 label = "indexFade",
             )
             Text(
-                "${pagerState.currentPage + 1} / ${media.size}",
+                indexLabel,
                 color = Ink,
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier
@@ -608,6 +616,7 @@ private fun ViewerPage(
 private fun TopBar(
     onBack: () -> Unit,
     isPinned: Boolean,
+    indexLabel: String?,
     onTogglePin: () -> Unit,
     onShare: () -> Unit,
     onRename: () -> Unit,
@@ -624,11 +633,20 @@ private fun TopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VaultIconButton(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, "Back", onBack, tint = Ink, size = 44)
-        // Nothing sits between the back arrow and the right-hand group: the
-        // item counter is centred over this row, and whatever was here first
-        // was underneath it. The slideshow toggle it displaced now lives in the
-        // bottom bar with the other per-item actions.
-        Box(Modifier.weight(1f))
+        // The counter is a child of this row, not an overlay on top of it.
+        // Floated over the row it sat on whichever button happened to be
+        // leftmost of the group on the right — first the slideshow toggle, then
+        // share once that moved. Laid out here it cannot reach them at all.
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            if (indexLabel != null) {
+                Text(
+                    indexLabel,
+                    color = Ink,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                )
+            }
+        }
         VaultIconButton(Icons.Outlined.IosShare, "Share", onShare, size = 44)
         VaultIconButton(
             Icons.Filled.PushPin,

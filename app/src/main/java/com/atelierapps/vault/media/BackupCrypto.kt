@@ -34,7 +34,12 @@ object BackupCrypto {
 
     const val HEADER = "backup.json"
     const val MANIFEST = "manifest.bin"
-    const val FORMAT_VERSION = 1
+    /**
+      * 2 since item files became framed. Nothing reads this to decide how to
+      * decrypt — each item file says what it is — but a folder should still be
+      * able to state which shape it was written in.
+      */
+    const val FORMAT_VERSION = 2
 
     /**
      * OWASP's floor for PBKDF2-HMAC-SHA256. Slow on purpose: this is the only
@@ -116,70 +121,172 @@ object BackupCrypto {
     // ---- streaming, for media that will not fit in memory ----
 
     /**
-     * Writes the IV, then hands [write] a sink that encrypts everything put into
-     * it. Returns how many plaintext bytes went in.
-     *
-     * Inverted like this so the vault's own decryption can write *directly* into
-     * the backup's cipher: the plaintext exists only as it passes between two
-     * ciphers, never as a buffer and never as a file.
+     * Magic that opens a framed item file. A v1 file opens with 12 random IV
+     * bytes instead, so four fixed bytes tell the two apart with a one-in-four-
+     * billion chance of being wrong — and the file says what it is rather than
+     * relying on a manifest that might not be the one it was written with.
      */
-    fun encryptTo(key: SecretKey, output: OutputStream, write: (OutputStream) -> Unit): Long {
-        val cipher = Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, key) }
-        output.write(cipher.iv)
-        val counted = CountingSink(cipher, output)
-        write(counted)
-        // Deliberately not CipherOutputStream. Its close() is where the GCM tag
-        // gets written, and it wraps that write in `catch (IOException) {}` — so
-        // a destination that fails on the very last block (a full card, a
-        // disconnected drive) produced a tagless file while the export happily
-        // reported success. You would only find out at restore, which is the one
-        // moment it must not be a surprise. Done by hand, that write throws.
-        val tail = cipher.doFinal()
-        if (tail.isNotEmpty()) output.write(tail)
-        output.flush()
-        return counted.bytes
-    }
+    private val FRAME_MAGIC = byteArrayOf(0x56, 0x42, 0x4B, 0x32) // "VBK2"
 
     /**
-     * Encrypts on the way through and counts the plaintext, so the manifest can
-     * record it. Does not close [out]: the caller still has the tag to write.
+     * Plaintext per frame. Peak memory is about twice this per item, so a
+     * two-gigabyte video costs the same as a two-megabyte one.
      */
-    private class CountingSink(
-        private val cipher: Cipher,
+    private const val FRAME_BYTES = 1 shl 20 // 1 MiB
+
+    /** Refuses an absurd frame length from a corrupt file before allocating it. */
+    private const val FRAME_LIMIT = 64 shl 20
+
+    /**
+     * Writes a framed, encrypted copy of whatever [write] puts into the sink,
+     * and returns how many plaintext bytes that was.
+     *
+     * ### Why frames, and not one cipher over the whole file
+     * Because on Android one cipher over the whole file means the whole file in
+     * memory. Conscrypt implements AES/GCM over BoringSSL's one-shot AEAD, so
+     * `Cipher.update()` emits nothing at all — it copies its input into a buffer
+     * that it doubles as it grows — and `doFinal()` seals the lot in a single
+     * call. Streaming it was an illusion; `CipherOutputStream` did exactly the
+     * same thing. Every video past a few hundred megabytes died with an
+     * OutOfMemoryError and was reported, correctly but uselessly, as "failed".
+     *
+     * Each frame is sealed on its own, so the cost is one frame at a time. The
+     * frame's index goes in as AAD, which is what stops frames being dropped,
+     * repeated or swapped in a file that would otherwise still authenticate
+     * frame by frame.
+     */
+    fun encryptTo(key: SecretKey, output: OutputStream, write: (OutputStream) -> Unit): Long {
+        output.write(FRAME_MAGIC)
+        output.write(intBytes(FRAME_BYTES))
+        val sink = FramingSink(key, output)
+        write(sink)
+        // Not in close(): the caller owns `output`, and a failure sealing the
+        // last frame has to reach the failure list rather than be swallowed the
+        // way CipherOutputStream swallows its own final write.
+        sink.finish()
+        output.flush()
+        return sink.plainBytes
+    }
+
+    /** Fills a frame, seals it, writes it, repeats. Never closes [out]. */
+    private class FramingSink(
+        private val key: SecretKey,
         private val out: OutputStream,
     ) : OutputStream() {
-        var bytes = 0L
+        private val frame = ByteArray(FRAME_BYTES)
+        private var filled = 0
+        private var index = 0L
+
+        var plainBytes = 0L
             private set
 
         override fun write(b: Int) = write(byteArrayOf(b.toByte()), 0, 1)
 
         override fun write(b: ByteArray, off: Int, len: Int) {
-            if (len == 0) return
-            cipher.update(b, off, len)?.let { if (it.isNotEmpty()) out.write(it) }
-            bytes += len
+            var from = off
+            var left = len
+            while (left > 0) {
+                val take = minOf(left, FRAME_BYTES - filled)
+                System.arraycopy(b, from, frame, filled, take)
+                filled += take
+                from += take
+                left -= take
+                plainBytes += take
+                if (filled == FRAME_BYTES) seal()
+            }
+        }
+
+        fun finish() {
+            if (filled > 0) seal()
+        }
+
+        private fun seal() {
+            val cipher = Cipher.getInstance(TRANSFORMATION).apply {
+                init(Cipher.ENCRYPT_MODE, key)
+                updateAAD(longBytes(index))
+            }
+            val sealed = cipher.doFinal(frame, 0, filled)
+            out.write(intBytes(sealed.size))
+            out.write(cipher.iv)
+            out.write(sealed)
+            index++
+            filled = 0
         }
 
         override fun flush() = out.flush()
     }
 
     /**
-     * Reads the IV, then streams the plaintext out, and returns how many bytes
-     * that was.
+     * Streams the plaintext of an item file out, and returns how many bytes that
+     * was. Reads both the framed format and the single-cipher one written before
+     * it, told apart by the magic.
      *
-     * The caller **must** compare that against the length recorded in the
-     * manifest. CipherInputStream swallows a failed GCM tag and reports end of
-     * stream instead of throwing, so a tampered or truncated file would restore
-     * as a short but plausible-looking one. The length check is what turns that
-     * silence back into an error.
+     * The caller **must** compare the result against the length the manifest
+     * recorded. A wrong key or a truncated file surfaces as a short read rather
+     * than an error — CipherInputStream reports a failed tag as end of stream —
+     * so the length check is what turns that silence back into a failure.
      */
     fun decryptStream(key: SecretKey, input: InputStream, output: OutputStream): Long {
-        val iv = ByteArray(IV_BYTES)
-        var filled = 0
-        while (filled < IV_BYTES) {
-            val read = input.read(iv, filled, IV_BYTES - filled)
-            if (read <= 0) error("backup file is truncated before its header")
-            filled += read
+        val opening = ByteArray(FRAME_MAGIC.size)
+        if (fill(input, opening) < opening.size) error("backup file is truncated before its header")
+        return if (opening.contentEquals(FRAME_MAGIC)) {
+            decryptFramed(key, input, output)
+        } else {
+            decryptWholeFile(key, opening, input, output)
         }
+    }
+
+    private fun decryptFramed(key: SecretKey, input: InputStream, output: OutputStream): Long {
+        val sizeBytes = ByteArray(4)
+        if (fill(input, sizeBytes) < 4) error("backup file is truncated before its header")
+        val declared = intFrom(sizeBytes)
+        var total = 0L
+        var index = 0L
+        val lengthBytes = ByteArray(4)
+        while (true) {
+            val got = fill(input, lengthBytes)
+            if (got == 0) break // clean end of the last frame
+            if (got < 4) error("backup item is truncated mid-frame")
+            val length = intFrom(lengthBytes)
+            // A corrupt length must not turn into a huge allocation.
+            if (length <= 0 || length > minOf(FRAME_LIMIT, declared + 1024)) {
+                error("backup item is truncated or corrupt")
+            }
+            val nonce = ByteArray(IV_BYTES)
+            if (fill(input, nonce) < IV_BYTES) error("backup item is truncated mid-frame")
+            val body = ByteArray(length)
+            if (fill(input, body) < length) error("backup item is truncated mid-frame")
+            val plain = Cipher.getInstance(TRANSFORMATION).run {
+                init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, nonce))
+                updateAAD(longBytes(index))
+                doFinal(body)
+            }
+            output.write(plain)
+            total += plain.size
+            index++
+        }
+        return total
+    }
+
+    /**
+     * The pre-framing layout: a 12-byte IV then one GCM stream. Kept so backups
+     * already written still restore. It holds the whole item in memory, which is
+     * the very thing framing exists to avoid — but no file large enough to be a
+     * problem was ever written in this format, because writing one is exactly
+     * what used to fail.
+     */
+    private fun decryptWholeFile(
+        key: SecretKey,
+        head: ByteArray,
+        input: InputStream,
+        output: OutputStream,
+    ): Long {
+        val iv = ByteArray(IV_BYTES)
+        System.arraycopy(head, 0, iv, 0, head.size)
+        val rest = ByteArray(IV_BYTES - head.size)
+        if (fill(input, rest) < rest.size) error("backup file is truncated before its header")
+        System.arraycopy(rest, 0, iv, head.size, rest.size)
+
         val cipher = Cipher.getInstance(TRANSFORMATION).apply {
             init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
         }
@@ -194,6 +301,29 @@ object BackupCrypto {
             }
         }
         return total
+    }
+
+    /** Reads until [target] is full or the stream ends; returns how much it got. */
+    private fun fill(input: InputStream, target: ByteArray): Int {
+        var filled = 0
+        while (filled < target.size) {
+            val read = input.read(target, filled, target.size - filled)
+            if (read <= 0) break
+            filled += read
+        }
+        return filled
+    }
+
+    private fun intBytes(v: Int): ByteArray = byteArrayOf(
+        (v ushr 24).toByte(), (v ushr 16).toByte(), (v ushr 8).toByte(), v.toByte(),
+    )
+
+    private fun intFrom(b: ByteArray): Int =
+        ((b[0].toInt() and 0xFF) shl 24) or ((b[1].toInt() and 0xFF) shl 16) or
+            ((b[2].toInt() and 0xFF) shl 8) or (b[3].toInt() and 0xFF)
+
+    private fun longBytes(v: Long): ByteArray = ByteArray(8) { i ->
+        (v ushr (56 - 8 * i)).toByte()
     }
 
     private const val TRANSFORMATION = "AES/GCM/NoPadding"

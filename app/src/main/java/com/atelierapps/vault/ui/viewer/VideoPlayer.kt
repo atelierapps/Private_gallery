@@ -687,11 +687,20 @@ private fun CtlText(
         modifier.height(CTL_CELL).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
+        // A pill that grows with the text, not the icons' fixed circle: "0.25×"
+        // is five characters and simply did not fit inside 46dp, so it spilled
+        // out over the video either side of the disc.
         Box(
-            Modifier.size(CTL_DISC).clip(CircleShape).background(CTL_FILL),
+            Modifier.height(CTL_DISC).clip(RoundedCornerShape(CTL_DISC / 2))
+                .background(CTL_FILL).padding(horizontal = 9.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(label, color = tint, style = MaterialTheme.typography.titleMedium)
+            Text(
+                label,
+                color = tint,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+            )
         }
     }
 }
