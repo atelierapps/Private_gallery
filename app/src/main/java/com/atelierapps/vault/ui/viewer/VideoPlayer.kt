@@ -74,11 +74,8 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeOff
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.Forward10
+import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.Replay10
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.atelierapps.vault.ui.theme.Scrim
@@ -128,8 +125,10 @@ fun VideoPlayer(
     slideshowActive: Boolean = false,
     onControlsVisible: (Boolean) -> Unit = {},
     onEnded: () -> Unit = {},
-    onPrev: (() -> Unit)? = null,
-    onNext: (() -> Unit)? = null,
+    /** Start/stop the slideshow — moved down here from the viewer's top bar. */
+    onToggleSlideshow: () -> Unit = {},
+    /** Open the tag sheet for this clip without leaving it. */
+    onTag: () -> Unit = {},
     onDismissDrag: (Float) -> Unit = {},
     onDismissEnd: () -> Unit = {},
     /** Where a previous run of the app left off, 0 for the start. */
@@ -197,6 +196,10 @@ fun VideoPlayer(
     // trap a slideshow on one clip).
     var loop by remember(id) { mutableStateOf(false) }
     var isPlaying by remember(id) { mutableStateOf(autoPlay) }
+    // ExoPlayer parks at STATE_ENDED and stays there: play() on a finished
+    // player does nothing at all, which is why replaying a clip used to mean
+    // dragging the scrubber back to zero by hand.
+    var ended by remember(id) { mutableStateOf(false) }
     // Start hidden when the clip plays itself: with a run of short videos,
     // showing the full control bar on every advance is just flicker. A clip that
     // opens paused still shows them, since you need the play button.
@@ -251,10 +254,17 @@ fun VideoPlayer(
     // disturbs the device's media volume.
     LaunchedEffect(muted) { player.volume = if (muted) 0f else 1f }
     LaunchedEffect(controlsVisible) { onControlsVisible(controlsVisible) }
+    // A finished clip brings its controls back, so replaying is one tap rather
+    // than a guess at where the hidden button was. Not during a slideshow: an
+    // ending there is an advance, not a stop.
+    LaunchedEffect(ended) { if (ended && !slideshowActive) controlsVisible = true }
 
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+            override fun onPlaybackStateChanged(state: Int) {
+                ended = state == Player.STATE_ENDED
+            }
             override fun onRenderedFirstFrame() { firstFrame = true }
             override fun onVideoSizeChanged(videoSize: VideoSize) {
                 val w = videoSize.width * videoSize.pixelWidthHeightRatio
@@ -487,18 +497,33 @@ fun VideoPlayer(
 
         if (controlsVisible) {
             Box(
-                Modifier.align(Alignment.Center).size(64.dp).clip(CircleShape)
+                Modifier.align(Alignment.Center).size(76.dp).clip(CircleShape)
                     .background(Color(0x66000000))
                     .pointerInput(id) {
-                        detectTapGestures(onTap = { if (isPlaying) player.pause() else player.play() })
+                        // Reads `ended` and `isPlaying` through their state
+                        // delegates at tap time, so this is not one of the stale
+                        // captures pointerInput is famous for here.
+                        detectTapGestures(
+                            onTap = {
+                                when {
+                                    ended -> { player.seekTo(0); player.play() }
+                                    isPlaying -> player.pause()
+                                    else -> player.play()
+                                }
+                            },
+                        )
                     },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    contentDescription = when {
+                        ended -> "Replay"
+                        isPlaying -> "Pause"
+                        else -> "Play"
+                    },
                     tint = Color.White,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(38.dp),
                 )
             }
 
@@ -532,18 +557,28 @@ fun VideoPlayer(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    CtlIcon(Icons.Outlined.SkipPrevious, "Previous", Modifier.weight(1f), enabled = onPrev != null) {
-                        onPrev?.invoke()
-                    }
-                    CtlIcon(Icons.Outlined.Replay10, "Back 10 seconds", Modifier.weight(1f)) {
-                        player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0L))
-                    }
-                    CtlIcon(Icons.Outlined.Forward10, "Forward 10 seconds", Modifier.weight(1f)) {
-                        player.seekTo(player.currentPosition + 10_000)
-                    }
-                    CtlIcon(Icons.Outlined.SkipNext, "Next", Modifier.weight(1f), enabled = onNext != null) {
-                        onNext?.invoke()
-                    }
+                    // Skip and the two ten-second jumps are gone: a tap either
+                    // side of the screen already skips ten seconds and a swipe
+                    // already changes clip, so four of the eight buttons were
+                    // duplicating gestures and crowding the six that aren't.
+                    //
+                    // The slideshow toggle takes the first of the freed slots.
+                    // It used to live in the top bar, where the item counter is
+                    // drawn straight over it.
+                    CtlIcon(
+                        if (slideshowActive) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        if (slideshowActive) "Pause slideshow" else "Play all",
+                        Modifier.weight(1f),
+                        tint = if (slideshowActive) Brass else Color(0x99FFFFFF),
+                        onClick = onToggleSlideshow,
+                    )
+                    CtlIcon(
+                        Icons.Outlined.LocalOffer,
+                        "Tags",
+                        Modifier.weight(1f),
+                        tint = Color(0x99FFFFFF),
+                        onClick = onTag,
+                    )
 
                     // Mute is a standing setting, not a per-clip one: it persists
                     // and also switches off the swipe volume gesture.
@@ -602,9 +637,19 @@ fun VideoPlayer(
     }
 }
 
-/** A roomy, evenly-spaced control-bar button (comfortable touch target). */
+/**
+ * A control-bar button.
+ *
+ * The whole cell takes the tap, but only a translucent disc is drawn — so the
+ * target is far larger than it looks while the bar still shows the video
+ * through it. The old version was a bare 22dp glyph in a 44dp cell with nothing
+ * marking where to press, which on a phone in one hand meant missing it.
+ *
+ * `internal` rather than private: the image half of the viewer shows the same
+ * two buttons and there is no reason for it to draw them differently.
+ */
 @Composable
-private fun CtlIcon(
+internal fun CtlIcon(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
     modifier: Modifier = Modifier,
@@ -613,16 +658,20 @@ private fun CtlIcon(
     onClick: () -> Unit,
 ) {
     Box(
-        modifier.height(44.dp).clip(RoundedCornerShape(10.dp))
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+        modifier.height(CTL_CELL).then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            icon,
-            contentDescription = contentDescription,
-            tint = if (enabled) tint else Color(0x33FFFFFF),
-            modifier = Modifier.size(22.dp),
-        )
+        Box(
+            Modifier.size(CTL_DISC).clip(CircleShape).background(CTL_FILL),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                tint = if (enabled) tint else Color(0x33FFFFFF),
+                modifier = Modifier.size(CTL_GLYPH),
+            )
+        }
     }
 }
 
@@ -635,12 +684,23 @@ private fun CtlText(
     onClick: () -> Unit,
 ) {
     Box(
-        modifier.height(44.dp).clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick),
+        modifier.height(CTL_CELL).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = tint, style = MaterialTheme.typography.labelLarge)
+        Box(
+            Modifier.size(CTL_DISC).clip(CircleShape).background(CTL_FILL),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(label, color = tint, style = MaterialTheme.typography.titleMedium)
+        }
     }
 }
+
+/** One shape for every control-bar button, so the row stays a row. */
+private val CTL_CELL = 58.dp
+private val CTL_DISC = 46.dp
+private val CTL_GLYPH = 26.dp
+private val CTL_FILL = Color(0x2EFFFFFF)
 
 private fun speedLabel(s: Float): String =
     if (s == s.toLong().toFloat()) "${s.toLong()}×" else "$s×"

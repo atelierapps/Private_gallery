@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -69,6 +68,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -226,12 +226,8 @@ fun ViewerScreen(
                 autoPlay = (playMode || autoplayPref) && page == pagerState.currentPage,
                 slideshowActive = playMode,
                 onEnded = { if (playMode) advance() },
-                onPrev = if (page > 0) {
-                    fun() { scope.launch { pagerState.animateScrollToPage(page - 1, animationSpec = PageGlide) } }
-                } else null,
-                onNext = if (page < media.size - 1) {
-                    fun() { scope.launch { pagerState.animateScrollToPage(page + 1, animationSpec = PageGlide) } }
-                } else null,
+                onToggleSlideshow = { playMode = !playMode },
+                onTag = { taggingItem = media[page] },
             )
         }
 
@@ -241,8 +237,6 @@ fun ViewerScreen(
                 TopBar(
                     onBack = onBack,
                     isPinned = current.media.isPinned,
-                    playMode = playMode,
-                    onTogglePlay = { playMode = !playMode },
                     onTogglePin = { onTogglePin(current.media.id) },
                     onShare = { onShare(current.media.id) },
                     onRename = { renaming = current },
@@ -259,7 +253,32 @@ fun ViewerScreen(
                 )
             }
             if (chromeVisible && !isVideo) {
-                MetadataPanel(current, Modifier.align(Alignment.BottomStart))
+                Column(
+                    Modifier.align(Alignment.BottomStart).fillMaxWidth().navigationBarsPadding(),
+                ) {
+                    // A photo has no control bar of its own, so the two actions
+                    // the video bar now carries get a strip here — same buttons,
+                    // same size, same corner of the screen either way.
+                    Row(
+                        Modifier.fillMaxWidth().background(Scrim).padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CtlIcon(
+                            if (playMode) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                            if (playMode) "Pause slideshow" else "Play all",
+                            tint = if (playMode) Brass else Color(0x99FFFFFF),
+                            onClick = { playMode = !playMode },
+                        )
+                        CtlIcon(
+                            Icons.Outlined.LocalOffer,
+                            "Tags",
+                            tint = Color(0x99FFFFFF),
+                            onClick = { taggingItem = current },
+                        )
+                    }
+                    MetadataPanel(current, Modifier)
+                }
             }
         }
 
@@ -493,8 +512,8 @@ private fun ViewerPage(
     autoPlay: Boolean,
     slideshowActive: Boolean,
     onEnded: () -> Unit,
-    onPrev: (() -> Unit)?,
-    onNext: (() -> Unit)?,
+    onToggleSlideshow: () -> Unit,
+    onTag: () -> Unit,
 ) {
     if (item.media.mimeType.startsWith("video/")) {
         VideoPlayer(
@@ -505,8 +524,8 @@ private fun ViewerPage(
             slideshowActive = slideshowActive,
             onControlsVisible = onVideoControls,
             onEnded = onEnded,
-            onPrev = onPrev,
-            onNext = onNext,
+            onToggleSlideshow = onToggleSlideshow,
+            onTag = onTag,
             onDismissDrag = onDismissDrag,
             onDismissEnd = onDismissEnd,
             resumeFrom = item.media.resumePositionMillis ?: 0L,
@@ -589,8 +608,6 @@ private fun ViewerPage(
 private fun TopBar(
     onBack: () -> Unit,
     isPinned: Boolean,
-    playMode: Boolean,
-    onTogglePlay: () -> Unit,
     onTogglePin: () -> Unit,
     onShare: () -> Unit,
     onRename: () -> Unit,
@@ -607,14 +624,11 @@ private fun TopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VaultIconButton(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, "Back", onBack, tint = Ink, size = 44)
+        // Nothing sits between the back arrow and the right-hand group: the
+        // item counter is centred over this row, and whatever was here first
+        // was underneath it. The slideshow toggle it displaced now lives in the
+        // bottom bar with the other per-item actions.
         Box(Modifier.weight(1f))
-        VaultIconButton(
-            if (playMode) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-            if (playMode) "Pause slideshow" else "Play all",
-            onTogglePlay,
-            tint = Brass,
-            size = 44,
-        )
         VaultIconButton(Icons.Outlined.IosShare, "Share", onShare, size = 44)
         VaultIconButton(
             Icons.Filled.PushPin,
@@ -686,7 +700,7 @@ private fun PlayControls(
 @Composable
 private fun MetadataPanel(item: MediaWithTags, modifier: Modifier) {
     Column(
-        modifier.fillMaxWidth().background(Scrim).navigationBarsPadding().padding(18.dp),
+        modifier.fillMaxWidth().background(Scrim).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(item.media.originalName, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
