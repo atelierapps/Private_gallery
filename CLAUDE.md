@@ -106,9 +106,22 @@ ui/          one package per screen; ui/theme is the design system
   list-shaped in a dialog needs its own bounded `verticalScroll`.
 - **`MediaSaver`'s catch block deletes the blob it just wrote.** Everything
   after the encrypt-and-verify step runs inside that try, so anything cosmetic
-  that throws there discards verified media. Two did (metadata probe, thumbnail
-  frame) and are now non-throwing; keep it that way for anything added below
-  step 2.
+  that throws there discards verified media. Three did: the metadata probe,
+  the thumbnail frame, and — worst — tagging inside `saveMedia`, which runs
+  *after* the row insert. That one left a live row with no file (a "ghost"):
+  a blank tile that never plays, which a retry then deduped against and threw
+  the spool away. All three are non-throwing now. Keep anything added below
+  step 2 that way, and **anything that dedups by hash must also check the blob
+  exists** — MediaSaver, the restore skip and the duplicate finder's keeper all
+  needed that.
+- **AES/GCM on Android does not stream.** Conscrypt implements it over
+  BoringSSL's one-shot AEAD: `Cipher.update()` emits *nothing*, copying input
+  into a buffer it doubles as it grows, and `doFinal()` seals everything at
+  once. `CipherOutputStream`/`CipherInputStream` don't change that. So GCM over
+  a large file is the whole file in memory — this is what made every big
+  video fail backup with OutOfMemoryError. Backup items are therefore framed
+  (`BackupCrypto`, 1 MiB frames, frame index as AAD). AES/CTR is a plain
+  stream cipher and is fine; it is why video blobs use it.
 - **Stale captures in gesture handlers.** This has bitten three times. A
   `pointerInput` block captures values from the composition that created it; if
   the value changes every drag delta, the handler keeps using the old one. Use
@@ -149,6 +162,13 @@ per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button, app disguise + custom home-screen shortcut, encrypted (or plaintext)
 backup with round-trip restore, and an uninstall warning.
 
+Diagnostics, because "won't play" and "is damaged" look identical on screen:
+the video player names the cause when playback fails (with ExoPlayer's error
+code), and **Settings → Storage → Check library** decrypts every item and
+compares it against the SHA-256 recorded at import — the only thing that can
+say whether data at rest has actually changed. Start there for any report of
+corruption.
+
 ## Open queue
 
 1. **Video trim / split** — the one substantial feature not built. Media3
@@ -182,10 +202,9 @@ backup with round-trip restore, and an uninstall warning.
 
 Read before "fixing" one of these; each was weighed.
 
-- **`saveMedia` / `addTags` / `setTagsForMedia` are not `@Transaction`.** A
-  failure between the row insert and the tag links leaves an untagged item.
-  Rare, harmless, and the alternative is a transaction spanning a `resolveTag`
-  that can itself insert.
+- **`addTags` / `setTagsForMedia` are not `@Transaction`.** A failure partway
+  leaves some tags applied and some not. Harmless for these two. (`saveMedia`
+  was on this list too, wrongly — see the MediaSaver trap; it is fixed.)
 - **SAF persistable grants are taken and never released.** Every file imported
   through the document picker holds one for good, against a per-app cap. The fix
   belongs in `ImportWorker` once an entry is consumed, but it has to tell a
