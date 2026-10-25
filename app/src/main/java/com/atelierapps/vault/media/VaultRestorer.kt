@@ -85,7 +85,12 @@ object VaultRestorer {
             // from manifests written before this existed, which simply fall
             // through to the old path.
             val knownHash = obj.optStringOrNull("sha256")
-            if (knownHash != null && repo.existsByHash(knownHash)) {
+            // Held means held: a live row whose file is gone does not count, or
+            // restoring from a backup would skip precisely the items that most
+            // need it.
+            val held = knownHash != null &&
+                repo.liveIdByHash(knownHash)?.let { VaultGraph.storage(context).blob(it).exists() } == true
+            if (held) {
                 imported++
                 onProgress(RestoreProgress(i + 1, items.length(), imported, failures.size))
                 continue

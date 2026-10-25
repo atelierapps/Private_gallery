@@ -45,6 +45,7 @@ private data class Choice(val keeperId: String? = null, val keepAll: Boolean = f
 class DuplicatesViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = VaultGraph.repository(app)
+    private val storage = VaultGraph.storage(app)
 
     val working = MutableStateFlow(false)
 
@@ -66,11 +67,18 @@ class DuplicatesViewModel(app: Application) : AndroidViewModel(app) {
                 // most likely already attached to.
                 val ordered = copies.sortedBy { it.media.importedAtMillis }
                 val choice = picked[hash]
+                // The oldest copy whose file still exists. "Oldest" alone could
+                // pick a row whose blob had been lost — the oldest by
+                // construction, since it is the one a later retry re-imported
+                // around — and then "delete the rest" would bin the only copy
+                // that plays.
+                val defaultKeeper = ordered.firstOrNull { storage.blob(it.media.id).exists() }
+                    ?: ordered.first()
                 DuplicateGroup(
                     hash = hash,
                     copies = ordered,
                     keeperId = choice?.keeperId?.takeIf { id -> ordered.any { it.media.id == id } }
-                        ?: ordered.first().media.id,
+                        ?: defaultKeeper.media.id,
                     keepAll = choice?.keepAll ?: false,
                 )
             }

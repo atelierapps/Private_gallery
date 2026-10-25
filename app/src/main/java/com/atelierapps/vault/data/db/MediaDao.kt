@@ -86,6 +86,10 @@ interface MediaDao {
     @Query("SELECT EXISTS(SELECT 1 FROM media WHERE contentHash = :hash AND deletedAtMillis IS NULL LIMIT 1)")
     suspend fun existsByHash(hash: String): Boolean
 
+    /** The live item holding these exact bytes, if there is one. */
+    @Query("SELECT id FROM media WHERE contentHash = :hash AND deletedAtMillis IS NULL LIMIT 1")
+    suspend fun liveIdByHash(hash: String): String?
+
     @Query("SELECT id FROM media WHERE deletedAtMillis IS NULL")
     suspend fun allIds(): List<String>
 

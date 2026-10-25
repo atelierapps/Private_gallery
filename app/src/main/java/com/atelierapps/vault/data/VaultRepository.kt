@@ -10,6 +10,7 @@ import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.data.entity.MediaTagCrossRef
 import com.atelierapps.vault.data.entity.SourceType
 import com.atelierapps.vault.data.entity.TagEntity
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -35,6 +36,12 @@ class VaultRepository(
 
     suspend fun existsByHash(hash: String): Boolean =
         withContext(Dispatchers.IO) { mediaDao.existsByHash(hash) }
+
+    suspend fun liveIdByHash(hash: String): String? =
+        withContext(Dispatchers.IO) { mediaDao.liveIdByHash(hash) }
+
+    suspend fun mediaById(id: String) =
+        withContext(Dispatchers.IO) { mediaDao.byId(id) }
 
     suspend fun allIds(): List<String> =
         withContext(Dispatchers.IO) { mediaDao.allIds() }
@@ -124,9 +131,16 @@ class VaultRepository(
         withContext(Dispatchers.IO) {
             mediaDao.insert(media)
             if (tagNames.isEmpty()) return@withContext
-            val tagIds = tagNames.map { resolveTag(it) }
-            mediaDao.insertCrossRefs(tagIds.map { MediaTagCrossRef(media.id, it) })
-            tagIds.forEach { tagDao.incrementUse(it) }
+            // Never allowed to throw once the row is in. MediaSaver deletes the
+            // blob in its catch block, so a tag that failed to write used to
+            // leave a live row pointing at a deleted file — a tile with no
+            // picture and a video that would never play. A missing tag is a
+            // nuisance; a missing file is a loss.
+            runCatching {
+                val tagIds = tagNames.map { resolveTag(it) }
+                mediaDao.insertCrossRefs(tagIds.map { MediaTagCrossRef(media.id, it) })
+                tagIds.forEach { tagDao.incrementUse(it) }
+            }.onFailure { Log.w("VaultRepository", "tags not applied to " + media.id, it) }
         }
 
     private suspend fun resolveTag(rawName: String): String {

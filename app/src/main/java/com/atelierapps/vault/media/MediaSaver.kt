@@ -31,7 +31,21 @@ class MediaSaver(
 ) {
     private val repository = VaultGraph.repository(context)
 
+    /**
+     * Set when the last [save] returned [DUPLICATE]: the live item that already
+     * holds those exact bytes. The importer needs it to decide whether the
+     * original is safe to offer for deletion — which depends on that copy
+     * still being intact, not merely on its once having been imported.
+     *
+     * A field rather than part of the result because two callers compare the
+     * result against [DUPLICATE] directly, and every MediaSaver is owned by one
+     * caller saving one item at a time.
+     */
+    var duplicateOf: String? = null
+        private set
+
     suspend fun save(request: SaveRequest): Result<String> {
+        duplicateOf = null
         val temp = File(request.tempPath)
         if (!temp.exists()) return Result.failure(IllegalStateException("spool missing: ${request.tempPath}"))
 
@@ -46,7 +60,15 @@ class MediaSaver(
             val hash = sha256(temp)
 
             // Dedup (§4.2): identical content already present → drop the spool, done.
-            if (repository.existsByHash(hash)) {
+            //
+            // "Present" means the file is actually there. A row whose blob was
+            // lost is not a copy of anything, and treating it as one discarded
+            // the spool — for a share-in, possibly the only copy left — while
+            // the ghost row went on not playing. Saving afresh heals it instead.
+            val existing = repository.liveIdByHash(hash)
+                ?.takeIf { storage.blob(it).exists() }
+            if (existing != null) {
+                duplicateOf = existing
                 temp.delete()
                 return Result.success(DUPLICATE)
             }
