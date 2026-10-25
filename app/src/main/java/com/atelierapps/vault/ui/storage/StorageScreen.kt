@@ -43,11 +43,25 @@ import com.atelierapps.vault.ui.theme.HeaderAction
 import com.atelierapps.vault.ui.theme.Hairline
 import androidx.compose.material3.MaterialTheme
 import com.atelierapps.vault.ui.theme.Danger
+import com.atelierapps.vault.ui.theme.FailureList
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
 
 @Composable
 fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val stats by vm.stats.collectAsState()
     val loading by vm.loading.collectAsState()
+    val check by vm.check.collectAsState()
+
+    // A full check reads every file and can take minutes; the screen sleeping
+    // partway would leave it to the phone's mercy in the background.
+    val view = LocalView.current
+    DisposableEffect(check.running) {
+        view.keepScreenOn = check.running
+        onDispose { view.keepScreenOn = false }
+    }
 
     Column(modifier.fillMaxSize().background(Bg)) {
         ScreenHeader("Storage", onClose) {
@@ -66,6 +80,8 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            StorageCard("Library check") { LibraryCheck(check, vm::runCheck) }
+
             StorageCard("On disk") {
                 Text(
                     formatBytes(stats.totalBytes),
@@ -97,6 +113,82 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Is anything actually damaged? The one question "this won't play" can't answer
+ * by itself, because a file the player can't handle and a file that has been
+ * corrupted look exactly alike on screen.
+ */
+@Composable
+private fun LibraryCheck(check: CheckState, onRun: () -> Unit) {
+    when {
+        check.running -> {
+            Text(
+                "Checking " + check.done + " of " + check.total,
+                color = Ink, style = MaterialTheme.typography.bodyLarge,
+            )
+            LinearProgressIndicator(
+                progress = { if (check.total == 0) 0f else check.done.toFloat() / check.total },
+                color = Brass,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+            )
+            if (check.problems.isNotEmpty()) {
+                Text(
+                    "" + check.problems.size + " problem(s) so far",
+                    color = Danger, style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text(
+                "Keep this screen open — leaving it stops the check.",
+                color = Muted, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        check.finished -> {
+            Text(
+                if (check.problems.isEmpty()) {
+                    "All " + check.total + " items are intact"
+                } else {
+                    "" + check.problems.size + " of " + check.total + " need attention"
+                },
+                color = if (check.problems.isEmpty()) Ink else Danger,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                if (check.problems.isEmpty()) {
+                    "Every file decrypts to exactly the bytes that were imported. " +
+                        "If something won't play, the file isn't damaged — the player " +
+                        "will say why when it fails."
+                } else {
+                    "Each one is named below with what is wrong. Anything not listed " +
+                        "decrypts to exactly what was imported."
+                },
+                color = Muted, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+            )
+            if (check.sizeOnly > 0) {
+                Text(
+                    "" + check.sizeOnly + " item(s) predate content checks: their size " +
+                        "is right, but their content couldn't be compared.",
+                    color = Muted, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
+            FailureList(check.problems)
+            TextButton(onClick = onRun) { Text("Check again", color = Brass) }
+        }
+        else -> {
+            Text(
+                "Decrypts every item and compares it with the fingerprint taken when " +
+                    "it was imported. A match means the file is exactly what came in.\n\n" +
+                    "Reads every file in full, so a large library takes a few minutes.",
+                color = Muted, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 10.dp),
+            )
+            Button(onClick = onRun) { Text("Check library") }
         }
     }
 }
