@@ -111,11 +111,19 @@ object ImportQueue {
     }
 
     /**
-     * Drop the head and record its outcome. Successful MediaStore imports are
-     * remembered for the delete-originals prompt.
+     * Drop the head and record its outcome.
+     *
+     * [originalIsSafe] decides whether the gallery copy goes on the delete-
+     * originals list, and it is deliberately not just "it was saved". A
+     * duplicate — bytes already in the vault — used to be left off entirely,
+     * so its gallery copy had to be hunted down by hand. It is now offered too,
+     * but only when the caller has confirmed the vault's copy still decrypts to
+     * exactly those bytes: a hash match says the file *was* imported, not that
+     * the copy is intact today, and the gallery original may be the last good
+     * one.
      */
     @Synchronized
-    fun completeFirst(context: Context, outcome: Outcome, uri: Uri) {
+    fun completeFirst(context: Context, outcome: Outcome, uri: Uri, originalIsSafe: Boolean) {
         val root = read(context)
         val arr = items(root)
         if (arr.length() > 0) arr.remove(0)
@@ -124,12 +132,12 @@ object ImportQueue {
         when (outcome) {
             Outcome.DUPLICATE -> root.put("duplicates", root.optInt("duplicates", 0) + 1)
             Outcome.FAILED -> root.put("failed", root.optInt("failed", 0) + 1)
-            Outcome.SAVED ->
-                if (root.optBoolean("deleteOriginals", false)) {
-                    val pd = root.optJSONArray("pendingDelete") ?: JSONArray()
-                    pd.put(uri.toString())
-                    root.put("pendingDelete", pd)
-                }
+            Outcome.SAVED -> Unit
+        }
+        if (originalIsSafe && outcome != Outcome.FAILED && root.optBoolean("deleteOriginals", false)) {
+            val pd = root.optJSONArray("pendingDelete") ?: JSONArray()
+            pd.put(uri.toString())
+            root.put("pendingDelete", pd)
         }
         write(context, root)
     }

@@ -9,6 +9,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.atelierapps.vault.VaultGraph
+import com.atelierapps.vault.media.MediaIntegrity
 import com.atelierapps.vault.media.MediaSaver
 import com.atelierapps.vault.media.SaveRequest
 import com.atelierapps.vault.media.SourceInfo
@@ -74,7 +75,23 @@ class ImportWorker(
                 runCatching { temp?.delete() }
             }
 
-            ImportQueue.completeFirst(ctx, outcome, entry.uri)
+            // A fresh save was verified by MediaSaver before the row existed.
+            // A duplicate is only as safe as the copy already in the vault, so
+            // that copy is read back in full and checked against its hash
+            // before the gallery original is offered for deletion.
+            val originalIsSafe = when (outcome) {
+                ImportQueue.Outcome.SAVED -> true
+                ImportQueue.Outcome.DUPLICATE -> saver.duplicateOf?.let { id ->
+                    runCatching {
+                        val held = VaultGraph.repository(ctx).mediaById(id)?.media
+                        held != null &&
+                            MediaIntegrity.check(ctx, held).verdict == MediaIntegrity.Verdict.OK
+                    }.getOrDefault(false)
+                } ?: false
+                ImportQueue.Outcome.FAILED -> false
+            }
+
+            ImportQueue.completeFirst(ctx, outcome, entry.uri, originalIsSafe)
             val s = ImportQueue.state(ctx)
             setProgress(
                 Data.Builder()
