@@ -54,8 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
@@ -170,7 +172,14 @@ fun VideoPlayer(
     val maxVol = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
     val currentOnEnded by rememberUpdatedState(onEnded)
     val player = remember(id) {
-        ExoPlayer.Builder(context)
+        ExoPlayer.Builder(
+            context,
+            // When the preferred hardware decoder refuses a stream it is not
+            // the end: the phone usually has another, often a software one.
+            // Off by default, which turns one fussy codec into a video that
+            // simply never plays.
+            DefaultRenderersFactory(context).setEnableDecoderFallback(true),
+        )
             .setMediaSourceFactory(DefaultMediaSourceFactory(VaultCtrDataSource.Factory(context)))
             .build()
             .apply {
@@ -200,6 +209,11 @@ fun VideoPlayer(
     // player does nothing at all, which is why replaying a clip used to mean
     // dragging the scrubber back to zero by hand.
     var ended by remember(id) { mutableStateOf(false) }
+    // Why playback stopped, in words. There was no error handling here at all:
+    // a failure of any kind — a key it couldn't unwrap, a decoder that wouldn't
+    // start, a file it couldn't parse — left a frozen frame and a play button
+    // that did nothing, which is indistinguishable from a damaged file.
+    var playError by remember(id) { mutableStateOf<PlaybackProblem?>(null) }
     // Start hidden when the clip plays itself: with a run of short videos,
     // showing the full control bar on every advance is just flicker. A clip that
     // opens paused still shows them, since you need the play button.
@@ -264,6 +278,11 @@ fun VideoPlayer(
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
             override fun onPlaybackStateChanged(state: Int) {
                 ended = state == Player.STATE_ENDED
+                if (state == Player.STATE_READY) playError = null
+            }
+            override fun onPlayerError(error: PlaybackException) {
+                playError = describePlayback(error)
+                controlsVisible = true
             }
             override fun onRenderedFirstFrame() { firstFrame = true }
             override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -487,6 +506,32 @@ fun VideoPlayer(
                 )
             },
         )
+
+        playError?.let { problem ->
+            Column(
+                Modifier.align(Alignment.Center).padding(horizontal = 28.dp)
+                    .clip(RoundedCornerShape(14.dp)).background(Color(0xE6000000))
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(problem.message, color = Color.White, fontSize = 15.sp)
+                // The code is for reporting, not reading: it is what tells a
+                // damaged file from a fussy decoder when the sentence can't.
+                Text(problem.code, color = Color(0x99FFFFFF), fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                Text(
+                    "Try again",
+                    color = Brass,
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(top = 14.dp).clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            playError = null
+                            player.prepare()
+                            player.play()
+                        }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
+        }
 
         hud?.let {
             Box(
@@ -717,4 +762,56 @@ private fun speedLabel(s: Float): String =
 private fun fmt(ms: Long): String {
     val totalSec = (ms / 1000).coerceAtLeast(0)
     return "%d:%02d".format(totalSec / 60, totalSec % 60)
+}
+
+/** A playback failure in words, plus ExoPlayer's own code for reporting. */
+private data class PlaybackProblem(val message: String, val code: String)
+
+/**
+ * Says which of the very different things went wrong.
+ *
+ * The vault's data source throws the interesting ones itself, so they arrive
+ * wrapped somewhere down the cause chain — a lapsed Keystore window or a
+ * missing blob is a fact about the vault, not about the video, and the fix
+ * for each is different.
+ */
+private fun describePlayback(error: PlaybackException): PlaybackProblem {
+    val code = error.errorCodeName
+    var cause: Throwable? = error
+    while (cause != null) {
+        val name = cause.javaClass.simpleName
+        val msg = cause.message.orEmpty()
+        when {
+            name.contains("UserNotAuthenticated") -> return PlaybackProblem(
+                "The vault needs a fresh unlock before it can open this one. Lock it, " +
+                    "unlock it, and it will play. The file is fine.",
+                code,
+            )
+            name.contains("KeyPermanentlyInvalidated") -> return PlaybackProblem(
+                "This phone's vault key no longer works, so this video can't be decrypted.",
+                code,
+            )
+            msg.startsWith("blob missing") -> return PlaybackProblem(
+                "This video's file is missing from the vault.",
+                code,
+            )
+        }
+        cause = cause.cause
+    }
+    val message = when (error.errorCode) {
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ->
+            "This doesn't read as a video the player understands. It may be damaged, or " +
+                "an unusual format — Settings → Storage → Check library will say which."
+        PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+        PlaybackException.ERROR_CODE_DECODING_FAILED,
+        PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
+        PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ->
+            "This phone's video decoder couldn't play it. That's a limit of the phone, " +
+                "not damage to the file."
+        PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
+            "This video's file is missing from the vault."
+        else -> "Playback failed."
+    }
+    return PlaybackProblem(message, code)
 }
