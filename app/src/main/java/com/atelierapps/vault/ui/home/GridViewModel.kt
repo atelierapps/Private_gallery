@@ -32,6 +32,7 @@ enum class SortOrder(val label: String) {
     NAME("Name A–Z"),
     LONGEST("Longest first"),
     SHORTEST("Shortest first"),
+    LARGEST("Largest first"),
 }
 
 /** A source-filter chip: an app that media came from, with its total count (spec §7). */
@@ -353,6 +354,9 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleSource(pkg: String) { _filter.value = _filter.value.toggleSource(pkg) }
     fun toggleTag(name: String) { _filter.value = _filter.value.toggleTag(name) }
     fun setDate(bucket: DateBucket) { _filter.value = _filter.value.withDate(bucket) }
+    fun toggleFavourites() { _filter.value = _filter.value.toggleFavourites() }
+    fun toggleUntagged() { _filter.value = _filter.value.toggleUntagged() }
+    fun toggleShortClips() { _filter.value = _filter.value.toggleShortClips() }
     fun clearAll() { _filter.value = MediaFilter() }
 }
 
@@ -383,6 +387,9 @@ fun List<MediaWithTags>.sortedFor(order: SortOrder): List<MediaWithTags> {
                 { it.media.durationMillis ?: Long.MAX_VALUE },
             ),
         )
+        // Plaintext size as recorded at import — what the clip is, which is
+        // within a few bytes of what it costs on disk.
+        SortOrder.LARGEST -> sortedByDescending { it.media.sizeBytes }
     }
     // Pinned items float to the top (stable — keeps sort order within groups).
     return sorted.sortedByDescending { it.media.isPinned }

@@ -20,6 +20,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -47,10 +48,15 @@ import com.atelierapps.vault.ui.theme.Muted
 import androidx.compose.material3.MaterialTheme
 
 /**
- * Compact filter bar (spec §7). Fixed category buttons — Type · Source · Tag ·
+ * Compact filter bar (spec §7). Fixed category buttons — Type · Show · Tag ·
  * Date · Sort — that open pickers, plus a removable chip for each *active*
  * selection only. No endless inline list of every tag/source; the tag picker is
  * searchable so it scales to hundreds of tags.
+ *
+ * "Show" took over the slot that used to be "Source". Almost everything here
+ * arrives through the gallery's Download folder, so the source list was one
+ * entry long and filtered nothing. The sources are still there, at the bottom
+ * of the same menu, for the clips that did come from a share.
  */
 @Composable
 fun FilterBar(
@@ -62,6 +68,9 @@ fun FilterBar(
     onToggleSource: (String) -> Unit,
     onToggleTag: (String) -> Unit,
     onSetDate: (DateBucket) -> Unit,
+    onToggleFavourites: () -> Unit,
+    onToggleUntagged: () -> Unit,
+    onToggleShortClips: () -> Unit,
     onSetSort: (SortOrder) -> Unit,
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
@@ -80,6 +89,9 @@ fun FilterBar(
         if (filter.type != MediaTypeFilter.ALL) {
             item { ActiveChip(if (filter.type == MediaTypeFilter.IMAGE) "Photos" else "Videos") { onSetType(filter.type) } }
         }
+        if (filter.favourites) item { ActiveChip("Favourites") { onToggleFavourites() } }
+        if (filter.untagged) item { ActiveChip("Untagged") { onToggleUntagged() } }
+        if (filter.shortClips) item { ActiveChip("Short clips") { onToggleShortClips() } }
         items(filter.sources.toList(), key = { "src:$it" }) { pkg ->
             ActiveChip(sources.firstOrNull { it.pkg == pkg }?.label ?: pkg) { onToggleSource(pkg) }
         }
@@ -92,7 +104,16 @@ fun FilterBar(
 
         // ---- category buttons (always the same small set) ----
         item { TypeMenu(filter.type, onSetType) }
-        item { SourceMenu(sources, filter.sources, onToggleSource) }
+        item {
+            ShowMenu(
+                filter = filter,
+                sources = sources,
+                onToggleFavourites = onToggleFavourites,
+                onToggleUntagged = onToggleUntagged,
+                onToggleShortClips = onToggleShortClips,
+                onToggleSource = onToggleSource,
+            )
+        }
         item { AssistChip(onClick = { tagPicker = true }, label = { Text("Tag ▾") }) }
         item { DateMenu(filter.date, onSetDate) }
         item { SortMenu(sort, onSetSort) }
@@ -138,22 +159,46 @@ private fun TypeMenu(current: MediaTypeFilter, onSet: (MediaTypeFilter) -> Unit)
     }
 }
 
+/**
+ * Toggles stay open on tap, like the source rows always did, so two can be
+ * combined ("short clips" AND "untagged") without reopening the menu.
+ */
 @Composable
-private fun SourceMenu(
+private fun ShowMenu(
+    filter: MediaFilter,
     sources: List<SourceChip>,
-    selected: Set<String>,
-    onToggle: (String) -> Unit,
+    onToggleFavourites: () -> Unit,
+    onToggleUntagged: () -> Unit,
+    onToggleShortClips: () -> Unit,
+    onToggleSource: (String) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
+    val selected = filter.sources
     Box {
-        AssistChip(onClick = { open = true }, label = { Text("Source ▾") })
+        AssistChip(onClick = { open = true }, label = { Text("Show ▾") })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            if (sources.isEmpty()) {
-                DropdownMenuItem(text = { Text("No sources yet", color = Muted) }, onClick = {})
+            listOf(
+                Triple("Favourites", filter.favourites, onToggleFavourites),
+                Triple("Untagged", filter.untagged, onToggleUntagged),
+                Triple("Short clips (15s or less)", filter.shortClips, onToggleShortClips),
+            ).forEach { (label, on, toggle) ->
+                DropdownMenuItem(
+                    text = { Text((if (on) "✓  " else "     ") + label) },
+                    onClick = toggle,
+                )
+            }
+            if (sources.isNotEmpty()) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Text(
+                    "From",
+                    color = Muted,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
             }
             sources.forEach { s ->
                 DropdownMenuItem(
-                    onClick = { onToggle(s.pkg) },
+                    onClick = { onToggleSource(s.pkg) },
                     leadingIcon = {
                         Box(Modifier.size(10.dp).clip(CircleShape).background(Color(s.colorArgb)))
                     },

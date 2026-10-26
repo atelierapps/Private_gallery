@@ -156,7 +156,9 @@ ui/          one package per screen; ui/theme is the design system
 
 Everything in the spec, plus: recycle bin with 30-day purge, albums, tags +
 manager + auto-tag rules, duplicate finder, search, six sort orders, date
-sections, fast scroller, storage stats, camera capture, share-in target, durable
+sections, fast scroller, Show filters (favourites / untagged / short clips —
+the slot that was "Source", which only ever said "Download"), play a selection,
+short clips loop by default (Settings → Playback), storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
 per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button, app disguise + custom home-screen shortcut, encrypted (or plaintext)

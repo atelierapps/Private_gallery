@@ -37,10 +37,17 @@ data class MediaFilter(
     val sources: Set<String> = emptySet(),   // source keys: sourcePackage, or sourceLabel for imports
     val tagNames: Set<String> = emptySet(),  // case-insensitive
     val date: DateBucket = DateBucket.ANY,
+    /** Pinned items only. Pin is what this app has instead of a heart. */
+    val favourites: Boolean = false,
+    /** Nothing tagged yet: the "still to sort" pile after an import. */
+    val untagged: Boolean = false,
+    /** Videos of [SHORT_CLIP_MILLIS] or less. */
+    val shortClips: Boolean = false,
 ) {
     val isEmpty: Boolean
         get() = type == MediaTypeFilter.ALL && sources.isEmpty() &&
-            tagNames.isEmpty() && date == DateBucket.ANY
+            tagNames.isEmpty() && date == DateBucket.ANY &&
+            !favourites && !untagged && !shortClips
 
     fun matches(item: MediaWithTags, now: Long): Boolean {
         val isVideo = item.media.mimeType.startsWith("video/")
@@ -52,6 +59,14 @@ data class MediaFilter(
         if (sources.isNotEmpty()) {
             val sourceKey = item.media.sourcePackage ?: item.media.sourceLabel
             if (sourceKey !in sources) return false
+        }
+        if (favourites && !item.media.isPinned) return false
+        if (untagged && item.tags.isNotEmpty()) return false
+        if (shortClips) {
+            // A video with no recorded length is left out rather than guessed
+            // at: claiming an unknown clip is short is the worse mistake.
+            val d = item.media.durationMillis
+            if (!isVideo || d == null || d <= 0L || d > SHORT_CLIP_MILLIS) return false
         }
         if (tagNames.isNotEmpty()) {
             val itemTags = item.tags.mapTo(HashSet()) { it.name.lowercase() }
@@ -70,4 +85,12 @@ data class MediaFilter(
         copy(tagNames = if (name in tagNames) tagNames - name else tagNames + name)
 
     fun withDate(bucket: DateBucket) = copy(date = bucket)
+
+    fun toggleFavourites() = copy(favourites = !favourites)
+    fun toggleUntagged() = copy(untagged = !untagged)
+    fun toggleShortClips() = copy(shortClips = !shortClips)
+
+    companion object {
+        const val SHORT_CLIP_MILLIS = 15_000L
+    }
 }

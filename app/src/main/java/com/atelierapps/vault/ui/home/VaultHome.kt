@@ -41,10 +41,12 @@ import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreVert
@@ -191,6 +193,18 @@ fun VaultHome(
                     count = selectedIds.size,
                     onClose = vm::clearSelection,
                     onSelectAll = vm::selectAll,
+                    onPlay = {
+                        // In the order they sit on screen, not the order they
+                        // were tapped: that is the order you were looking at.
+                        val order = media.map { it.media.id }.filter { it in selectedIds }
+                        if (order.isNotEmpty()) {
+                            vm.clearSelection()
+                            com.atelierapps.vault.ui.viewer.ViewerSession.orderedIds = order
+                            com.atelierapps.vault.ui.viewer.ViewerSession.startPlaying = true
+                            TileAnchor.clear()
+                            onOpen(order.first())
+                        }
+                    },
                     onTag = { showTagDialog = true },
                     onAlbum = { showAlbumDialog = true },
                     onMove = { confirmMove = true },
@@ -239,6 +253,9 @@ fun VaultHome(
                     onToggleSource = vm::toggleSource,
                     onToggleTag = vm::toggleTag,
                     onSetDate = vm::setDate,
+                    onToggleFavourites = vm::toggleFavourites,
+                    onToggleUntagged = vm::toggleUntagged,
+                    onToggleShortClips = vm::toggleShortClips,
                     onSetSort = vm::setSort,
                     onClearAll = vm::clearAll,
                     modifier = Modifier.fillMaxWidth(),
@@ -616,6 +633,7 @@ private fun SelectionBar(
     count: Int,
     onClose: () -> Unit,
     onSelectAll: () -> Unit,
+    onPlay: () -> Unit,
     onTag: () -> Unit,
     onAlbum: () -> Unit,
     onMove: () -> Unit,
@@ -635,9 +653,12 @@ private fun SelectionBar(
             "$count selected",
             color = Ink,
             style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f).padding(start = Space.xs),
         )
         VaultIconButton(Icons.Outlined.SelectAll, "Select all", onSelectAll)
+        VaultIconButton(Icons.Outlined.PlayArrow, "Play selection", onPlay, enabled = count > 0)
         VaultIconButton(Icons.Outlined.LocalOffer, "Tag", onTag, enabled = count > 0)
         VaultIconButton(Icons.Outlined.PhotoAlbum, "Add to album", onAlbum, enabled = count > 0)
         VaultIconButton(Icons.Outlined.DeleteOutline, "Delete", onDelete, tint = Danger, enabled = count > 0)
