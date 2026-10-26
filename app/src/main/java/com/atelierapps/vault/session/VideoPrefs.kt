@@ -8,6 +8,10 @@ object VideoPrefs {
     private const val PREFS = "vault_prefs"
     private const val KEY_AUTOPLAY = "video_autoplay"
     private const val KEY_MUTED = "video_muted"
+    private const val KEY_LOOP_SHORT = "video_loop_short"
+
+    /** What counts as short enough to loop on its own. */
+    const val LOOP_SHORT_MILLIS = 30_000L
 
     fun autoplay(context: Context): Boolean =
         prefs(context).getBoolean(KEY_AUTOPLAY, false)
@@ -27,6 +31,18 @@ object VideoPrefs {
 
     fun setMuted(context: Context, value: Boolean) {
         prefs(context).edit().putBoolean(KEY_MUTED, value).apply()
+    }
+
+    /**
+     * Loop clips under [LOOP_SHORT_MILLIS] without being asked. On by default:
+     * a six-second clip that plays once and stops is the wrong behaviour for
+     * most of what lives here, and it was a tap on every single one.
+     */
+    fun loopShort(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_LOOP_SHORT, true)
+
+    fun setLoopShort(context: Context, value: Boolean) {
+        prefs(context).edit().putBoolean(KEY_LOOP_SHORT, value).apply()
     }
 
     private fun prefs(context: Context) =

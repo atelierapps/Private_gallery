@@ -78,6 +78,7 @@ fun SettingsScreen(
 
     var autoplay by remember { mutableStateOf(VideoPrefs.autoplay(context)) }
     var muted by remember { mutableStateOf(VideoPrefs.muted(context)) }
+    var loopShort by remember { mutableStateOf(VideoPrefs.loopShort(context)) }
     var dateHeaders by remember { mutableStateOf(DisplayPrefs.dateHeaders(context)) }
     var columns by remember { mutableIntStateOf(DisplayPrefs.columns(context)) }
     var lockDelay by remember { mutableStateOf(LockPrefs.current(context)) }
@@ -143,6 +144,13 @@ fun SettingsScreen(
                     subtitle = "Silences playback and disables the swipe volume gesture",
                     checked = muted,
                     onCheckedChange = { muted = it; VideoPrefs.setMuted(context, it) },
+                )
+                HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 10.dp))
+                ToggleRow(
+                    title = "Loop short clips",
+                    subtitle = "Clips under 30 seconds repeat until you move on. The loop button still overrides it",
+                    checked = loopShort,
+                    onCheckedChange = { loopShort = it; VideoPrefs.setLoopShort(context, it) },
                 )
             }
 
