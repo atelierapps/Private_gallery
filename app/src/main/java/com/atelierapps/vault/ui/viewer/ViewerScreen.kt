@@ -398,25 +398,19 @@ private fun ViewerTagDialog(
             Column {
                 if (allTags.isEmpty()) {
                     Text("No tags yet — name one below.", color = Muted, fontSize = 13.sp)
-                } else {
-                    TagPicker(
-                        tags = allTags,
-                        isPicked = { name -> picked.any { it.equals(name, ignoreCase = true) } },
-                        onToggle = { name ->
-                            if (picked.any { it.equals(name, ignoreCase = true) }) {
-                                picked.removeAll { it.equals(name, ignoreCase = true) }
-                            } else {
-                                picked.add(name)
-                            }
-                        },
-                    )
                 }
-                OutlinedTextField(
-                    value = newTag,
-                    onValueChange = { newTag = it },
-                    placeholder = { Text("New tag(s), comma-separated") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                TagPicker(
+                    tags = allTags,
+                    isPicked = { name -> picked.any { it.equals(name, ignoreCase = true) } },
+                    onToggle = { name ->
+                        if (picked.any { it.equals(name, ignoreCase = true) }) {
+                            picked.removeAll { it.equals(name, ignoreCase = true) }
+                        } else {
+                            picked.add(name)
+                        }
+                    },
+                    text = newTag,
+                    onTextChange = { newTag = it },
                 )
             }
         },

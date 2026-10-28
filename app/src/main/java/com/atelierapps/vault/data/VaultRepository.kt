@@ -23,6 +23,19 @@ class VaultRepository(
     private val ruleDao: AutoTagRuleDao,
     private val albumDao: AlbumDao,
 ) {
+    /**
+     * Told which tag ids were just applied, so pickers can offer them first.
+     * A hook rather than a Context here, to keep the data layer free of prefs.
+     * Never allowed to throw into a save: see [saveMedia].
+     */
+    var onTagsUsed: (List<String>) -> Unit = {}
+
+    private fun noteUsed(ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        runCatching { onTagsUsed(ids.toList()) }
+            .onFailure { Log.w("VaultRepository", "recent tags not recorded", it) }
+    }
+
     fun observeAll() = mediaDao.observeAll()
     fun observeTrash() = mediaDao.observeTrash()
     fun observeTrashCount() = mediaDao.observeTrashCount()
@@ -98,6 +111,7 @@ class VaultRepository(
             val tagIds = tagNames.map { resolveTag(it) }
             mediaDao.insertCrossRefs(tagIds.map { MediaTagCrossRef(mediaId, it) })
             tagIds.forEach { tagDao.incrementUse(it) }
+            noteUsed(tagIds)
         }
 
     /**
@@ -118,6 +132,7 @@ class VaultRepository(
             if (toAdd.isNotEmpty()) {
                 mediaDao.insertCrossRefs(toAdd.map { MediaTagCrossRef(mediaId, it) })
                 toAdd.forEach { tagDao.incrementUse(it) }
+                noteUsed(toAdd)
             }
         }
 
@@ -140,6 +155,7 @@ class VaultRepository(
                 val tagIds = tagNames.map { resolveTag(it) }
                 mediaDao.insertCrossRefs(tagIds.map { MediaTagCrossRef(media.id, it) })
                 tagIds.forEach { tagDao.incrementUse(it) }
+                noteUsed(tagIds)
             }.onFailure { Log.w("VaultRepository", "tags not applied to " + media.id, it) }
         }
 

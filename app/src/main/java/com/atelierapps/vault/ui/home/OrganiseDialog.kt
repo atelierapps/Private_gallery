@@ -170,15 +170,10 @@ fun OrganiseDialog(
                             pickedTags.add(name)
                         }
                     },
+                    text = newTags,
+                    onTextChange = { newTags = it },
                     modifier = Modifier.padding(top = 6.dp),
                     maxHeight = null,
-                )
-                OutlinedTextField(
-                    value = newTags,
-                    onValueChange = { newTags = it },
-                    placeholder = { Text("New tag(s), comma-separated") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
 
                 SectionLabel("Source", Modifier.padding(top = 18.dp))

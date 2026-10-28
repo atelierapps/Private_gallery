@@ -1,5 +1,6 @@
 package com.atelierapps.vault.share
 
+import com.atelierapps.vault.session.TagPrefs
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -64,7 +65,16 @@ class ShareReceiverActivity : ComponentActivity() {
                 previewUri = incoming.first(),
                 itemCount = incoming.size,
                 source = source,
-                loadTopTags = { VaultGraph.repository(this).topTags(6) },
+                // Recently used first, then most used: the six that fit here
+                // should be the ones you are actually reaching for this week.
+                // sortedBy is stable, so the query's by-use order survives
+                // underneath the recent ones.
+                loadTopTags = {
+                    val rank = TagPrefs.recentIds(this).withIndex().associate { (i, id) -> id to i }
+                    VaultGraph.repository(this).topTags(1000)
+                        .sortedBy { rank[it.id] ?: Int.MAX_VALUE }
+                        .take(6)
+                },
                 onSave = ::onSave,
                 onDismiss = ::onDismiss,
             )

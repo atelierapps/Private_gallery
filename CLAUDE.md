@@ -92,6 +92,10 @@ ui/          one package per screen; ui/theme is the design system
   `VaultIconButton`, `SectionLabel`, `HeaderAction`, `FailureList`. Also
   `ui/theme/TagPicker.kt` — **every** tag-chip picker goes through it. Four
   dialogs had each hand-rolled the same row and two had capped it at twelve.
+  It owns the find-or-add field, the Recent / Most used / A–Z order, the
+  per-chip live counts and the "on this item" group. Recent tags are kept in
+  `TagPrefs` as **ids only** — prefs are plaintext, and a list of tag names
+  would be a summary of the library sitting outside the encrypted database.
 
 ## Traps that have already cost time here
 
@@ -156,9 +160,10 @@ ui/          one package per screen; ui/theme is the design system
 
 Everything in the spec, plus: recycle bin with 30-day purge, albums, tags +
 manager + auto-tag rules, duplicate finder, search, six sort orders, date
-sections, fast scroller, Show filters (favourites / untagged / short clips —
-the slot that was "Source", which only ever said "Download"), play a selection,
-short clips loop by default (Settings → Playback), storage stats, camera capture, share-in target, durable
+sections, fast scroller, one-tap Favourites / Untagged / Short filter chips
+(Source was dropped from the bar — it only ever said "Download"; sources now
+sit at the bottom of the Type menu), play a selection, every video loops by
+default unless a slideshow is running (Settings → Playback), storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
 per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button, app disguise + custom home-screen shortcut, encrypted (or plaintext)

@@ -209,14 +209,9 @@ private fun AddRuleDialog(
                             picked.add(name)
                         }
                     },
+                    text = newTag,
+                    onTextChange = { newTag = it },
                     maxHeight = 180.dp,
-                )
-                OutlinedTextField(
-                    value = newTag,
-                    onValueChange = { newTag = it },
-                    placeholder = { Text("New tag(s), comma-separated") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 )
             }
         },

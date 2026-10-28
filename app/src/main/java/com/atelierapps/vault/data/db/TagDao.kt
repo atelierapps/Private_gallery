@@ -35,9 +35,17 @@ interface TagDao {
     )
     suspend fun topByUse(limit: Int): List<TagEntity>
 
+    /**
+     * `useCount` here is the **live** member count, computed by the join and
+     * aliased over the stored column, so pickers can show "how many items" and
+     * sort by it truthfully. Nothing writes these rows back, so the alias never
+     * reaches the table.
+     */
     @Query(
         """
-        SELECT t.* FROM tags t
+        SELECT t.id AS id, t.name AS name, t.colorHex AS colorHex,
+               COUNT(m.id) AS useCount, t.createdAtMillis AS createdAtMillis
+        FROM tags t
         LEFT JOIN media_tag mt ON mt.tagId = t.id
         LEFT JOIN media m ON m.id = mt.mediaId AND m.deletedAtMillis IS NULL
         GROUP BY t.id

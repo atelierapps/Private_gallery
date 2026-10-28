@@ -1,5 +1,6 @@
 package com.atelierapps.vault.imports
 
+import com.atelierapps.vault.ui.theme.TagPicker
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,9 +55,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.session.AppDisguise
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 
 /**
  * The importer UI (spec §4, §4.1, §15.5): tabs (all media / by folder), a
@@ -353,33 +351,17 @@ private fun BottomBar(
         //
         // Tags you already have are tapped, not retyped. Retyping is how a
         // library ends up holding "holiday" and "hoiday" — two tags that look
-        // the same to you and different to everything else. A plain scrolling
-        // Row rather than LazyRow: its `items` would collide with the grid's,
-        // and a tag list is never long enough to need virtualising.
-        if (existingTags.isNotEmpty()) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(bottom = 8.dp),
-            ) {
-                existingTags.forEach { tag ->
-                    FilterChip(
-                        selected = tag.name in pickedTags,
-                        onClick = { onToggleTag(tag.name) },
-                        label = { Text("#" + tag.name) },
-                    )
-                }
-            }
-        }
-        OutlinedTextField(
-            value = tags,
-            onValueChange = onSetTags,
-            placeholder = {
-                Text(if (existingTags.isEmpty()) "Tag this batch (optional)" else "New tag…")
-            },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        // the same to you and different to everything else. Compact: one
+        // sideways row, recent first, narrowed by what you type, because the
+        // grid above needs the height.
+        TagPicker(
+            tags = existingTags,
+            isPicked = { it in pickedTags },
+            onToggle = onToggleTag,
+            text = tags,
+            onTextChange = onSetTags,
+            compact = true,
+            modifier = Modifier.padding(bottom = 12.dp),
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Delete originals after import", color = Ink, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))

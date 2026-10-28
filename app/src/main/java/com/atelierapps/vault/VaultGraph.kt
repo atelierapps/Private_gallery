@@ -3,6 +3,7 @@ package com.atelierapps.vault
 import android.content.Context
 import com.atelierapps.vault.data.VaultRepository
 import com.atelierapps.vault.data.db.VaultDatabase
+import com.atelierapps.vault.session.TagPrefs
 import com.atelierapps.vault.storage.VaultStorage
 
 /**
@@ -16,7 +17,9 @@ object VaultGraph {
         repo ?: synchronized(this) {
             repo ?: run {
                 val db = VaultDatabase.get(context)
+                val app = context.applicationContext
                 VaultRepository(db.mediaDao(), db.tagDao(), db.autoTagRuleDao(), db.albumDao())
+                    .also { r -> r.onTagsUsed = { ids -> TagPrefs.noteUsed(app, ids) } }
                     .also { repo = it }
             }
         }
