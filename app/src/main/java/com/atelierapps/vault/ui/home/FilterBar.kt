@@ -1,28 +1,21 @@
 package com.atelierapps.vault.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.InputChip
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,12 +23,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.filter.DateBucket
 import com.atelierapps.vault.filter.MediaFilter
@@ -45,18 +36,22 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Icon
 import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.TagPicker
 import androidx.compose.material3.MaterialTheme
 
 /**
- * Compact filter bar (spec §7). Fixed category buttons — Type · Show · Tag ·
- * Date · Sort — that open pickers, plus a removable chip for each *active*
- * selection only. No endless inline list of every tag/source; the tag picker is
- * searchable so it scales to hundreds of tags.
+ * Compact filter bar (spec §7). Three one-tap toggles — Favourites · Untagged ·
+ * Short — then category buttons — Type · Tag · Date · Sort — that open pickers,
+ * plus a removable chip for each other *active* selection. No endless inline
+ * list of every tag/source; the tag picker is searchable so it scales.
  *
- * "Show" took over the slot that used to be "Source". Almost everything here
- * arrives through the gallery's Download folder, so the source list was one
- * entry long and filtered nothing. The sources are still there, at the bottom
- * of the same menu, for the clips that did come from a share.
+ * The toggles were a "Show" menu for one build. A menu is two taps for a thing
+ * used constantly, and combining two meant opening it twice; as chips they are
+ * one tap each and show their own state.
+ *
+ * There is no Source button: almost everything here arrives through the
+ * gallery's Download folder, so its list was one entry long and filtered
+ * nothing. The sources live at the bottom of the Type menu instead.
  */
 @Composable
 fun FilterBar(
@@ -89,9 +84,6 @@ fun FilterBar(
         if (filter.type != MediaTypeFilter.ALL) {
             item { ActiveChip(if (filter.type == MediaTypeFilter.IMAGE) "Photos" else "Videos") { onSetType(filter.type) } }
         }
-        if (filter.favourites) item { ActiveChip("Favourites") { onToggleFavourites() } }
-        if (filter.untagged) item { ActiveChip("Untagged") { onToggleUntagged() } }
-        if (filter.shortClips) item { ActiveChip("Short clips") { onToggleShortClips() } }
         items(filter.sources.toList(), key = { "src:$it" }) { pkg ->
             ActiveChip(sources.firstOrNull { it.pkg == pkg }?.label ?: pkg) { onToggleSource(pkg) }
         }
@@ -102,18 +94,13 @@ fun FilterBar(
             item { ActiveChip(filter.date.label) { onSetDate(DateBucket.ANY) } }
         }
 
+        // ---- one-tap toggles: they show their own on/off, so no active chip ----
+        item { ToggleChip("Favourites", filter.favourites, onToggleFavourites) }
+        item { ToggleChip("Untagged", filter.untagged, onToggleUntagged) }
+        item { ToggleChip("Short (≤15s)", filter.shortClips, onToggleShortClips) }
+
         // ---- category buttons (always the same small set) ----
-        item { TypeMenu(filter.type, onSetType) }
-        item {
-            ShowMenu(
-                filter = filter,
-                sources = sources,
-                onToggleFavourites = onToggleFavourites,
-                onToggleUntagged = onToggleUntagged,
-                onToggleShortClips = onToggleShortClips,
-                onToggleSource = onToggleSource,
-            )
-        }
+        item { TypeMenu(filter.type, sources, filter.sources, onSetType, onToggleSource) }
         item { AssistChip(onClick = { tagPicker = true }, label = { Text("Tag ▾") }) }
         item { DateMenu(filter.date, onSetDate) }
         item { SortMenu(sort, onSetSort) }
@@ -140,7 +127,18 @@ private fun ActiveChip(label: String, onRemove: () -> Unit) {
 }
 
 @Composable
-private fun TypeMenu(current: MediaTypeFilter, onSet: (MediaTypeFilter) -> Unit) {
+private fun ToggleChip(label: String, on: Boolean, onToggle: () -> Unit) {
+    FilterChip(selected = on, onClick = onToggle, label = { Text(label) })
+}
+
+@Composable
+private fun TypeMenu(
+    current: MediaTypeFilter,
+    sources: List<SourceChip>,
+    selectedSources: Set<String>,
+    onSet: (MediaTypeFilter) -> Unit,
+    onToggleSource: (String) -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         AssistChip(onClick = { open = true }, label = { Text("Type ▾") })
@@ -155,38 +153,7 @@ private fun TypeMenu(current: MediaTypeFilter, onSet: (MediaTypeFilter) -> Unit)
                     onClick = { onSet(type); open = false },
                 )
             }
-        }
-    }
-}
-
-/**
- * Toggles stay open on tap, like the source rows always did, so two can be
- * combined ("short clips" AND "untagged") without reopening the menu.
- */
-@Composable
-private fun ShowMenu(
-    filter: MediaFilter,
-    sources: List<SourceChip>,
-    onToggleFavourites: () -> Unit,
-    onToggleUntagged: () -> Unit,
-    onToggleShortClips: () -> Unit,
-    onToggleSource: (String) -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    val selected = filter.sources
-    Box {
-        AssistChip(onClick = { open = true }, label = { Text("Show ▾") })
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            listOf(
-                Triple("Favourites", filter.favourites, onToggleFavourites),
-                Triple("Untagged", filter.untagged, onToggleUntagged),
-                Triple("Short clips (15s or less)", filter.shortClips, onToggleShortClips),
-            ).forEach { (label, on, toggle) ->
-                DropdownMenuItem(
-                    text = { Text((if (on) "✓  " else "     ") + label) },
-                    onClick = toggle,
-                )
-            }
+            // Where things came from. Stays open on tap so several can be picked.
             if (sources.isNotEmpty()) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 Text(
@@ -203,7 +170,7 @@ private fun ShowMenu(
                         Box(Modifier.size(10.dp).clip(CircleShape).background(Color(s.colorArgb)))
                     },
                     text = {
-                        Text((if (s.pkg in selected) "✓  " else "     ") + "${s.label} (${s.count})")
+                        Text((if (s.pkg in selectedSources) "✓  " else "     ") + "${s.label} (${s.count})")
                     },
                 )
             }
@@ -245,32 +212,20 @@ private fun TagPickerDialog(
     onDismiss: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
-    val shown = if (query.isBlank()) all else all.filter { it.name.contains(query.trim(), ignoreCase = true) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Filter by tag") },
         text = {
-            Column {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text("Search tags") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                LazyColumn(Modifier.heightIn(max = 320.dp).padding(top = 8.dp)) {
-                    items(shown, key = { it.id }) { tag ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable { onToggle(tag.name) }.padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(checked = tag.name in selected, onCheckedChange = { onToggle(tag.name) })
-                            Text("#${tag.name}", modifier = Modifier.weight(1f))
-                            Text("${tag.useCount}", color = Muted, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                }
-            }
+            TagPicker(
+                tags = all,
+                isPicked = { it in selected },
+                onToggle = onToggle,
+                text = query,
+                onTextChange = { query = it },
+                maxHeight = 320.dp,
+                allowCreate = false,
+                pickedLabel = "Filtering by",
+            )
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
     )

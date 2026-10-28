@@ -529,13 +529,8 @@ private fun TagDialog(
                             picked.add(name)
                         }
                     },
-                )
-                androidx.compose.material3.OutlinedTextField(
-                    value = newTag,
-                    onValueChange = { newTag = it },
-                    placeholder = { Text("New tag") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    text = newTag,
+                    onTextChange = { newTag = it },
                 )
             }
         },
