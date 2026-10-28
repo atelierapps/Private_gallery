@@ -201,12 +201,9 @@ fun VideoPlayer(
             }
     }
 
-    // Loop is per-video. It starts off, except for short clips when the setting
-    // asks for that — decided below once the player knows the length. A
-    // slideshow still overrides it either way, so it can never trap one there.
-    var loop by remember(id) { mutableStateOf(false) }
-    val loopShort = remember { VideoPrefs.loopShort(context) }
-    var loopDecided by remember(id) { mutableStateOf(false) }
+    // Loop starts from the setting (on unless turned off) and the button can
+    // flip it for this clip. A slideshow overrides it, so it can never trap one.
+    var loop by remember(id) { mutableStateOf(VideoPrefs.loop(context)) }
     var isPlaying by remember(id) { mutableStateOf(autoPlay) }
     // ExoPlayer parks at STATE_ENDED and stays there: play() on a finished
     // player does nothing at all, which is why replaying a clip used to mean
@@ -262,16 +259,6 @@ fun VideoPlayer(
     LaunchedEffect(loop, slideshowActive) {
         player.repeatMode =
             if (loop && !slideshowActive) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
-    }
-    // Decided once per clip, from the length the player itself reports rather
-    // than the stored one: a clip whose metadata probe failed at import has no
-    // stored duration, and would otherwise never count as short. Once decided,
-    // the loop button is the user's again.
-    LaunchedEffect(durationMs) {
-        if (!loopDecided && durationMs > 0L) {
-            loopDecided = true
-            if (loopShort && durationMs < VideoPrefs.LOOP_SHORT_MILLIS) loop = true
-        }
     }
     LaunchedEffect(speedIdx) {
         player.setPlaybackSpeed(SPEEDS[speedIdx])

@@ -8,10 +8,9 @@ object VideoPrefs {
     private const val PREFS = "vault_prefs"
     private const val KEY_AUTOPLAY = "video_autoplay"
     private const val KEY_MUTED = "video_muted"
-    private const val KEY_LOOP_SHORT = "video_loop_short"
-
-    /** What counts as short enough to loop on its own. */
-    const val LOOP_SHORT_MILLIS = 30_000L
+    // A new key rather than reusing "video_loop_short": that one meant "only
+    // under 30s", and carrying its value over would carry the old meaning too.
+    private const val KEY_LOOP = "video_loop"
 
     fun autoplay(context: Context): Boolean =
         prefs(context).getBoolean(KEY_AUTOPLAY, false)
@@ -34,15 +33,16 @@ object VideoPrefs {
     }
 
     /**
-     * Loop clips under [LOOP_SHORT_MILLIS] without being asked. On by default:
-     * a six-second clip that plays once and stops is the wrong behaviour for
-     * most of what lives here, and it was a tap on every single one.
+     * Every video loops until you move on. On by default, and deliberately for
+     * all lengths: looping only clips under 30 seconds meant nobody could tell,
+     * across a library of hundreds, which ones would repeat. A slideshow still
+     * advances regardless — that is the "move on by itself" mode.
      */
-    fun loopShort(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_LOOP_SHORT, true)
+    fun loop(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_LOOP, true)
 
-    fun setLoopShort(context: Context, value: Boolean) {
-        prefs(context).edit().putBoolean(KEY_LOOP_SHORT, value).apply()
+    fun setLoop(context: Context, value: Boolean) {
+        prefs(context).edit().putBoolean(KEY_LOOP, value).apply()
     }
 
     private fun prefs(context: Context) =
