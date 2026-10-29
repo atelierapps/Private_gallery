@@ -1,5 +1,11 @@
 package com.atelierapps.vault.ui.home
 
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,7 +46,7 @@ import androidx.compose.material3.MaterialTheme
 
 /**
  * Compact filter bar (spec §7). Three one-tap toggles — Favourites · Untagged ·
- * Short — then category buttons — Type · Tag · Date · Sort — that open pickers,
+ * Short — then category buttons — Type · Tag · Date — that open pickers,
  * plus a removable chip for each other *active* selection. No endless inline
  * list of every tag/source; the tag picker is searchable so it scales.
  *
@@ -57,7 +63,6 @@ fun FilterBar(
     filter: MediaFilter,
     sources: List<SourceChip>,
     tags: List<TagEntity>,
-    sort: SortOrder,
     onSetType: (MediaTypeFilter) -> Unit,
     onToggleSource: (String) -> Unit,
     onToggleTag: (String) -> Unit,
@@ -65,7 +70,6 @@ fun FilterBar(
     onToggleFavourites: () -> Unit,
     onToggleUntagged: () -> Unit,
     onToggleShortClips: () -> Unit,
-    onSetSort: (SortOrder) -> Unit,
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -102,7 +106,6 @@ fun FilterBar(
         item { TypeMenu(filter.type, sources, filter.sources, onSetType, onToggleSource) }
         item { VaultActionChip("Tag", onClick = { tagPicker = true }, dropdown = true) }
         item { DateMenu(filter.date, onSetDate) }
-        item { SortMenu(sort, onSetSort) }
     }
 
     if (tagPicker) {
@@ -196,14 +199,44 @@ private fun DateMenu(current: DateBucket, onSet: (DateBucket) -> Unit) {
     }
 }
 
+/**
+ * The line between the filters and the grid: how many items the filters left,
+ * and how they're ordered.
+ *
+ * Sort used to be the last chip in the filter row, scrolled off the edge of the
+ * screen behind everything else — and it isn't a filter at all, it changes the
+ * order of what the filters let through. Here it sits over the grid it sorts,
+ * and the count answers "did that filter do anything?" at a glance.
+ */
 @Composable
-private fun SortMenu(current: SortOrder, onSet: (SortOrder) -> Unit) {
+fun ResultsLine(count: Int, sort: SortOrder, onSetSort: (SortOrder) -> Unit, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
-    Box {
-        VaultActionChip("Sort: ${current.label}", onClick = { open = true }, dropdown = true)
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            SortOrder.entries.forEach { order ->
-                DropdownMenuItem(text = { Text(order.label) }, onClick = { onSet(order); open = false })
+    Row(
+        modifier.fillMaxWidth().background(Bg).padding(start = 16.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (count == 1) "1 item" else "$count items",
+            color = Muted,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.weight(1f),
+        )
+        Box {
+            Row(
+                Modifier.clip(RoundedCornerShape(8.dp)).clickable { open = true }
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(sort.label, color = Muted, style = MaterialTheme.typography.labelMedium)
+                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Sort order", tint = Muted, modifier = Modifier.size(18.dp))
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                SortOrder.entries.forEach { order ->
+                    DropdownMenuItem(
+                        text = { Text((if (order == sort) "✓  " else "     ") + order.label) },
+                        onClick = { onSetSort(order); open = false },
+                    )
+                }
             }
         }
     }

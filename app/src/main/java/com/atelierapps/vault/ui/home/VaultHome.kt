@@ -237,7 +237,6 @@ fun VaultHome(
                     filter = filter,
                     sources = sources,
                     tags = tags,
-                    sort = sort,
                     onSetType = vm::setType,
                     onToggleSource = vm::toggleSource,
                     onToggleTag = vm::toggleTag,
@@ -245,10 +244,10 @@ fun VaultHome(
                     onToggleFavourites = vm::toggleFavourites,
                     onToggleUntagged = vm::toggleUntagged,
                     onToggleShortClips = vm::toggleShortClips,
-                    onSetSort = vm::setSort,
                     onClearAll = vm::clearAll,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                ResultsLine(count = media.size, sort = sort, onSetSort = vm::setSort)
             }
             VaultGridScreen(
                 media = media,

@@ -1,5 +1,8 @@
 package com.atelierapps.vault.imports
 
+import androidx.compose.foundation.layout.height
+import com.atelierapps.vault.ui.theme.Surface
+import androidx.compose.material3.SwitchDefaults
 import com.atelierapps.vault.ui.theme.VaultChip
 import com.atelierapps.vault.ui.theme.TagPicker
 import android.net.Uri
@@ -344,7 +347,18 @@ private fun BottomBar(
     onToggleTag: (String) -> Unit,
     onImport: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().background(SurfaceHigh).padding(16.dp)) {
+    Column(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .background(Surface)
+            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 16.dp),
+    ) {
+        Text(
+            "TAG THIS BATCH",
+            color = Muted,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
         // Right here is the only moment you reliably know what this batch is.
         // Afterwards it's mixed into the library and has to be found again
         // before it can be labelled.
@@ -364,13 +378,27 @@ private fun BottomBar(
             modifier = Modifier.padding(bottom = 12.dp),
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Delete originals after import", color = Ink, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-            Switch(checked = deleteOriginals, onCheckedChange = onSetDelete)
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text("Delete originals after import", color = Ink, style = MaterialTheme.typography.bodyMedium)
+                // True to how it works: originals go only after each import is
+                // verified, through Android's own delete confirmation.
+                Text(
+                    "After each one is safely saved here. Your phone asks first",
+                    color = Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            Switch(
+                checked = deleteOriginals,
+                onCheckedChange = onSetDelete,
+                colors = SwitchDefaults.colors(checkedThumbColor = BrassInk, checkedTrackColor = Brass),
+            )
         }
         Button(
             onClick = onImport,
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(52.dp),
         ) {
             Text(if (count == 0) "Import" else "Import $count ${if (count == 1) "item" else "items"}")
         }
