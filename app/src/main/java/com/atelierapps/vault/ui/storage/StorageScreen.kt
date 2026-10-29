@@ -88,7 +88,7 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
                     color = Ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Encrypted size of everything the vault holds",
+                    "Encrypted size of everything stored here",
                     color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
                 )
                 Breakdown(stats)

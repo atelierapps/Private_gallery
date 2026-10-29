@@ -4,6 +4,7 @@ import androidx.biometric.BiometricManager.Authenticators
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.atelierapps.vault.session.AppDisguise
 
 /**
  * Biometric / device-credential unlock (spec §9, §15.1). No custom PIN —
@@ -23,8 +24,12 @@ object BiometricAuth {
         activity: FragmentActivity,
         onSuccess: () -> Unit,
         onError: (CharSequence) -> Unit = {},
-        title: String = "Unlock Vault",
-        subtitle: String = "Your media is encrypted on this device",
+        // Null means "the app's current name": this is a system dialog anyone
+        // glancing at the screen can read, so it must say whatever the launcher
+        // says ("Unlock Notes"), never what the app really is. It used to read
+        // "Unlock Vault — Your media is encrypted on this device".
+        title: String? = null,
+        subtitle: String? = null,
     ) {
         val prompt = BiometricPrompt(
             activity,
@@ -40,8 +45,8 @@ object BiometricAuth {
             },
         )
         val info = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(title)
-            .setSubtitle(subtitle)
+            .setTitle(title ?: ("Unlock " + AppDisguise.currentLabel(activity)))
+            .apply { if (subtitle != null) setSubtitle(subtitle) }
             .setAllowedAuthenticators(Authenticators.BIOMETRIC_STRONG or Authenticators.DEVICE_CREDENTIAL)
             .build()
         prompt.authenticate(info)

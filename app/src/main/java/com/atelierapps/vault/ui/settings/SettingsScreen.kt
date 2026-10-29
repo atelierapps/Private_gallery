@@ -219,7 +219,7 @@ fun SettingsScreen(
             SettingsCard("Security") {
                 Text("Auto-lock", color = Ink, style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "Lock the vault after it's been in the background",
+                    "Lock the app after it's been in the background",
                     color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
                 )
                 LockPrefs.Delay.entries.forEach { d ->
@@ -262,7 +262,7 @@ fun SettingsScreen(
                     Column(Modifier.weight(1f)) {
                         Text("Storage & stats", color = Ink, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "What the vault holds and what it costs on disk",
+                            "What's stored here and what it costs on disk",
                             color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp),
                         )
                     }

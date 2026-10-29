@@ -30,9 +30,9 @@ data class TransferFailure(val name: String, val reason: String) {
             val message = error?.message.orEmpty()
             return when {
                 name.contains("UserNotAuthenticated") ->
-                    "the vault locked partway through — unlock and run it again"
+                    "the app locked partway through — unlock and run it again"
                 name.contains("KeyPermanentlyInvalidated") ->
-                    "this phone's vault key no longer works, so this file can't be decrypted"
+                    "this phone's encryption key no longer works, so this file can't be decrypted"
                 // CipherInputStream reports a bad GCM tag as end-of-stream, so a
                 // wrong key surfaces here as a short read rather than as a tag
                 // error. Both mean the same thing to the person reading it.

@@ -54,7 +54,7 @@ object MediaIntegrity {
     fun check(context: Context, item: MediaItemEntity): Report {
         val blob = VaultGraph.storage(context).blob(item.id)
         if (!blob.exists()) {
-            return Report(Verdict.MISSING, "its encrypted file is missing from the vault")
+            return Report(Verdict.MISSING, "its encrypted file is missing from the app's storage")
         }
 
         val mode = item.cryptoMode.toByte()
