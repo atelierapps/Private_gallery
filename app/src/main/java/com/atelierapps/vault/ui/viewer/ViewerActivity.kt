@@ -67,6 +67,7 @@ class ViewerActivity : ComponentActivity() {
                 val loaded by vm.loaded.collectAsState()
                 val albums by vm.albums.collectAsState()
                 val allTags by vm.tags.collectAsState()
+                val shuffled by vm.shuffled.collectAsState()
                 if (loaded && media.isNotEmpty()) {
                     val startIndex = media.indexOfFirst { it.media.id == startId }.coerceAtLeast(0)
                     ViewerScreen(
@@ -75,7 +76,8 @@ class ViewerActivity : ComponentActivity() {
                         onBack = { finish() },
                         onDelete = { id -> vm.delete(id) { finish() } },
                         onTogglePin = { id -> vm.togglePin(id) },
-                        onShuffle = { id -> vm.shuffleAround(id) },
+                        shuffleActive = shuffled,
+                        onShuffle = { id -> vm.toggleShuffle(id) },
                         albums = albums,
                         allTags = allTags,
                         onSetTags = { id, names -> vm.setTags(id, names) },

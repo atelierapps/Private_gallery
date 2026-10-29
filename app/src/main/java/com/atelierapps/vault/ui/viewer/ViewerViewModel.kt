@@ -50,22 +50,51 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Whether the order on screen is a shuffle, for the button's brass state. */
+    val shuffled = MutableStateFlow(false)
+
+    // The order before shuffling, by id: ids rather than the items themselves,
+    // so a rename or a tag made while shuffled isn't undone by putting the old
+    // objects back.
+    private var unshuffledIds: List<String>? = null
+
     /**
-     * Shuffle everything except [id], which stays at its own index.
+     * Shuffle on or off, around the item at [id], which never moves.
      *
-     * Moving it to the front would mean scrolling the pager to page 0 after
-     * the new list lands, and for that moment page 0 of the old list shows:
-     * a flash, and the clip you were watching restarts. Keeping it in place
-     * changes nothing on screen; what comes next is what's random. Repeat-all
-     * wraps the slideshow round to the items now before it.
+     * Moving it would mean scrolling the pager after the new list lands, and
+     * for that moment the old item at that page shows: a flash, and the clip
+     * you were watching restarts. So both directions keep it at its own index.
+     *
+     * On: everything else is shuffled. Off: the original order comes back as
+     * a rotation that puts this item where it already is, so what plays next
+     * is what came next originally, and repeat-all wraps round to the rest.
      */
-    fun shuffleAround(id: String) {
+    fun toggleShuffle(id: String) {
         val list = media.value
-        val idx = list.indexOfFirst { it.media.id == id }
-        if (idx < 0 || list.size < 2) return
-        val others = (list.subList(0, idx) + list.subList(idx + 1, list.size)).shuffled().toMutableList()
-        others.add(idx, list[idx])
-        media.value = others
+        val k = list.indexOfFirst { it.media.id == id }
+        if (k < 0) return
+        if (!shuffled.value) {
+            if (list.size < 2) return
+            unshuffledIds = list.map { it.media.id }
+            val others = (list.subList(0, k) + list.subList(k + 1, list.size)).shuffled().toMutableList()
+            others.add(k, list[k])
+            media.value = others
+            shuffled.value = true
+        } else {
+            val order = unshuffledIds
+            unshuffledIds = null
+            shuffled.value = false
+            if (order == null) return
+            val byId = list.associateBy { it.media.id }
+            val known = order.toHashSet()
+            // Items deleted meanwhile drop out; nothing is ever added mid-run,
+            // but anything unknown is kept rather than lost.
+            val original = order.mapNotNull { byId[it] } + list.filter { it.media.id !in known }
+            val j = original.indexOfFirst { it.media.id == id }
+            val n = original.size
+            if (j < 0 || n != list.size) return
+            media.value = List(n) { i -> original[((j - k + i) % n + n) % n] }
+        }
     }
 
     /** Rename an item in place, keeping the pager snapshot in sync. */

@@ -133,8 +133,14 @@ fun VideoPlayer(
     onToggleSlideshow: () -> Unit = {},
     /** Open the tag sheet for this clip without leaving it. */
     onTag: () -> Unit = {},
-    /** Reshuffle what the viewer is showing and start the slideshow. */
+    /** Shuffle on or off for the whole viewer. */
     onShuffle: () -> Unit = {},
+    /** Brass when the viewer's order is shuffled. */
+    shuffleActive: Boolean = false,
+    /** Brass on the tag button when this clip carries any tag. */
+    hasTags: Boolean = false,
+    /** A two-second confirmation, shown by the viewer, for loop on/off. */
+    onNotice: (String) -> Unit = {},
     onDismissDrag: (Float) -> Unit = {},
     onDismissEnd: () -> Unit = {},
     /** Where a previous run of the app left off, 0 for the start. */
@@ -620,7 +626,7 @@ fun VideoPlayer(
                         if (slideshowActive) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         if (slideshowActive) "Pause slideshow" else "Play all",
                         Modifier.weight(1f),
-                        tint = if (slideshowActive) Brass else Color(0x99FFFFFF),
+                        tint = if (slideshowActive) Brass else Color.White,
                         onClick = onToggleSlideshow,
                     )
                     // Shuffle sits with slideshow and loop: the three that decide
@@ -628,9 +634,9 @@ fun VideoPlayer(
                     // whatever this viewer was opened on and starts the show.
                     CtlIcon(
                         Icons.Outlined.Shuffle,
-                        "Shuffle play",
+                        if (shuffleActive) "Shuffle off" else "Shuffle play",
                         Modifier.weight(1f),
-                        tint = Color(0x99FFFFFF),
+                        tint = if (shuffleActive) Brass else Color.White,
                         onClick = onShuffle,
                     )
                     // Loop is unavailable during a slideshow — it would stop the
@@ -639,13 +645,14 @@ fun VideoPlayer(
                         Icons.Outlined.Repeat,
                         "Loop this clip",
                         Modifier.weight(1f),
-                        tint = when {
-                            slideshowActive -> Color(0x33FFFFFF)
-                            loop -> Brass
-                            else -> Color(0x99FFFFFF)
-                        },
+                        // Disabled draws dimmed by itself (CtlIcon), so no tint
+                        // case for the slideshow here.
+                        tint = if (loop) Brass else Color.White,
                         enabled = !slideshowActive,
-                    ) { loop = !loop }
+                    ) {
+                        loop = !loop
+                        onNotice(if (loop) "Loop on" else "Loop off")
+                    }
                     // One tap per quarter turn, for files that were encoded the
                     // wrong way up — which no amount of phone auto-rotate fixes,
                     // because the phone is not the thing that is sideways.
@@ -653,11 +660,11 @@ fun VideoPlayer(
                         Icons.Outlined.RotateRight,
                         "Rotate video",
                         Modifier.weight(1f),
-                        tint = if (videoRotation != 0) Brass else Color(0x99FFFFFF),
+                        tint = if (videoRotation != 0) Brass else Color.White,
                     ) {
+                        // No message: the picture turning is the confirmation.
                         videoRotation = (videoRotation + 90) % 360
                         onRotationChanged(videoRotation.takeIf { it != 0 })
-                        hud = if (videoRotation == 0) "Upright" else "" + videoRotation + "°"
                     }
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         CtlText(speedLabel(SPEEDS[speedIdx]), tint = if (SPEEDS[speedIdx] == 1f) Color.White else Brass) { speedMenu = true }
@@ -674,7 +681,7 @@ fun VideoPlayer(
                         Icons.Outlined.LocalOffer,
                         "Tags",
                         Modifier.weight(1f),
-                        tint = Color(0x99FFFFFF),
+                        tint = if (hasTags) Brass else Color.White,
                         onClick = onTag,
                     )
                     // Mute is a standing setting, not a per-clip one: it persists
@@ -683,11 +690,11 @@ fun VideoPlayer(
                         if (muted) Icons.AutoMirrored.Outlined.VolumeOff else Icons.AutoMirrored.Outlined.VolumeUp,
                         if (muted) "Unmute" else "Mute",
                         Modifier.weight(1f),
-                        tint = if (muted) Brass else Color(0x99FFFFFF),
+                        tint = if (muted) Brass else Color.White,
                     ) {
+                        // No message: the icon itself changes, and so does the sound.
                         muted = !muted
                         VideoPrefs.setMuted(context, muted)
-                        hud = if (muted) "Muted" else "Sound on"
                     }
                 }
             }

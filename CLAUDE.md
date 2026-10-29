@@ -175,7 +175,10 @@ sections, fast scroller, one-tap Favourites / Untagged / Short filter chips
 (Source was dropped from the bar — it only ever said "Download"; sources now
 sit at the bottom of the Type menu), play a selection, every video loops by
 default unless a slideshow is running (Settings → Playback), shuffle in the
-viewer's control row (not the home bar) — it shuffles around the current item, storage stats, camera capture, share-in target, durable
+viewer's control row (not the home bar) — an on/off switch that shuffles
+around the current item and restores the order around it when turned off.
+Viewer buttons are white when off and brass when on, and shuffle, slideshow
+and loop confirm with a 2-second notice (rotate, speed, mute and tag don't), storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
 per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button, app disguise + custom home-screen shortcut, encrypted (or plaintext)

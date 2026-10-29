@@ -125,7 +125,9 @@ fun ViewerScreen(
     onEdit: (id: String) -> Unit = {},
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
     onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
-    /** Reshuffle everything around this item; the slideshow then starts. */
+    /** Whether the order is currently shuffled: drives the button's brass. */
+    shuffleActive: Boolean = false,
+    /** Shuffle on or off around this item. Turning it on also starts the slideshow. */
     onShuffle: (id: String) -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -140,6 +142,28 @@ fun ViewerScreen(
     // Shuffle hands us an order and asks for playback to start straight away.
     var playMode by remember { mutableStateOf(ViewerSession.consumeStartPlaying()) }
     var intervalSec by remember { mutableIntStateOf(5) }
+    // A two-second confirmation for the switches whose state you can't see
+    // in the picture itself — shuffle, slideshow, loop. Without it, a tap on
+    // shuffle changed nothing visible until the clip ended.
+    var notice by remember { mutableStateOf<String?>(null) }
+    var noticeSeq by remember { mutableIntStateOf(0) }
+    val announce: (String) -> Unit = { notice = it; noticeSeq++ }
+    LaunchedEffect(noticeSeq) {
+        if (notice != null) { delay(2000); notice = null }
+    }
+    val toggleSlideshow: () -> Unit = {
+        playMode = !playMode
+        announce(if (playMode) "Slideshow on" else "Slideshow off")
+    }
+    val toggleShuffle: (String) -> Unit = { id ->
+        // One item has no order to shuffle; saying "Shuffle on" would be a lie.
+        if (media.size > 1 || shuffleActive) {
+            val turningOn = !shuffleActive
+            onShuffle(id)
+            if (turningOn) playMode = true
+            announce(if (turningOn) "Shuffle on" else "Shuffle off")
+        }
+    }
     // Playlist-level: wrap back to the first item after the last. Distinct from
     // the per-video loop in the player controls.
     var repeatAll by remember { mutableStateOf(true) }
@@ -239,9 +263,11 @@ fun ViewerScreen(
                 autoPlay = (playMode || autoplayPref) && page == pagerState.currentPage,
                 slideshowActive = playMode,
                 onEnded = { if (playMode) advance() },
-                onToggleSlideshow = { playMode = !playMode },
+                onToggleSlideshow = toggleSlideshow,
                 onTag = { taggingItem = media[page] },
-                onShuffle = { onShuffle(media[page].media.id); playMode = true },
+                onShuffle = { toggleShuffle(media[page].media.id) },
+                shuffleActive = shuffleActive,
+                onNotice = announce,
             )
         }
 
@@ -287,22 +313,23 @@ fun ViewerScreen(
                         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        // Same rule as the video bar: white when off, brass when on.
                         CtlIcon(
                             if (playMode) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                             if (playMode) "Pause slideshow" else "Play all",
-                            tint = if (playMode) Brass else Color(0x99FFFFFF),
-                            onClick = { playMode = !playMode },
+                            tint = if (playMode) Brass else Color.White,
+                            onClick = toggleSlideshow,
                         )
                         CtlIcon(
                             Icons.Outlined.Shuffle,
-                            "Shuffle play",
-                            tint = Color(0x99FFFFFF),
-                            onClick = { onShuffle(current.media.id); playMode = true },
+                            if (shuffleActive) "Shuffle off" else "Shuffle play",
+                            tint = if (shuffleActive) Brass else Color.White,
+                            onClick = { toggleShuffle(current.media.id) },
                         )
                         CtlIcon(
                             Icons.Outlined.LocalOffer,
                             "Tags",
-                            tint = Color(0x99FFFFFF),
+                            tint = if (current.tags.isNotEmpty()) Brass else Color.White,
                             onClick = { taggingItem = current },
                         )
                     }
@@ -340,6 +367,24 @@ fun ViewerScreen(
             )
         }
 
+        notice?.let { text ->
+            Text(
+                text,
+                color = Ink,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    // Below the top bar's height rather than over it, and clear
+                    // of the camera cutout the same way the counter is.
+                    .statusBarsPadding()
+                    .displayCutoutPadding()
+                    .padding(top = 72.dp)
+                    .clip(RoundedCornerShape(9999.dp))
+                    .background(Scrim)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+
         FloatingLockButton(visible = lockVisible, onLocked = onBack)
 
         // Slideshow controls are image-only; videos have their own control bar,
@@ -350,7 +395,7 @@ fun ViewerScreen(
                 onInterval = { intervalSec = it },
                 repeatAll = repeatAll,
                 onToggleRepeatAll = { repeatAll = !repeatAll },
-                onStop = { playMode = false },
+                onStop = { playMode = false; announce("Slideshow off") },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -578,6 +623,8 @@ private fun ViewerPage(
     onToggleSlideshow: () -> Unit,
     onTag: () -> Unit,
     onShuffle: () -> Unit,
+    shuffleActive: Boolean,
+    onNotice: (String) -> Unit,
 ) {
     if (item.media.mimeType.startsWith("video/")) {
         VideoPlayer(
@@ -591,6 +638,9 @@ private fun ViewerPage(
             onToggleSlideshow = onToggleSlideshow,
             onTag = onTag,
             onShuffle = onShuffle,
+            shuffleActive = shuffleActive,
+            hasTags = item.tags.isNotEmpty(),
+            onNotice = onNotice,
             onDismissDrag = onDismissDrag,
             onDismissEnd = onDismissEnd,
             resumeFrom = item.media.resumePositionMillis ?: 0L,
