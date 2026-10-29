@@ -211,6 +211,12 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Sort untagged: one item at a time, tag / skip / delete. -->
+        <activity
+            android:name=".ui.triage.TriageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Video trim: keep one stretch of a clip. -->
         <activity
             android:name=".ui.trim.TrimActivity"

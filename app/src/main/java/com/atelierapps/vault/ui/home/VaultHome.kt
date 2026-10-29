@@ -219,6 +219,11 @@ fun VaultHome(
                     onTrash = onTrash,
                     onDuplicates = onDuplicates,
                     onRules = onRules,
+                    onTriage = {
+                        context.startActivity(
+                            android.content.Intent(context, com.atelierapps.vault.ui.triage.TriageActivity::class.java),
+                        )
+                    },
                     onAlbums = onAlbums,
                     onTags = onTags,
                     onSettings = onSettings,
@@ -541,6 +546,7 @@ private fun TopAppRow(
     onTrash: () -> Unit,
     onDuplicates: () -> Unit,
     onRules: () -> Unit,
+    onTriage: () -> Unit,
     onAlbums: () -> Unit,
     onTags: () -> Unit,
     onSettings: () -> Unit,
@@ -568,6 +574,7 @@ private fun TopAppRow(
                 MenuSection("Library")
                 MenuRow(Icons.Outlined.PhotoAlbum, "Albums") { menu = false; onAlbums() }
                 MenuRow(Icons.Outlined.LocalOffer, "Tags") { menu = false; onTags() }
+                MenuRow(Icons.Outlined.LocalOffer, "Sort untagged") { menu = false; onTriage() }
                 MenuRow(Icons.Outlined.AutoAwesome, "Auto-tag rules") { menu = false; onRules() }
                 MenuRow(
                     Icons.Outlined.ContentCopy,

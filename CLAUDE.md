@@ -191,7 +191,8 @@ image edits), video trim (keeps one stretch; original to Recently deleted only
 after the copy verifies) and a chosen video thumbnail (⋮ → Set thumbnail…, the
 same screen in its own Thumbnail mode — a single scrubber, no trim handles)
 (captured from the preview's TextureView, so no plaintext file; swapped in
-by write-beside, length check, rename — `media/ThumbnailSetter.kt`), view history (counted after 2 s on screen; Unwatched chip and a
+by write-beside, length check, rename — `media/ThumbnailSetter.kt`), Sort untagged (home ⋮ → one untagged item at a time with
+the tag row open: Tag & next / Skip / Delete with undo — `ui/triage/`), view history (counted after 2 s on screen; Unwatched chip and a
 "Not seen lately" sort — history starts at schema 9, so everything older begins
 as unwatched), storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
