@@ -95,6 +95,7 @@ class ExportActivity : FragmentActivity() {
                             },
                             onRestart = vm::reset,
                             onClose = { finish() },
+                            onRetry = vm::retryFailed,
                             modifier = Modifier.safeDrawingPadding(),
                         )
                     }

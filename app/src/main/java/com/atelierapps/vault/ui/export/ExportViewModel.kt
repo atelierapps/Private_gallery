@@ -175,4 +175,51 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
             phase.value = ExportPhase.DONE
         }
     }
+
+    /**
+     * Run only the items that failed, into the same folder under the same key
+     * (see [com.atelierapps.vault.media.ExportRetry] for why it can't simply be
+     * another export). The result shown afterwards is the whole run's: earlier
+     * successes plus these, with only what still failed listed.
+     */
+    fun retryFailed() {
+        if (phase.value == ExportPhase.RUNNING) return
+        val before = result.value ?: return
+        val retry = before.retry ?: return
+        phase.value = ExportPhase.RUNNING
+        progress.value = ExportProgress(0, retry.failedIds.size, 0)
+        ExportRun.scope.launch {
+            TransferWake.acquire(getApplication())
+            val outcome = try {
+                runCatching { VaultExporter.retryFailed(getApplication(), retry) { progress.value = it } }
+            } finally {
+                TransferWake.release()
+            }
+            val r = outcome.getOrElse { error ->
+                Log.e(TAG, "retry failed outright", error)
+                ExportResult(
+                    exported = 0,
+                    failed = retry.failedIds.size,
+                    total = retry.failedIds.size,
+                    failures = listOf(TransferFailure("The retry", TransferFailure.describe(error))),
+                    // Nothing was written, so the earlier handle still holds.
+                    retry = retry,
+                )
+            }
+            val merged = ExportResult(
+                exported = before.exported + r.exported,
+                failed = r.failed,
+                total = before.total,
+                failures = r.failures,
+                retry = r.retry,
+            )
+            // Same rule as a first run: only a whole-library run with nothing
+            // left failed is a backup you could rebuild from.
+            if (retry.wholeLibrary && merged.failed == 0 && merged.exported > 0) {
+                BackupPrefs.recordFullBackup(getApplication())
+            }
+            result.value = merged
+            phase.value = ExportPhase.DONE
+        }
+    }
 }

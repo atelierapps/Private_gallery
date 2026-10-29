@@ -1,5 +1,7 @@
 package com.atelierapps.vault.ui.export
 
+import com.atelierapps.vault.ui.theme.BrassInk
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -84,6 +86,8 @@ fun ExportScreen(
     onRestart: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Try the failed items again into the same folder; null hides the button. */
+    onRetry: (() -> Unit)? = null,
 ) {
     Box(modifier.fillMaxSize().background(Bg).padding(28.dp), contentAlignment = Alignment.Center) {
             // Scrolls, because this column ends in the buttons. A run that
@@ -234,6 +238,16 @@ fun ExportScreen(
                     // Named, not just counted: a backup missing three files you
                     // can't identify isn't a backup you can rely on.
                     FailureList(r?.failures.orEmpty())
+                    if (r?.retry != null && onRetry != null) {
+                        // Only what failed, into this same folder under this run's
+                        // key — not a new export, which would re-key the folder.
+                        Button(
+                            onClick = onRetry,
+                            colors = ButtonDefaults.buttonColors(containerColor = Brass, contentColor = BrassInk),
+                        ) {
+                            Text(if (r.retry.failedIds.size == 1) "Retry this one" else "Retry these " + r.retry.failedIds.size)
+                        }
+                    }
                     Text(
                         "That folder is independent of this app now — it survives an " +
                             "uninstall, and copying it off the phone is what makes it a " +

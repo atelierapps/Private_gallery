@@ -18,6 +18,26 @@ data class ExportResult(
     val total: Int,
     /** Which items didn't make it, and why. Empty when everything did. */
     val failures: List<TransferFailure> = emptyList(),
+    /** Set when the failed items can be retried into the same folder. */
+    val retry: ExportRetry? = null,
+)
+
+/**
+ * What a retry needs to finish a run rather than start a new one.
+ *
+ * Every export writes a fresh header, and a fresh header re-keys the folder:
+ * re-running export on just the failed items would leave everything that
+ * succeeded the first time unopenable. So a retry reuses this run's derived
+ * [key] — never a new header — and appends to this run's [manifest], which
+ * then gets rewritten whole. Held in memory only, until the run is put away.
+ */
+class ExportRetry internal constructor(
+    val treeUri: Uri,
+    internal val key: SecretKey?,
+    internal val manifest: JSONArray,
+    val failedIds: List<String>,
+    /** Whether the run covered the whole library: decides if it counts as a backup. */
+    val wholeLibrary: Boolean,
 )
 
 /** A backup already sitting in the folder the user just picked. */
@@ -121,6 +141,7 @@ object VaultExporter {
 
         val manifest = JSONArray()
         val failures = ArrayList<TransferFailure>()
+        val failedIds = ArrayList<String>()
         var done = 0
         for (mwt in items) {
             val attempt = runCatching { exportOne(context, tree, mwt, key, existing) }
@@ -132,6 +153,7 @@ object VaultExporter {
                 // three thumbnails or three irreplaceable videos are missing.
                 val error = attempt.exceptionOrNull()
                 Log.e(TAG, "export failed: " + mwt.media.originalName, error)
+                failedIds.add(mwt.media.id)
                 failures.add(
                     TransferFailure(
                         mwt.media.originalName,
@@ -144,14 +166,95 @@ object VaultExporter {
             onProgress(ExportProgress(done, items.size, failures.size))
         }
 
-        runCatching { writeManifest(context, tree, manifest, key) }
+        val manifestWritten = runCatching { writeManifest(context, tree, manifest, key) }
             .onFailure { Log.e(TAG, "manifest write failed", it) }
+            .getOrDefault(false)
 
         return ExportResult(
             exported = done - failures.size,
             failed = failures.size,
             total = items.size,
             failures = failures,
+            // No retry over a folder whose index didn't land: appending to a
+            // manifest we failed to write would describe a backup that isn't there.
+            retry = if (failedIds.isNotEmpty() && manifestWritten) {
+                ExportRetry(treeUri, key, manifest, failedIds, wholeLibrary = onlyIds == null)
+            } else {
+                null
+            },
+        )
+    }
+
+    /**
+     * Try [retry]'s failed items again, into the same folder under the same key.
+     *
+     * Writes no header and touches no file that already succeeded. The manifest
+     * is rebuilt from the earlier run's entries plus whatever lands now, and
+     * written only after the items, the same order a full run uses. Items
+     * deleted from the library since are skipped, not counted as failures.
+     */
+    suspend fun retryFailed(
+        context: Context,
+        retry: ExportRetry,
+        onProgress: (ExportProgress) -> Unit,
+    ): ExportResult {
+        val tree = DocumentFile.fromTreeUri(context, retry.treeUri)
+            ?: return ExportResult(0, retry.failedIds.size, retry.failedIds.size, retry = retry)
+        val wanted = retry.failedIds.toHashSet()
+        val items = VaultGraph.repository(context).allMedia().filter { it.media.id in wanted }
+        val existing = tree.listFiles().filter { it.isFile }.associateBy { it.name }
+
+        // A copy, so a retry that fails to write its manifest leaves the handle
+        // describing what is really on disk.
+        val manifest = JSONArray(retry.manifest.toString())
+        val failures = ArrayList<TransferFailure>()
+        val failedIds = ArrayList<String>()
+        var done = 0
+        for (mwt in items) {
+            val attempt = runCatching { exportOne(context, tree, mwt, retry.key, existing) }
+            val entry = attempt.getOrNull()
+            if (entry != null) {
+                manifest.put(entry)
+            } else {
+                Log.e(TAG, "retry failed: " + mwt.media.originalName, attempt.exceptionOrNull())
+                failedIds.add(mwt.media.id)
+                failures.add(
+                    TransferFailure(
+                        mwt.media.originalName,
+                        if (attempt.isSuccess) "the folder wouldn't accept a new file"
+                        else TransferFailure.describe(attempt.exceptionOrNull()),
+                    ),
+                )
+            }
+            done++
+            onProgress(ExportProgress(done, items.size, failures.size))
+        }
+
+        val manifestWritten = runCatching { writeManifest(context, tree, manifest, retry.key) }
+            .onFailure { Log.e(TAG, "manifest rewrite failed", it) }
+            .getOrDefault(false)
+        if (!manifestWritten) {
+            // The items are in the folder but the index doesn't list them. Say
+            // so rather than reporting them as backed up.
+            return ExportResult(
+                exported = 0,
+                failed = items.size,
+                total = items.size,
+                failures = listOf(
+                    TransferFailure("The backup's index", "couldn't be rewritten — run a full export again"),
+                ),
+            )
+        }
+        return ExportResult(
+            exported = done - failures.size,
+            failed = failures.size,
+            total = items.size,
+            failures = failures,
+            retry = if (failedIds.isNotEmpty()) {
+                ExportRetry(retry.treeUri, retry.key, manifest, failedIds, retry.wholeLibrary)
+            } else {
+                null
+            },
         )
     }
 
@@ -224,10 +327,10 @@ object VaultExporter {
         tree: DocumentFile,
         manifest: JSONArray,
         key: SecretKey?,
-    ) {
+    ): Boolean {
         val name = if (key == null) "manifest.json" else BackupCrypto.MANIFEST
         tree.findFile(name)?.delete()
-        val file = tree.createFile("application/octet-stream", name) ?: return
+        val file = tree.createFile("application/octet-stream", name) ?: return false
         val root = JSONObject().apply {
             put("app", "Vault")
             put("version", 1)
@@ -239,6 +342,7 @@ object VaultExporter {
             // database encrypts — so it is never written in the clear either.
             out.write(if (key == null) bytes else BackupCrypto.encryptBytes(key, bytes))
         }
+        return true
     }
 
     private fun ensureExtension(name: String, mimeType: String): String {
