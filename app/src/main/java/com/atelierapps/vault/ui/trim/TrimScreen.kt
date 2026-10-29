@@ -1,5 +1,13 @@
 package com.atelierapps.vault.ui.trim
 
+import com.atelierapps.vault.ui.theme.VaultActionChip
+import com.atelierapps.vault.media.ThumbnailSetter
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.rememberCoroutineScope
+import android.widget.Toast
+import android.view.TextureView
 import android.view.LayoutInflater
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -86,7 +94,7 @@ fun TrimScreen(
     }
 
     Column(modifier.fillMaxSize().background(Bg)) {
-        ScreenHeader("Trim", onClose)
+        ScreenHeader("Trim & thumbnail", onClose)
         if (item != null) {
             TrimBody(item, state, onRange, onReplace, onTrim, onDuration)
         }
@@ -115,6 +123,13 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
         }
         DisposableEffect(player) { onDispose { player.release() } }
         var playing by remember { mutableStateOf(false) }
+        // Kept so the frame on screen can be captured as a thumbnail. The view
+        // is a TextureView (see vault_player_view), which is what makes
+        // getBitmap() possible: the frame comes off the GPU surface, never
+        // through a decoded file.
+        var playerView by remember { mutableStateOf<PlayerView?>(null) }
+        var savingThumb by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
         DisposableEffect(player) {
             val listener = object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
@@ -146,6 +161,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                 factory = { ctx ->
                     (LayoutInflater.from(ctx).inflate(R.layout.vault_player_view, null) as PlayerView)
                         .apply { this.player = player }
+                        .also { playerView = it }
                 },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -211,6 +227,49 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp),
                 )
+
+                // The thumbnail is whatever frame is on screen: move a handle, or
+                // pause the preview where you want it. Changes only the tile; the
+                // video itself isn't touched, so this needs no trim at all.
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Like the frame on screen? Make it this video's thumbnail.",
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
+                    VaultActionChip(
+                        if (savingThumb) "Saving…" else "Use as thumbnail",
+                        onClick = {
+                            if (savingThumb || state.running) return@VaultActionChip
+                            player.pause()
+                            val frame = (playerView?.videoSurfaceView as? TextureView)?.bitmap
+                            if (frame == null) {
+                                Toast.makeText(context, "No frame to use yet", Toast.LENGTH_SHORT).show()
+                                return@VaultActionChip
+                            }
+                            savingThumb = true
+                            scope.launch {
+                                val ok = withContext(Dispatchers.IO) {
+                                    try {
+                                        ThumbnailSetter.set(context, item.media.id, frame)
+                                    } finally {
+                                        frame.recycle()
+                                    }
+                                }
+                                savingThumb = false
+                                Toast.makeText(
+                                    context,
+                                    if (ok) "Thumbnail updated" else "Couldn't update the thumbnail",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        },
+                    )
+                }
 
                 Row(
                     Modifier.fillMaxWidth().padding(top = 16.dp)

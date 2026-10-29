@@ -24,6 +24,32 @@ object Thumbnailer {
     fun jpegBytes(file: File, mimeType: String): ByteArray =
         runCatching { encode(file, mimeType) }.getOrDefault(ByteArray(0))
 
+    /**
+     * A thumbnail from a frame already in memory (a chosen video frame). Same
+     * size and quality as the import path, so a picked thumbnail looks like
+     * every other tile. Leaves [frame] for the caller to recycle.
+     */
+    fun jpegFrom(frame: Bitmap): ByteArray {
+        // Not scaleDown(): that recycles its input, and this one isn't ours.
+        val longest = maxOf(frame.width, frame.height)
+        val scaled = if (longest <= MAX_EDGE) {
+            frame
+        } else {
+            val k = MAX_EDGE.toFloat() / longest
+            Bitmap.createScaledBitmap(
+                frame, (frame.width * k).toInt().coerceAtLeast(1), (frame.height * k).toInt().coerceAtLeast(1), true,
+            )
+        }
+        return try {
+            ByteArrayOutputStream().use { out ->
+                scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+                out.toByteArray()
+            }
+        } finally {
+            if (scaled !== frame) scaled.recycle()
+        }
+    }
+
     private fun encode(file: File, mimeType: String): ByteArray {
         val bitmap = (if (mimeType.startsWith("video/")) videoFrame(file) else imageBitmap(file))
             ?: return ByteArray(0)

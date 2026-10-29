@@ -188,7 +188,9 @@ Viewer buttons are white when off and brass when on, and shuffle, slideshow
 and loop confirm with a 2-second notice (rotate, speed, mute and tag don't),
 notes on any item (viewer ⋮ → Note…, searchable, carried through backups and
 image edits), video trim (keeps one stretch; original to Recently deleted only
-after the copy verifies), view history (counted after 2 s on screen; Unwatched chip and a
+after the copy verifies) and a chosen video thumbnail from the same screen
+(captured from the preview's TextureView, so no plaintext file; swapped in
+by write-beside, length check, rename — `media/ThumbnailSetter.kt`), view history (counted after 2 s on screen; Unwatched chip and a
 "Not seen lately" sort — history starts at schema 9, so everything older begins
 as unwatched), storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,

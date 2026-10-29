@@ -801,7 +801,7 @@ private fun TopBar(
                 DropdownMenuItem(text = { Text("Tags…") }, onClick = { menu = false; onTag() })
                 DropdownMenuItem(text = { Text("Note…") }, onClick = { menu = false; onNote() })
                 if (onTrim != null) {
-                    DropdownMenuItem(text = { Text("Trim…") }, onClick = { menu = false; onTrim() })
+                    DropdownMenuItem(text = { Text("Trim or thumbnail…") }, onClick = { menu = false; onTrim() })
                 }
                 DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
                 if (onEdit != null) {
