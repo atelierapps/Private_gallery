@@ -1,5 +1,6 @@
 package com.atelierapps.vault.ui.rules
 
+import com.atelierapps.vault.ui.theme.VaultChip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
@@ -162,15 +162,15 @@ private fun AddRuleDialog(
             Column {
                 Text("When…", color = Muted, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-                    FilterChip(
+                    VaultChip(
+                        label = "Source name",
                         selected = kind == RuleMatchKind.SOURCE,
                         onClick = { kind = RuleMatchKind.SOURCE },
-                        label = { Text("Source name") },
                     )
-                    FilterChip(
+                    VaultChip(
+                        label = "How it was added",
                         selected = kind == RuleMatchKind.TYPE,
                         onClick = { kind = RuleMatchKind.TYPE },
-                        label = { Text("How it was added") },
                     )
                 }
 
@@ -189,10 +189,10 @@ private fun AddRuleDialog(
                 } else {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                         TYPE_CHOICES.forEach { (type, label) ->
-                            FilterChip(
+                            VaultChip(
+                                label = label,
                                 selected = typeValue == type.name,
                                 onClick = { typeValue = type.name },
-                                label = { Text(label) },
                             )
                         }
                     }

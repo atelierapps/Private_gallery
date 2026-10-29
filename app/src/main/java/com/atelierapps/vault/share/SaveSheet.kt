@@ -1,5 +1,6 @@
 package com.atelierapps.vault.share
 
+import com.atelierapps.vault.ui.theme.VaultChip
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -133,10 +133,10 @@ fun SaveSheet(
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             topTags.forEach { tag ->
                                 val on = selected.contains(tag.name)
-                                FilterChip(
+                                VaultChip(
+                                    label = "#" + tag.name,
                                     selected = on,
                                     onClick = { if (on) selected.remove(tag.name) else selected.add(tag.name) },
-                                    label = { Text(tag.name) },
                                 )
                             }
                         }

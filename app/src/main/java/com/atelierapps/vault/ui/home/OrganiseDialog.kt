@@ -1,5 +1,7 @@
 package com.atelierapps.vault.ui.home
 
+import com.atelierapps.vault.ui.theme.VaultChip
+import com.atelierapps.vault.ui.theme.VaultActionChip
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -85,10 +85,7 @@ fun OrganiseDialog(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 ) {
                     NameTemplate.Token.entries.forEach { token ->
-                        AssistChip(
-                            onClick = { insert(token.marker) },
-                            label = { Text(token.label) },
-                        )
+                        VaultActionChip(token.label, onClick = { insert(token.marker) })
                     }
                 }
                 OutlinedTextField(
@@ -111,10 +108,10 @@ fun OrganiseDialog(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     ) {
                         NameTemplate.DATE_FORMATS.forEach { format ->
-                            FilterChip(
+                            VaultChip(
+                                label = format,
                                 selected = format == dateFormat,
                                 onClick = { dateFormat = format },
-                                label = { Text(format) },
                             )
                         }
                     }

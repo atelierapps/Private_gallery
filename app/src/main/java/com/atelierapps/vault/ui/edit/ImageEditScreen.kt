@@ -1,5 +1,6 @@
 package com.atelierapps.vault.ui.edit
 
+import com.atelierapps.vault.ui.theme.VaultActionChip
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.RotateLeft
 import androidx.compose.material.icons.outlined.RotateRight
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -104,11 +104,7 @@ fun ImageEditScreen(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             ) {
                 RATIOS.forEach { (label, ratio) ->
-                    FilterChip(
-                        selected = false,
-                        onClick = { onCrop(cropFor(ratio, state.previewAspect)) },
-                        label = { Text(label) },
-                    )
+                    VaultActionChip(label, onClick = { onCrop(cropFor(ratio, state.previewAspect)) })
                 }
             }
 

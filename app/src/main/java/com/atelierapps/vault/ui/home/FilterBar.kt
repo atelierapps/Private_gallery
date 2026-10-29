@@ -10,12 +10,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,6 +34,8 @@ import androidx.compose.material3.Icon
 import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.TagPicker
+import com.atelierapps.vault.ui.theme.VaultActionChip
+import com.atelierapps.vault.ui.theme.VaultChip
 import androidx.compose.material3.MaterialTheme
 
 /**
@@ -101,7 +100,7 @@ fun FilterBar(
 
         // ---- category buttons (always the same small set) ----
         item { TypeMenu(filter.type, sources, filter.sources, onSetType, onToggleSource) }
-        item { AssistChip(onClick = { tagPicker = true }, label = { Text("Tag ▾") }) }
+        item { VaultActionChip("Tag", onClick = { tagPicker = true }, dropdown = true) }
         item { DateMenu(filter.date, onSetDate) }
         item { SortMenu(sort, onSetSort) }
     }
@@ -118,17 +117,18 @@ fun FilterBar(
 
 @Composable
 private fun ActiveChip(label: String, onRemove: () -> Unit) {
-    InputChip(
+    VaultChip(
+        label = label,
         selected = true,
         onClick = onRemove,
-        label = { Text(label) },
+        showCheck = false,
         trailingIcon = { Icon(Icons.Outlined.Close, null, Modifier.size(14.dp)) },
     )
 }
 
 @Composable
 private fun ToggleChip(label: String, on: Boolean, onToggle: () -> Unit) {
-    FilterChip(selected = on, onClick = onToggle, label = { Text(label) })
+    VaultChip(label = label, selected = on, onClick = onToggle)
 }
 
 @Composable
@@ -141,7 +141,7 @@ private fun TypeMenu(
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
-        AssistChip(onClick = { open = true }, label = { Text("Type ▾") })
+        VaultActionChip("Type", onClick = { open = true }, dropdown = true)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             listOf(
                 MediaTypeFilter.ALL to "All",
@@ -182,7 +182,12 @@ private fun TypeMenu(
 private fun DateMenu(current: DateBucket, onSet: (DateBucket) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        AssistChip(onClick = { open = true }, label = { Text(if (current == DateBucket.ANY) "Date ▾" else current.label) })
+        VaultActionChip(
+            if (current == DateBucket.ANY) "Date" else current.label,
+            onClick = { open = true },
+            dropdown = true,
+            active = current != DateBucket.ANY,
+        )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DateBucket.entries.forEach { bucket ->
                 DropdownMenuItem(text = { Text(bucket.label) }, onClick = { onSet(bucket); open = false })
@@ -195,7 +200,7 @@ private fun DateMenu(current: DateBucket, onSet: (DateBucket) -> Unit) {
 private fun SortMenu(current: SortOrder, onSet: (SortOrder) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        AssistChip(onClick = { open = true }, label = { Text("Sort: ${current.label}") })
+        VaultActionChip("Sort: ${current.label}", onClick = { open = true }, dropdown = true)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             SortOrder.entries.forEach { order ->
                 DropdownMenuItem(text = { Text(order.label) }, onClick = { onSet(order); open = false })

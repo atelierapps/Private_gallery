@@ -1,6 +1,9 @@
 package com.atelierapps.vault.ui.theme
 
-import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -128,49 +130,10 @@ fun TagPicker(
         }
     }
 
-    Column(modifier.fillMaxWidth()) {
-        if (tags.isNotEmpty() && !compact) {
-            OrderRow(order) { order = it; TagPrefs.setOrder(context, it) }
-        }
-
-        if (compact) {
-            val flat = groups.flatMap { it.second }
-            if (flat.isNotEmpty()) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(hScroll),
-                ) {
-                    flat.forEach { tag -> TagChip(tag, isPicked(tag.name)) { toggle(tag.name) } }
-                }
-            }
-        } else if (tags.isNotEmpty()) {
-            val bounds =
-                if (maxHeight == null) Modifier
-                else Modifier.heightIn(max = maxHeight).verticalScroll(vScroll)
-            Column(Modifier.fillMaxWidth().then(bounds)) {
-                groups.forEach { (label, list) ->
-                    if (label != null) {
-                        Text(
-                            label.uppercase(),
-                            color = Muted,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
-                        )
-                    }
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        list.forEach { tag -> TagChip(tag, isPicked(tag.name)) { toggle(tag.name) } }
-                    }
-                }
-                if (searching && groups.all { it.second.isEmpty() } && !allowCreate) {
-                    Text("No tag matches “$token”", color = Muted, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-
+    // The field and its hint, shared by both layouts. Above the list in the
+    // full picker, so it stays in view however far the chips scroll; below the
+    // single row in the compact one, where the row is short anyway.
+    val field: @Composable () -> Unit = {
         OutlinedTextField(
             value = text,
             onValueChange = onTextChange,
@@ -195,16 +158,69 @@ fun TagPicker(
             )
         }
     }
+
+    Column(modifier.fillMaxWidth()) {
+        if (compact) {
+            val flat = groups.flatMap { it.second }
+            if (flat.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(hScroll),
+                ) {
+                    flat.forEach { tag -> TagChip(tag, isPicked(tag.name)) { toggle(tag.name) } }
+                }
+            }
+            field()
+        } else {
+            if (tags.isNotEmpty()) {
+                OrderSwitch(order) { order = it; TagPrefs.setOrder(context, it) }
+            }
+            field()
+            if (tags.isNotEmpty()) {
+                val bounds =
+                    if (maxHeight == null) Modifier
+                    else Modifier.heightIn(max = maxHeight).verticalScroll(vScroll)
+                Column(Modifier.fillMaxWidth().padding(top = 6.dp).then(bounds)) {
+                    groups.forEach { (label, list) ->
+                        if (label != null) {
+                            Text(
+                                label.uppercase(),
+                                color = Muted,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+                            )
+                        }
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            list.forEach { tag -> TagChip(tag, isPicked(tag.name)) { toggle(tag.name) } }
+                        }
+                    }
+                    if (searching && groups.all { it.second.isEmpty() } && !allowCreate) {
+                        Text("No tag matches “$token”", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+    }
 }
 
+/**
+ * Recent · Most used · A–Z as one segmented control: the current choice sits
+ * on a raised segment, so which order is in force reads at a glance rather
+ * than by spotting the one brass word in a line of grey ones.
+ */
 @Composable
-private fun OrderRow(current: TagPrefs.Order, onPick: (TagPrefs.Order) -> Unit) {
+private fun OrderSwitch(current: TagPrefs.Order, onPick: (TagPrefs.Order) -> Unit) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.padding(bottom = 4.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Surface)
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text("Order", color = Muted, style = MaterialTheme.typography.labelMedium)
         TagPrefs.Order.entries.forEach { o ->
             val on = o == current
             Text(
@@ -213,8 +229,9 @@ private fun OrderRow(current: TagPrefs.Order, onPick: (TagPrefs.Order) -> Unit) 
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { onPick(o) }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .background(if (on) Hairline else Color.Transparent)
+                    .selectable(selected = on, role = Role.RadioButton, onClick = { onPick(o) })
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
             )
         }
     }
@@ -222,20 +239,7 @@ private fun OrderRow(current: TagPrefs.Order, onPick: (TagPrefs.Order) -> Unit) 
 
 @Composable
 private fun TagChip(tag: TagEntity, on: Boolean, onClick: () -> Unit) {
-    FilterChip(
-        selected = on,
-        onClick = onClick,
-        label = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("#" + tag.name)
-                Text(
-                    " " + tag.useCount,
-                    color = Muted,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-        },
-    )
+    VaultChip(label = "#" + tag.name, selected = on, onClick = onClick, count = tag.useCount)
 }
 
 /**

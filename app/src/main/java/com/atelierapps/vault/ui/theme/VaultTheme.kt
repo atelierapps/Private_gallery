@@ -87,6 +87,11 @@ private val VaultColorScheme = darkColorScheme(
     onPrimaryContainer = BrassInk,
     secondary = Brass,
     onSecondary = BrassInk,
+    // Left unmapped, these are what every selected Material chip filled with:
+    // stock purple-grey. VaultChip draws chips explicitly now; this keeps any
+    // Material component that still reads them inside the palette.
+    secondaryContainer = SurfaceHigh,
+    onSecondaryContainer = Brass,
     background = Bg,
     onBackground = Ink,
     surface = Surface,

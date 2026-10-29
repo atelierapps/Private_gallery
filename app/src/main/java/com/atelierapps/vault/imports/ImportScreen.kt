@@ -1,5 +1,6 @@
 package com.atelierapps.vault.imports
 
+import com.atelierapps.vault.ui.theme.VaultChip
 import com.atelierapps.vault.ui.theme.TagPicker
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -23,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -216,7 +216,7 @@ private fun TypeFilterRow(current: MediaTypeFilter, onSetType: (MediaTypeFilter)
 
 @Composable
 private fun TypeChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(selected = selected, onClick = onClick, label = { Text(label) })
+    VaultChip(label = label, selected = selected, onClick = onClick)
 }
 
 @Composable
