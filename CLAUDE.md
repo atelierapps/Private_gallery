@@ -243,13 +243,6 @@ Read before "fixing" one of these; each was weighed.
 - **`addTags` / `setTagsForMedia` are not `@Transaction`.** A failure partway
   leaves some tags applied and some not. Harmless for these two. (`saveMedia`
   was on this list too, wrongly — see the MediaSaver trap; it is fixed.)
-- **SAF persistable grants are taken and never released.** Every file imported
-  through the document picker holds one for good, against a per-app cap. The fix
-  belongs in `ImportWorker` once an entry is consumed, but it has to tell a
-  document URI from a MediaStore one first.
-- **`SaveMediaWorker` retries a permanently-bad share forever.** `Result.retry()`
-  is unconditional, so a file that can never encrypt keeps coming back with
-  backoff. Costs nothing visible; worth a `runAttemptCount` cap eventually.
 - **`DbCipher` has a one-instruction window** between renaming the plaintext
   database aside and moving the encrypted one in. A crash exactly there leaves
   no `vault.db`, and the next launch builds an empty one — blobs intact,
@@ -258,6 +251,11 @@ Read before "fixing" one of these; each was weighed.
 - **The unlock pre-warm is O(library).** Two RSA unwraps per item at ~18 ms
   across four workers, and nothing cancels it on lock. Fine at a few thousand
   items; revisit if it ever feels slow at unlock.
+
+Fixed since the audit: SAF persistable grants (released per entry by
+`ImportWorker`, plus a sweep of old ones when the queue drains, skipping grants
+under ten minutes old and all tree grants) and `SaveMediaWorker`'s endless
+retries (a missing spool fails at once; five attempts otherwise).
 
 Known, accepted, not bugs:
 
