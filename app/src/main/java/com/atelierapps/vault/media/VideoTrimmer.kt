@@ -70,6 +70,9 @@ object VideoTrimmer {
         startMs: Long,
         endMs: Long,
         replace: Boolean,
+        /** Which part of a split this is (1-based), for its name; null for a plain trim. */
+        part: Int? = null,
+        // Last, so callers can pass it as a trailing lambda.
         onProgress: (Int) -> Unit,
     ): Result<String> {
         val app = context.applicationContext
@@ -90,7 +93,7 @@ object VideoTrimmer {
             }
             // Encrypting a long clip is seconds of work; MediaSaver does it on
             // the caller's thread, so this half must not be on the main one.
-            return withContext(Dispatchers.IO) { keep(app, original, out, replace) }
+            return withContext(Dispatchers.IO) { keep(app, original, out, replace, part) }
         } finally {
             // Normally MediaSaver has already deleted it after encrypting.
             out.delete()
@@ -103,6 +106,7 @@ object VideoTrimmer {
         original: MediaWithTags,
         out: java.io.File,
         replace: Boolean,
+        part: Int?,
     ): Result<String> {
         val media = original.media
         probe(out)?.let { return Result.failure(IllegalStateException(it)) }
@@ -112,7 +116,7 @@ object VideoTrimmer {
             SaveRequest(
                 tempPath = out.absolutePath,
                 mimeType = "video/mp4",
-                originalName = trimmedName(media.originalName),
+                originalName = trimmedName(media.originalName, part),
                 dateTakenMillis = media.dateTakenMillis,
                 tagNames = original.tags.map { it.name },
                 source = SourceInfo(
@@ -240,11 +244,15 @@ object VideoTrimmer {
         }
     }
 
-    /** "clip.mp4" becomes "clip (trimmed).mp4"; a second trim doesn't stack. */
-    private fun trimmedName(name: String): String {
+    /**
+     * "clip.mp4" becomes "clip (trimmed).mp4", or "clip (part 2).mp4" for a
+     * split; a second trim doesn't stack the suffix.
+     */
+    private fun trimmedName(name: String, part: Int?): String {
         val stem = name.substringBeforeLast('.', name)
-        val base = if (stem.endsWith(" (trimmed)")) stem else "$stem (trimmed)"
-        return "$base.mp4"
+            .replace(Regex(" \\((trimmed|part \\d+)\\)$"), "")
+        val suffix = if (part == null) " (trimmed)" else " (part $part)"
+        return "$stem$suffix.mp4"
     }
 
     private const val TAG = "VideoTrimmer"

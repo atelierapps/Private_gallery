@@ -65,8 +65,8 @@ class TrimActivity : ComponentActivity() {
                             vm.trim { replaced ->
                                 Toast.makeText(
                                     this,
-                                    if (replaced) "Trimmed. The original is in Recently deleted"
-                                    else "Trimmed. The original is kept",
+                                    if (replaced) "Done. The original is in Recently deleted"
+                                    else "Done. The original is kept",
                                     Toast.LENGTH_LONG,
                                 ).show()
                                 setResult(RESULT_OK)
@@ -77,6 +77,8 @@ class TrimActivity : ComponentActivity() {
                         modifier = Modifier.safeDrawingPadding(),
                         onDuration = vm::setDuration,
                         onMode = vm::setMode,
+                        onAddPart = vm::addPart,
+                        onRemovePart = vm::removePart,
                     )
                 }
             }
@@ -108,6 +110,10 @@ data class TrimState(
     val thumbnailMode: Boolean = false,
     val progress: Int = 0,
     val error: String? = null,
+    /** A split: stretches to keep as separate items. Empty means a plain trim. */
+    val parts: List<Pair<Long, Long>> = emptyList(),
+    /** Which part is being cut, 1-based, while a split runs. */
+    val runningPart: Int = 0,
 )
 
 @UnstableApi
@@ -148,10 +154,28 @@ class TrimViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(replace = value)
     }
 
+    /** Add the current range as one part of a split. */
+    fun addPart() {
+        val s = _state.value
+        if (s.running || s.endMs - s.startMs < VideoTrimmer.MIN_KEEP_MILLIS) return
+        val part = s.startMs to s.endMs
+        if (part in s.parts) return
+        _state.value = s.copy(parts = (s.parts + part).sortedBy { it.first }, error = null)
+    }
+
+    fun removePart(part: Pair<Long, Long>) {
+        if (_state.value.running) return
+        _state.value = _state.value.copy(parts = _state.value.parts - part)
+    }
+
     fun trim(onDone: (replaced: Boolean) -> Unit) {
         val s = _state.value
         val item = s.item ?: return
         if (s.running) return
+        if (s.parts.isNotEmpty()) {
+            split(s, item, onDone)
+            return
+        }
         _state.value = s.copy(running = true, progress = 0, error = null)
         job = viewModelScope.launch {
             val result = VideoTrimmer.trim(getApplication(), item, s.startMs, s.endMs, s.replace) { p ->
@@ -166,6 +190,48 @@ class TrimViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 },
             )
+        }
+    }
+
+    /**
+     * Cut every part as its own new item, one after another, and only then —
+     * all of them saved and verified — bin the original if asked. One failure
+     * stops the run and keeps the original: the parts that did land stay as
+     * new items, and the screen says how many.
+     */
+    private fun split(s: TrimState, item: MediaWithTags, onDone: (replaced: Boolean) -> Unit) {
+        _state.value = s.copy(running = true, progress = 0, runningPart = 1, error = null)
+        job = viewModelScope.launch {
+            var saved = 0
+            var failure: String? = null
+            for ((i, part) in s.parts.withIndex()) {
+                _state.value = _state.value.copy(runningPart = i + 1, progress = 0)
+                val r = VideoTrimmer.trim(
+                    getApplication(), item, part.first, part.second, replace = false,
+                    onProgress = { p -> _state.value = _state.value.copy(progress = p) },
+                    part = i + 1,
+                )
+                if (r.isSuccess) {
+                    saved++
+                } else {
+                    failure = r.exceptionOrNull()?.message ?: "it failed"
+                    break
+                }
+            }
+            if (failure == null) {
+                if (s.replace) VaultGraph.repository(getApplication()).trashMedia(item.media.id)
+                onDone(s.replace)
+            } else {
+                _state.value = _state.value.copy(
+                    running = false,
+                    runningPart = 0,
+                    // The parts that landed are already in the library; don't
+                    // offer them again.
+                    parts = s.parts.drop(saved),
+                    error = (if (saved == 0) "Nothing was changed" else "$saved of ${s.parts.size} parts saved") +
+                        ": part ${saved + 1} failed — $failure. The original is kept.",
+                )
+            }
         }
     }
 }

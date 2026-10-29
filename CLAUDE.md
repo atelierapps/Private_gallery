@@ -154,6 +154,9 @@ ui/          one package per screen; ui/theme is the design system
   file synchronously, so every caller wraps it in `Dispatchers.IO` (the image
   editor, the trimmer). From a `viewModelScope` without that, a big video
   freezes the app.
+- **A trailing lambda binds to the *last* parameter.** Adding a parameter
+  after a callback that callers pass as a trailing lambda breaks every one of
+  them; keep callbacks last (`VideoTrimmer.trim`'s `part` nearly did this).
 - **Media3 has its own `ExportResult`**, which clashes with the backup one in
   `media/`; import it aliased (`as TransformerResult`).
 - **Verify call sites, not diffs.** A partly-applied edit once shipped a commit
@@ -218,7 +221,10 @@ corruption.
    erases nothing. Input is read through `VaultCtrDataSource` via
    `ExoPlayerAssetLoader.Factory`. No effects, so it transmuxes (no re-encode,
    cuts on keyframes). The original is binned only after the copy is probed,
-   saved and passes `MediaIntegrity`. Split (keep several parts) is not built.
+   saved and passes `MediaIntegrity`. **Split** is the same screen: "Add as a
+   part" collects ranges, and each is cut as its own item ("clip (part 2).mp4");
+   the original is binned only after *every* part verifies, and a failure stops
+   the run with the original kept and the landed parts left as new items.
 2. **Foreground service for long transfers.** Export/restore currently survive
    leaving the screen (app-scoped coroutine) and screen-off (wake lock), but not
    deep Doze or process death. Fixing that needs WorkManager + a visible

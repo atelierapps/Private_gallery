@@ -1,5 +1,12 @@
 package com.atelierapps.vault.ui.trim
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import com.atelierapps.vault.ui.theme.VaultChip
+import com.atelierapps.vault.ui.theme.VaultActionChip
 import com.atelierapps.vault.ui.theme.Surface
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
@@ -93,6 +100,9 @@ fun TrimScreen(
     onDuration: (Long) -> Unit = {},
     /** Switch between choosing a thumbnail (true) and trimming (false). */
     onMode: (Boolean) -> Unit = {},
+    /** Add the current range as a part of a split, or take one back out. */
+    onAddPart: () -> Unit = {},
+    onRemovePart: (Pair<Long, Long>) -> Unit = {},
 ) {
     val item = state.item
     // A trim can take a while on a long clip; don't let the screen sleep on it.
@@ -105,11 +115,12 @@ fun TrimScreen(
     Column(modifier.fillMaxSize().background(Bg)) {
         ScreenHeader(if (state.thumbnailMode) "Set thumbnail" else "Trim", onClose)
         if (item != null) {
-            TrimBody(item, state, onRange, onReplace, onTrim, onDuration, onMode)
+            TrimBody(item, state, onRange, onReplace, onTrim, onDuration, onMode, onAddPart, onRemovePart)
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @UnstableApi
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
@@ -120,6 +131,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
     onTrim: () -> Unit,
     onDuration: (Long) -> Unit,
     onMode: (Boolean) -> Unit,
+    onAddPart: () -> Unit,
+    onRemovePart: (Pair<Long, Long>) -> Unit,
 ) {
     val context = LocalContext.current
         val player = remember(item.media.id) {
@@ -324,6 +337,42 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                     modifier = Modifier.padding(top = 4.dp),
                 )
 
+                // Split: keep several stretches, each as its own item. Set the
+                // handles, add it, set them again. With no parts added this is
+                // a plain trim of the one range.
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        if (state.parts.isEmpty()) "Want more than one part? Add this range, then pick the next."
+                        else "" + state.parts.size + (if (state.parts.size == 1) " part" else " parts") + " — each becomes its own video",
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
+                    VaultActionChip(
+                        "Add as a part",
+                        onClick = { if (!state.running && kept >= VideoTrimmer.MIN_KEEP_MILLIS) onAddPart() },
+                    )
+                }
+                if (state.parts.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    ) {
+                        state.parts.forEachIndexed { i, part ->
+                            VaultChip(
+                                label = "" + (i + 1) + ". " + clock(part.first) + "–" + clock(part.second),
+                                selected = true,
+                                showCheck = false,
+                                onClick = { onRemovePart(part) },
+                                trailingIcon = { Icon(Icons.Outlined.Close, contentDescription = "Remove part", modifier = Modifier.size(14.dp)) },
+                            )
+                        }
+                    }
+                }
+
                 Row(
                     Modifier.fillMaxWidth().padding(top = 16.dp)
                         .background(SurfaceHigh, MaterialTheme.shapes.medium)
@@ -334,7 +383,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                         Text("Replace the original", color = Ink, style = MaterialTheme.typography.bodyLarge)
                         Text(
                             if (state.replace) {
-                                "The original goes to Recently deleted, only once the trimmed copy is checked"
+                                if (state.parts.isEmpty()) "The original goes to Recently deleted, only once the trimmed copy is checked"
+                                else "The original goes to Recently deleted, only once every part is checked"
                             } else {
                                 "Both are kept"
                             },
@@ -357,7 +407,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
 
                 if (state.running) {
                     Text(
-                        "Trimming… " + state.progress + "%",
+                        (if (state.runningPart > 0) "Part " + state.runningPart + " of " + state.parts.size + " · " else "Trimming… ") +
+                            state.progress + "%",
                         color = Ink,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(top = 16.dp),
@@ -368,8 +419,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
                 } else {
-                    val tooShort = kept < VideoTrimmer.MIN_KEEP_MILLIS
-                    val whole = state.startMs <= 0L && state.endMs >= duration
+                    val splitting = state.parts.isNotEmpty()
+                    val tooShort = !splitting && kept < VideoTrimmer.MIN_KEEP_MILLIS
+                    val whole = !splitting && state.startMs <= 0L && state.endMs >= duration
                     Button(
                         onClick = onTrim,
                         enabled = !tooShort && !whole,
@@ -378,6 +430,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                     ) {
                         Text(
                             when {
+                                splitting -> "Save " + state.parts.size + (if (state.parts.size == 1) " part" else " parts")
                                 whole -> "Move a handle to choose what to keep"
                                 tooShort -> "Keep at least a second"
                                 else -> "Trim"
