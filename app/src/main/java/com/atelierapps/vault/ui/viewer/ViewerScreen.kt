@@ -125,6 +125,8 @@ fun ViewerScreen(
     onEdit: (id: String) -> Unit = {},
     /** Open the trim screen for a video. */
     onTrim: (id: String) -> Unit = {},
+    /** Open the same screen on choosing a video's thumbnail. */
+    onThumbnail: (id: String) -> Unit = {},
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
     onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
     /** Save (or, with null, clear) the item's note. */
@@ -313,6 +315,11 @@ fun ViewerScreen(
                     },
                     onTrim = if (isVideo) {
                         fun() { onTrim(current.media.id) }
+                    } else {
+                        null
+                    },
+                    onThumbnail = if (isVideo) {
+                        fun() { onThumbnail(current.media.id) }
                     } else {
                         null
                     },
@@ -759,6 +766,7 @@ private fun TopBar(
     onRename: () -> Unit,
     onEdit: (() -> Unit)?,
     onTrim: (() -> Unit)?,
+    onThumbnail: (() -> Unit)?,
     onTag: () -> Unit,
     onNote: () -> Unit,
     onAddToAlbum: () -> Unit,
@@ -800,8 +808,11 @@ private fun TopBar(
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Tags…") }, onClick = { menu = false; onTag() })
                 DropdownMenuItem(text = { Text("Note…") }, onClick = { menu = false; onNote() })
+                if (onThumbnail != null) {
+                    DropdownMenuItem(text = { Text("Set thumbnail…") }, onClick = { menu = false; onThumbnail() })
+                }
                 if (onTrim != null) {
-                    DropdownMenuItem(text = { Text("Trim or thumbnail…") }, onClick = { menu = false; onTrim() })
+                    DropdownMenuItem(text = { Text("Trim…") }, onClick = { menu = false; onTrim() })
                 }
                 DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
                 if (onEdit != null) {

@@ -46,6 +46,8 @@ class TrimActivity : ComponentActivity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 
         val id = intent.getStringExtra(EXTRA_ID) ?: run { finish(); return }
+        // Only on first creation, so a rotation keeps whichever mode was picked.
+        if (savedInstanceState == null) vm.setMode(intent.getBooleanExtra(EXTRA_THUMBNAIL, false))
         vm.load(id)
 
         setContent {
@@ -74,6 +76,7 @@ class TrimActivity : ComponentActivity() {
                         onClose = { finish() },
                         modifier = Modifier.safeDrawingPadding(),
                         onDuration = vm::setDuration,
+                        onMode = vm::setMode,
                     )
                 }
             }
@@ -82,9 +85,13 @@ class TrimActivity : ComponentActivity() {
 
     companion object {
         private const val EXTRA_ID = "media_id"
+        private const val EXTRA_THUMBNAIL = "thumbnail_mode"
 
-        fun intent(context: Context, id: String): Intent =
-            Intent(context, TrimActivity::class.java).putExtra(EXTRA_ID, id)
+        /** [thumbnail] opens on choosing a thumbnail rather than trimming. */
+        fun intent(context: Context, id: String, thumbnail: Boolean = false): Intent =
+            Intent(context, TrimActivity::class.java)
+                .putExtra(EXTRA_ID, id)
+                .putExtra(EXTRA_THUMBNAIL, thumbnail)
     }
 }
 
@@ -97,6 +104,8 @@ data class TrimState(
     /** Bin the original once the trimmed copy checks out. On by default: saving space is the point. */
     val replace: Boolean = true,
     val running: Boolean = false,
+    /** Choosing a thumbnail rather than trimming: two jobs, one preview. */
+    val thumbnailMode: Boolean = false,
     val progress: Int = 0,
     val error: String? = null,
 )
@@ -127,6 +136,11 @@ class TrimViewModel(app: Application) : AndroidViewModel(app) {
     fun setRange(startMs: Long, endMs: Long) {
         if (_state.value.running) return
         _state.value = _state.value.copy(startMs = startMs, endMs = endMs, error = null)
+    }
+
+    fun setMode(thumbnail: Boolean) {
+        if (_state.value.running) return
+        _state.value = _state.value.copy(thumbnailMode = thumbnail, error = null)
     }
 
     fun setReplace(value: Boolean) {

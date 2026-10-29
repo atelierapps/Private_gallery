@@ -1,6 +1,13 @@
 package com.atelierapps.vault.ui.trim
 
-import com.atelierapps.vault.ui.theme.VaultActionChip
+import com.atelierapps.vault.ui.theme.Surface
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.material3.Slider
 import com.atelierapps.vault.media.ThumbnailSetter
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
@@ -84,6 +91,8 @@ fun TrimScreen(
     modifier: Modifier = Modifier,
     /** The player's own reading of the length, for clips with none stored. */
     onDuration: (Long) -> Unit = {},
+    /** Switch between choosing a thumbnail (true) and trimming (false). */
+    onMode: (Boolean) -> Unit = {},
 ) {
     val item = state.item
     // A trim can take a while on a long clip; don't let the screen sleep on it.
@@ -94,9 +103,9 @@ fun TrimScreen(
     }
 
     Column(modifier.fillMaxSize().background(Bg)) {
-        ScreenHeader("Trim & thumbnail", onClose)
+        ScreenHeader(if (state.thumbnailMode) "Set thumbnail" else "Trim", onClose)
         if (item != null) {
-            TrimBody(item, state, onRange, onReplace, onTrim, onDuration)
+            TrimBody(item, state, onRange, onReplace, onTrim, onDuration, onMode)
         }
     }
 }
@@ -110,6 +119,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
     onReplace: (Boolean) -> Unit,
     onTrim: () -> Unit,
     onDuration: (Long) -> Unit,
+    onMode: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
         val player = remember(item.media.id) {
@@ -142,9 +152,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
         }
         // Stop at the end handle and park back at the start, so a replay shows
         // the same stretch again.
-        LaunchedEffect(player, state.startMs, state.endMs) {
+        LaunchedEffect(player, state.startMs, state.endMs, state.thumbnailMode) {
             while (true) {
-                if (player.isPlaying && player.currentPosition >= state.endMs) {
+                // Only trimming confines playback to the kept stretch; choosing
+                // a thumbnail can go anywhere in the clip.
+                if (!state.thumbnailMode && player.isPlaying && player.currentPosition >= state.endMs) {
                     player.pause()
                     player.seekTo(state.startMs)
                 }
@@ -167,12 +179,96 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
             )
         }
 
+        // Where the preview is, for the thumbnail slider. Polled rather than
+        // pushed: ExoPlayer has no position callback.
+        var positionMs by remember { mutableLongStateOf(0L) }
+        var dragging by remember { mutableStateOf(false) }
+        LaunchedEffect(player) {
+            while (true) {
+                if (!dragging) positionMs = player.currentPosition.coerceAtLeast(0L)
+                delay(150)
+            }
+        }
+        val useFrame: () -> Unit = useFrame@{
+            if (savingThumb || state.running) return@useFrame
+            player.pause()
+            val frame = (playerView?.videoSurfaceView as? TextureView)?.bitmap
+            if (frame == null) {
+                Toast.makeText(context, "No frame to use yet", Toast.LENGTH_SHORT).show()
+                return@useFrame
+            }
+            savingThumb = true
+            scope.launch {
+                val ok = withContext(Dispatchers.IO) {
+                    try {
+                        ThumbnailSetter.set(context, item.media.id, frame)
+                    } finally {
+                        frame.recycle()
+                    }
+                }
+                savingThumb = false
+                Toast.makeText(
+                    context,
+                    if (ok) "Thumbnail updated" else "Couldn't update the thumbnail",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
         ) {
             val duration = state.durationMs
             if (duration > 0L) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                ModeSwitch(thumbnail = state.thumbnailMode, enabled = !state.running && !savingThumb, onMode = onMode)
+            }
+            if (duration > 0L && state.thumbnailMode) {
+                // ---- thumbnail: one scrubber, one button, nothing about trimming ----
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
+                    VaultIconButton(
+                        if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        if (playing) "Pause" else "Play",
+                        { if (playing) player.pause() else player.play() },
+                    )
+                    Text(
+                        clock(positionMs) + " / " + clock(duration),
+                        color = Ink,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
+                Slider(
+                    value = positionMs.coerceIn(0L, duration).toFloat(),
+                    onValueChange = { v ->
+                        dragging = true
+                        positionMs = v.toLong()
+                        player.seekTo(positionMs)
+                    },
+                    onValueChangeFinished = { dragging = false },
+                    valueRange = 0f..duration.toFloat(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Brass,
+                        activeTrackColor = Brass,
+                        inactiveTrackColor = Hairline,
+                    ),
+                )
+                Text(
+                    "Find the frame with the slider, or play and pause where you want it. " +
+                        "Only the tile changes — the video itself isn't touched.",
+                    color = Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Button(
+                    onClick = useFrame,
+                    enabled = !savingThumb,
+                    colors = ButtonDefaults.buttonColors(containerColor = Brass, contentColor = BrassInk),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(52.dp),
+                ) {
+                    Text(if (savingThumb) "Saving…" else "Use this frame")
+                }
+            } else if (duration > 0L) {
+                // ---- trim ----
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
                     VaultIconButton(
                         if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         if (playing) "Pause preview" else "Play the kept part",
@@ -227,49 +323,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp),
                 )
-
-                // The thumbnail is whatever frame is on screen: move a handle, or
-                // pause the preview where you want it. Changes only the tile; the
-                // video itself isn't touched, so this needs no trim at all.
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Like the frame on screen? Make it this video's thumbnail.",
-                        color = Muted,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f).padding(end = 8.dp),
-                    )
-                    VaultActionChip(
-                        if (savingThumb) "Saving…" else "Use as thumbnail",
-                        onClick = {
-                            if (savingThumb || state.running) return@VaultActionChip
-                            player.pause()
-                            val frame = (playerView?.videoSurfaceView as? TextureView)?.bitmap
-                            if (frame == null) {
-                                Toast.makeText(context, "No frame to use yet", Toast.LENGTH_SHORT).show()
-                                return@VaultActionChip
-                            }
-                            savingThumb = true
-                            scope.launch {
-                                val ok = withContext(Dispatchers.IO) {
-                                    try {
-                                        ThumbnailSetter.set(context, item.media.id, frame)
-                                    } finally {
-                                        frame.recycle()
-                                    }
-                                }
-                                savingThumb = false
-                                Toast.makeText(
-                                    context,
-                                    if (ok) "Thumbnail updated" else "Couldn't update the thumbnail",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                        },
-                    )
-                }
 
                 Row(
                     Modifier.fillMaxWidth().padding(top = 16.dp)
@@ -336,6 +389,29 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                 Text("Reading the video…", color = Muted, style = MaterialTheme.typography.bodySmall)
             }
         }
+}
+
+/** Thumbnail · Trim, as one segmented control, the same shape as the tag picker's order switch. */
+@Composable
+private fun ModeSwitch(thumbnail: Boolean, enabled: Boolean, onMode: (Boolean) -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(10.dp)).background(Surface).padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        listOf(true to "Thumbnail", false to "Trim").forEach { (mode, label) ->
+            val on = mode == thumbnail
+            Text(
+                label,
+                color = if (on) Brass else Muted,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (on) Hairline else Color.Transparent)
+                    .selectable(selected = on, enabled = enabled, role = Role.Tab, onClick = { onMode(mode) })
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+            )
+        }
+    }
 }
 
 private fun clock(ms: Long): String {

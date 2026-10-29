@@ -97,6 +97,9 @@ class ViewerActivity : ComponentActivity() {
                         onRename = { id, name -> vm.rename(id, name) },
                         onEdit = { id -> startActivity(ImageEditActivity.intent(this, id)) },
                         onTrim = { id -> trimLauncher.launch(TrimActivity.intent(this, id)) },
+                        // Same screen; a thumbnail change returns no result, so the
+                        // viewer stays put rather than dropping back to the grid.
+                        onThumbnail = { id -> trimLauncher.launch(TrimActivity.intent(this, id, thumbnail = true)) },
                         onAddToAlbum = { id, albumId -> vm.addToAlbum(id, albumId) },
                         onAddToNewAlbum = { id, name -> vm.addToNewAlbum(id, name) },
                         onShare = { id ->
