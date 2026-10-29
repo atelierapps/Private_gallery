@@ -1,0 +1,291 @@
+package com.atelierapps.vault.ui.trim
+
+import android.view.LayoutInflater
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.ui.PlayerView
+import com.atelierapps.vault.R
+import com.atelierapps.vault.crypto.VaultCtrDataSource
+import com.atelierapps.vault.media.VideoTrimmer
+import com.atelierapps.vault.ui.theme.Bg
+import com.atelierapps.vault.ui.theme.Brass
+import com.atelierapps.vault.ui.theme.BrassInk
+import com.atelierapps.vault.ui.theme.Danger
+import com.atelierapps.vault.ui.theme.Hairline
+import com.atelierapps.vault.ui.theme.Ink
+import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.ScreenHeader
+import com.atelierapps.vault.ui.theme.SurfaceHigh
+import com.atelierapps.vault.ui.theme.VaultIconButton
+import kotlinx.coroutines.delay
+
+/**
+ * Pick the stretch to keep, see what it saves, cut.
+ *
+ * The preview plays only the chosen stretch and stops at its end, so what you
+ * watch is what you'll get. Moving a handle shows that frame. The size figure
+ * is an estimate by proportion — exact for a steady bitrate, close otherwise.
+ */
+@UnstableApi
+@Composable
+fun TrimScreen(
+    state: TrimState,
+    onRange: (Long, Long) -> Unit,
+    onReplace: (Boolean) -> Unit,
+    onTrim: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The player's own reading of the length, for clips with none stored. */
+    onDuration: (Long) -> Unit = {},
+) {
+    val item = state.item
+    // A trim can take a while on a long clip; don't let the screen sleep on it.
+    val view = LocalView.current
+    DisposableEffect(state.running) {
+        view.keepScreenOn = state.running
+        onDispose { view.keepScreenOn = false }
+    }
+
+    Column(modifier.fillMaxSize().background(Bg)) {
+        ScreenHeader("Trim", onClose)
+        if (item != null) {
+            TrimBody(item, state, onRange, onReplace, onTrim, onDuration)
+        }
+    }
+}
+
+@UnstableApi
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
+    item: com.atelierapps.vault.data.entity.MediaWithTags,
+    state: TrimState,
+    onRange: (Long, Long) -> Unit,
+    onReplace: (Boolean) -> Unit,
+    onTrim: () -> Unit,
+    onDuration: (Long) -> Unit,
+) {
+    val context = LocalContext.current
+        val player = remember(item.media.id) {
+            ExoPlayer.Builder(context)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(VaultCtrDataSource.Factory(context)))
+                .build()
+                .apply {
+                    setMediaItem(MediaItem.fromUri(VaultCtrDataSource.uriFor(item.media.id)))
+                    prepare()
+                }
+        }
+        DisposableEffect(player) { onDispose { player.release() } }
+        var playing by remember { mutableStateOf(false) }
+        DisposableEffect(player) {
+            val listener = object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY) onDuration(player.duration)
+                }
+            }
+            player.addListener(listener)
+            onDispose { player.removeListener(listener) }
+        }
+        // Stop at the end handle and park back at the start, so a replay shows
+        // the same stretch again.
+        LaunchedEffect(player, state.startMs, state.endMs) {
+            while (true) {
+                if (player.isPlaying && player.currentPosition >= state.endMs) {
+                    player.pause()
+                    player.seekTo(state.startMs)
+                }
+                delay(100)
+            }
+        }
+        LaunchedEffect(state.running) { if (state.running) player.pause() }
+
+        Box(
+            Modifier.fillMaxWidth().weight(1f).background(Color.Black),
+            contentAlignment = Alignment.Center,
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    (LayoutInflater.from(ctx).inflate(R.layout.vault_player_view, null) as PlayerView)
+                        .apply { this.player = player }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+        ) {
+            val duration = state.durationMs
+            if (duration > 0L) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    VaultIconButton(
+                        if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        if (playing) "Pause preview" else "Play the kept part",
+                        {
+                            if (playing) {
+                                player.pause()
+                            } else {
+                                val at = player.currentPosition
+                                if (at < state.startMs || at >= state.endMs) player.seekTo(state.startMs)
+                                player.play()
+                            }
+                        },
+                        enabled = !state.running,
+                    )
+                    Text(
+                        clock(state.startMs) + " – " + clock(state.endMs),
+                        color = Ink,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
+                RangeSlider(
+                    value = state.startMs.toFloat()..state.endMs.toFloat(),
+                    onValueChange = { range ->
+                        val start = range.start.toLong()
+                        val end = range.endInclusive.toLong()
+                        // Show the frame under whichever handle moved.
+                        if (start != state.startMs) player.seekTo(start) else if (end != state.endMs) player.seekTo(end)
+                        onRange(start, end)
+                    },
+                    valueRange = 0f..duration.toFloat(),
+                    enabled = !state.running,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Brass,
+                        activeTrackColor = Brass,
+                        inactiveTrackColor = Hairline,
+                    ),
+                )
+                val kept = (state.endMs - state.startMs).coerceAtLeast(0L)
+                val size = item.media.sizeBytes
+                val keptBytes = if (duration > 0L) size * kept / duration else size
+                Text(
+                    "Keeps " + clock(kept) + " of " + clock(duration) +
+                        " · about " + mb(keptBytes) + " of " + mb(size),
+                    color = Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    "Cuts land on the nearest keyframe, so it may start a second or two earlier. " +
+                        "Nothing is re-encoded: the kept part loses no quality.",
+                    color = Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 16.dp)
+                        .background(SurfaceHigh, MaterialTheme.shapes.medium)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text("Replace the original", color = Ink, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            if (state.replace) {
+                                "The original goes to Recently deleted, only once the trimmed copy is checked"
+                            } else {
+                                "Both are kept"
+                            },
+                            color = Muted,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    Switch(
+                        checked = state.replace,
+                        onCheckedChange = onReplace,
+                        enabled = !state.running,
+                        colors = SwitchDefaults.colors(checkedThumbColor = BrassInk, checkedTrackColor = Brass),
+                    )
+                }
+
+                state.error?.let {
+                    Text(it, color = Danger, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
+                }
+
+                if (state.running) {
+                    Text(
+                        "Trimming… " + state.progress + "%",
+                        color = Ink,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                    LinearProgressIndicator(
+                        progress = { state.progress / 100f },
+                        color = Brass,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                } else {
+                    val tooShort = kept < VideoTrimmer.MIN_KEEP_MILLIS
+                    val whole = state.startMs <= 0L && state.endMs >= duration
+                    Button(
+                        onClick = onTrim,
+                        enabled = !tooShort && !whole,
+                        colors = ButtonDefaults.buttonColors(containerColor = Brass, contentColor = BrassInk),
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(52.dp),
+                    ) {
+                        Text(
+                            when {
+                                whole -> "Move a handle to choose what to keep"
+                                tooShort -> "Keep at least a second"
+                                else -> "Trim"
+                            },
+                        )
+                    }
+                }
+            } else {
+                Text("Reading the video…", color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+}
+
+private fun clock(ms: Long): String {
+    val total = ms / 1000
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+}
+
+private fun mb(bytes: Long): String =
+    if (bytes >= 1_000_000_000L) "%.1f GB".format(bytes / 1e9) else "%.0f MB".format((bytes / 1e6).coerceAtLeast(1.0))

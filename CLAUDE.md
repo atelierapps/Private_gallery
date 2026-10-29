@@ -150,6 +150,12 @@ ui/          one package per screen; ui/theme is the design system
 - **Don't invent Material icon names.** `DriveFileMoveOutline` doesn't exist;
   that cost a build. Prefer one already used in the codebase, or accept the
   round trip knowingly.
+- **`MediaSaver.save` runs on the caller's thread.** It encrypts the whole
+  file synchronously, so every caller wraps it in `Dispatchers.IO` (the image
+  editor, the trimmer). From a `viewModelScope` without that, a big video
+  freezes the app.
+- **Media3 has its own `ExportResult`**, which clashes with the backup one in
+  `media/`; import it aliased (`as TransformerResult`).
 - **Verify call sites, not diffs.** A partly-applied edit once shipped a commit
   that couldn't compile because three call-site lines were missed. After
   changing a signature, check every caller programmatically.
@@ -181,7 +187,8 @@ around the current item and restores the order around it when turned off.
 Viewer buttons are white when off and brass when on, and shuffle, slideshow
 and loop confirm with a 2-second notice (rotate, speed, mute and tag don't),
 notes on any item (viewer ⋮ → Note…, searchable, carried through backups and
-image edits), view history (counted after 2 s on screen; Unwatched chip and a
+image edits), video trim (keeps one stretch; original to Recently deleted only
+after the copy verifies), view history (counted after 2 s on screen; Unwatched chip and a
 "Not seen lately" sort — history starts at schema 9, so everything older begins
 as unwatched), storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
@@ -198,28 +205,16 @@ corruption.
 
 ## Open queue
 
-1. **Video trim / split** — the one substantial feature not built. Media3
-   Transformer, same library the player already uses. The argument is *storage*,
-   not quality: keeping two good minutes of a 500 MB clip.
-
-   Both halves were checked against media3 1.5.1's actual source:
-
-   - *Input is solved.* `ExoPlayerAssetLoader.Factory(Context, DecoderFactory,
-     Clock, MediaSource.Factory)` exists, so Transformer reads through the same
-     `VaultCtrDataSource` the player uses. Nothing new to build.
-   - *Output is the real problem, and it was the half nobody had costed.*
-     `Transformer.start()` only takes a **file path**, and a custom
-     `Muxer.Factory` doesn't rescue it: `Mp4Muxer.Builder` and
-     `FragmentedMp4Muxer.Builder` both demand a concrete `FileOutputStream`
-     because `Mp4Muxer` seeks via `outputStream.getChannel()` to backfill the
-     moov atom. There is no stream hook to encrypt through.
-
-   So trim **cannot** be done without a plaintext MP4 landing on disk. The
-   least-bad shape is: mux into `cacheDir`, encrypt it into the vault, then
-   shred and delete the temp — plaintext exists only for the length of the
-   run, in app-private storage under the platform's own file-based encryption.
-   That is a weakening of "no plaintext ever hits disk" and is the owner's
-   call to make, not a detail to decide in passing.
+1. **Video trim — built** (viewer ⋮ → Trim…, `media/VideoTrimmer.kt`, `ui/trim/`).
+   The owner accepted the one exception to "no plaintext on disk": Transformer
+   only writes to a file path (`Mp4Muxer` seeks via `getChannel()` to backfill
+   the moov atom), so the kept part is muxed to `tmp/trim-<uuid>.mp4`, encrypted
+   in through `MediaSaver`, and deleted in `finally`; the launch sweep removes
+   any `trim-` file regardless of age. No overwrite-before-delete: on flash it
+   erases nothing. Input is read through `VaultCtrDataSource` via
+   `ExoPlayerAssetLoader.Factory`. No effects, so it transmuxes (no re-encode,
+   cuts on keyframes). The original is binned only after the copy is probed,
+   saved and passes `MediaIntegrity`. Split (keep several parts) is not built.
 2. **Foreground service for long transfers.** Export/restore currently survive
    leaving the screen (app-scoped coroutine) and screen-off (wake lock), but not
    deep Doze or process death. Fixing that needs WorkManager + a visible

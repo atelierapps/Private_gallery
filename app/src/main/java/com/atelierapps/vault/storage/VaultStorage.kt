@@ -11,6 +11,7 @@ import java.util.UUID
  *   vault/<uuid>   encrypted media blob
  *   thumbs/<uuid>  encrypted 512px thumbnail
  *   tmp/<uuid>     plaintext spool during share/import — swept on launch (§5.1)
+ *   tmp/trim-<uuid>.mp4  plaintext trim output, alive only while a trim runs
  */
 class VaultStorage(context: Context) {
 
@@ -30,6 +31,13 @@ class VaultStorage(context: Context) {
 
     fun newTempFile(): File = File(tmpDir, UUID.randomUUID().toString())
 
+    /** Where a trim writes its (plaintext) output; see [sweepTemp]. */
+    fun newTrimFile(): File = File(tmpDir, TRIM_PREFIX + UUID.randomUUID().toString() + ".mp4")
+
+    companion object {
+        private const val TRIM_PREFIX = "trim-"
+    }
+
     /**
      * Delete orphaned plaintext spools left by a crash mid-encrypt (spec §5.1).
      * Only touches files older than [olderThanMillis] so an in-flight spool from
@@ -38,7 +46,12 @@ class VaultStorage(context: Context) {
     fun sweepTemp(olderThanMillis: Long = 6 * 60 * 60 * 1000L, now: Long) {
         val cutoff = now - olderThanMillis
         tmpDir.listFiles()?.forEach { f ->
-            if (f.isFile && f.lastModified() < cutoff) f.delete()
+            // A trim's output only exists while the trim runs, inside this
+            // process — so at launch any such file is from a run that died
+            // partway, and goes regardless of age. Unlike an import spool, no
+            // worker can be about to resume it.
+            val orphanedTrim = f.name.startsWith(TRIM_PREFIX)
+            if (f.isFile && (orphanedTrim || f.lastModified() < cutoff)) f.delete()
         }
     }
 }

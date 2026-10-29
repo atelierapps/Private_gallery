@@ -1,5 +1,7 @@
 package com.atelierapps.vault.ui.viewer
 
+import com.atelierapps.vault.ui.trim.TrimActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -30,6 +32,13 @@ import com.atelierapps.vault.ui.edit.ImageEditActivity
 class ViewerActivity : ComponentActivity() {
 
     private val vm: ViewerViewModel by viewModels()
+
+    // A finished trim changes the library under this viewer's snapshot (a new
+    // item, and maybe the original binned), so go back to the grid, which
+    // shows both correctly, rather than keep paging a stale list.
+    private val trimLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == RESULT_OK) finish()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +96,7 @@ class ViewerActivity : ComponentActivity() {
                         onVideoRotation = { id, degrees -> vm.setVideoRotation(id, degrees) },
                         onRename = { id, name -> vm.rename(id, name) },
                         onEdit = { id -> startActivity(ImageEditActivity.intent(this, id)) },
+                        onTrim = { id -> trimLauncher.launch(TrimActivity.intent(this, id)) },
                         onAddToAlbum = { id, albumId -> vm.addToAlbum(id, albumId) },
                         onAddToNewAlbum = { id, name -> vm.addToNewAlbum(id, name) },
                         onShare = { id ->

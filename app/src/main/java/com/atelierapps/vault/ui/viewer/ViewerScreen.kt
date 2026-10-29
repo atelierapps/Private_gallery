@@ -123,6 +123,8 @@ fun ViewerScreen(
     onVideoRotation: (id: String, degrees: Int?) -> Unit = { _, _ -> },
     onRename: (id: String, name: String) -> Unit = { _, _ -> },
     onEdit: (id: String) -> Unit = {},
+    /** Open the trim screen for a video. */
+    onTrim: (id: String) -> Unit = {},
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
     onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
     /** Save (or, with null, clear) the item's note. */
@@ -306,6 +308,11 @@ fun ViewerScreen(
                     // it would actually do something.
                     onEdit = if (!isVideo) {
                         fun() { onEdit(current.media.id) }
+                    } else {
+                        null
+                    },
+                    onTrim = if (isVideo) {
+                        fun() { onTrim(current.media.id) }
                     } else {
                         null
                     },
@@ -751,6 +758,7 @@ private fun TopBar(
     onShare: () -> Unit,
     onRename: () -> Unit,
     onEdit: (() -> Unit)?,
+    onTrim: (() -> Unit)?,
     onTag: () -> Unit,
     onNote: () -> Unit,
     onAddToAlbum: () -> Unit,
@@ -792,6 +800,9 @@ private fun TopBar(
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Tags…") }, onClick = { menu = false; onTag() })
                 DropdownMenuItem(text = { Text("Note…") }, onClick = { menu = false; onNote() })
+                if (onTrim != null) {
+                    DropdownMenuItem(text = { Text("Trim…") }, onClick = { menu = false; onTrim() })
+                }
                 DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
                 if (onEdit != null) {
                     DropdownMenuItem(

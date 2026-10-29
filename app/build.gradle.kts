@@ -80,6 +80,10 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.datasource)
+    // Video trim. Same version as the player. Its manifest, and those of the
+    // effect, muxer and container modules it pulls in, declare no permissions
+    // (checked at the 1.5.1 tag) — re-audit the merged manifest on any bump.
+    implementation(libs.media3.transformer)
 
     // Local JVM unit tests (crypto envelope + CTR seek). Run: ./gradlew test
     testImplementation(libs.junit)

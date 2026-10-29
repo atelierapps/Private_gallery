@@ -211,6 +211,12 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
+        <!-- Video trim: keep one stretch of a clip. -->
+        <activity
+            android:name=".ui.trim.TrimActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vault" />
+
         <!-- Importer: MediaStore picker + folder import (spec §4, §4.1). -->
         <activity
             android:name=".imports.ImportActivity"
