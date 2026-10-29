@@ -50,6 +50,24 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Shuffle everything except [id], which stays at its own index.
+     *
+     * Moving it to the front would mean scrolling the pager to page 0 after
+     * the new list lands, and for that moment page 0 of the old list shows:
+     * a flash, and the clip you were watching restarts. Keeping it in place
+     * changes nothing on screen; what comes next is what's random. Repeat-all
+     * wraps the slideshow round to the items now before it.
+     */
+    fun shuffleAround(id: String) {
+        val list = media.value
+        val idx = list.indexOfFirst { it.media.id == id }
+        if (idx < 0 || list.size < 2) return
+        val others = (list.subList(0, idx) + list.subList(idx + 1, list.size)).shuffled().toMutableList()
+        others.add(idx, list[idx])
+        media.value = others
+    }
+
     /** Rename an item in place, keeping the pager snapshot in sync. */
     fun rename(id: String, newName: String) {
         val clean = newName.trim()

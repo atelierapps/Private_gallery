@@ -1,5 +1,7 @@
 package com.atelierapps.vault.ui.viewer
 
+import com.atelierapps.vault.ui.theme.ScrimSoft
+import androidx.compose.material.icons.outlined.Shuffle
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
@@ -131,6 +133,8 @@ fun VideoPlayer(
     onToggleSlideshow: () -> Unit = {},
     /** Open the tag sheet for this clip without leaving it. */
     onTag: () -> Unit = {},
+    /** Reshuffle what the viewer is showing and start the slideshow. */
+    onShuffle: () -> Unit = {},
     onDismissDrag: (Float) -> Unit = {},
     onDismissEnd: () -> Unit = {},
     /** Where a previous run of the app left off, 0 for the start. */
@@ -576,8 +580,10 @@ fun VideoPlayer(
             val dur = durationMs.coerceAtLeast(1L)
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                    .background(Scrim).navigationBarsPadding()
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                    // 60%, not 80%: enough to keep white text readable over a
+                    // white frame, and no more, so the clip stays visible.
+                    .background(ScrimSoft).navigationBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
             ) {
                 // Row 1 — scrubber gets the full width, so dragging is easy.
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -617,52 +623,16 @@ fun VideoPlayer(
                         tint = if (slideshowActive) Brass else Color(0x99FFFFFF),
                         onClick = onToggleSlideshow,
                     )
+                    // Shuffle sits with slideshow and loop: the three that decide
+                    // what plays next, together under the thumb. It reshuffles
+                    // whatever this viewer was opened on and starts the show.
                     CtlIcon(
-                        Icons.Outlined.LocalOffer,
-                        "Tags",
+                        Icons.Outlined.Shuffle,
+                        "Shuffle play",
                         Modifier.weight(1f),
                         tint = Color(0x99FFFFFF),
-                        onClick = onTag,
+                        onClick = onShuffle,
                     )
-
-                    // Mute is a standing setting, not a per-clip one: it persists
-                    // and also switches off the swipe volume gesture.
-                    CtlIcon(
-                        if (muted) Icons.AutoMirrored.Outlined.VolumeOff else Icons.AutoMirrored.Outlined.VolumeUp,
-                        if (muted) "Unmute" else "Mute",
-                        Modifier.weight(1f),
-                        tint = if (muted) Brass else Color(0x99FFFFFF),
-                    ) {
-                        muted = !muted
-                        VideoPrefs.setMuted(context, muted)
-                        hud = if (muted) "Muted" else "Sound on"
-                    }
-
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        CtlText(speedLabel(SPEEDS[speedIdx]), tint = Brass) { speedMenu = true }
-                        DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
-                            SPEEDS.forEachIndexed { i, sp ->
-                                DropdownMenuItem(
-                                    text = { Text((if (i == speedIdx) "✓  " else "     ") + speedLabel(sp)) },
-                                    onClick = { speedIdx = i; speedMenu = false },
-                                )
-                            }
-                        }
-                    }
-                    // One tap per quarter turn, for files that were encoded the
-                    // wrong way up — which no amount of phone auto-rotate fixes,
-                    // because the phone is not the thing that is sideways.
-                    CtlIcon(
-                        Icons.Outlined.RotateRight,
-                        "Rotate video",
-                        Modifier.weight(1f),
-                        tint = if (videoRotation != 0) Brass else Color(0x99FFFFFF),
-                    ) {
-                        videoRotation = (videoRotation + 90) % 360
-                        onRotationChanged(videoRotation.takeIf { it != 0 })
-                        hud = if (videoRotation == 0) "Upright" else "" + videoRotation + "°"
-                    }
-
                     // Loop is unavailable during a slideshow — it would stop the
                     // clip from ever ending, which is what advances the show.
                     CtlIcon(
@@ -676,6 +646,49 @@ fun VideoPlayer(
                         },
                         enabled = !slideshowActive,
                     ) { loop = !loop }
+                    // One tap per quarter turn, for files that were encoded the
+                    // wrong way up — which no amount of phone auto-rotate fixes,
+                    // because the phone is not the thing that is sideways.
+                    CtlIcon(
+                        Icons.Outlined.RotateRight,
+                        "Rotate video",
+                        Modifier.weight(1f),
+                        tint = if (videoRotation != 0) Brass else Color(0x99FFFFFF),
+                    ) {
+                        videoRotation = (videoRotation + 90) % 360
+                        onRotationChanged(videoRotation.takeIf { it != 0 })
+                        hud = if (videoRotation == 0) "Upright" else "" + videoRotation + "°"
+                    }
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        CtlText(speedLabel(SPEEDS[speedIdx]), tint = if (SPEEDS[speedIdx] == 1f) Color.White else Brass) { speedMenu = true }
+                        DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
+                            SPEEDS.forEachIndexed { i, sp ->
+                                DropdownMenuItem(
+                                    text = { Text((if (i == speedIdx) "✓  " else "     ") + speedLabel(sp)) },
+                                    onClick = { speedIdx = i; speedMenu = false },
+                                )
+                            }
+                        }
+                    }
+                    CtlIcon(
+                        Icons.Outlined.LocalOffer,
+                        "Tags",
+                        Modifier.weight(1f),
+                        tint = Color(0x99FFFFFF),
+                        onClick = onTag,
+                    )
+                    // Mute is a standing setting, not a per-clip one: it persists
+                    // and also switches off the swipe volume gesture.
+                    CtlIcon(
+                        if (muted) Icons.AutoMirrored.Outlined.VolumeOff else Icons.AutoMirrored.Outlined.VolumeUp,
+                        if (muted) "Unmute" else "Mute",
+                        Modifier.weight(1f),
+                        tint = if (muted) Brass else Color(0x99FFFFFF),
+                    ) {
+                        muted = !muted
+                        VideoPrefs.setMuted(context, muted)
+                        hud = if (muted) "Muted" else "Sound on"
+                    }
                 }
             }
         }
@@ -783,16 +796,16 @@ private fun describePlayback(error: PlaybackException): PlaybackProblem {
         val msg = cause.message.orEmpty()
         when {
             name.contains("UserNotAuthenticated") -> return PlaybackProblem(
-                "The vault needs a fresh unlock before it can open this one. Lock it, " +
+                "This needs a fresh unlock before it can open. Lock the app, " +
                     "unlock it, and it will play. The file is fine.",
                 code,
             )
             name.contains("KeyPermanentlyInvalidated") -> return PlaybackProblem(
-                "This phone's vault key no longer works, so this video can't be decrypted.",
+                "This phone's encryption key no longer works, so this video can't be decrypted.",
                 code,
             )
             msg.startsWith("blob missing") -> return PlaybackProblem(
-                "This video's file is missing from the vault.",
+                "This video's file is missing from the app's storage.",
                 code,
             )
         }
@@ -810,7 +823,7 @@ private fun describePlayback(error: PlaybackException): PlaybackProblem {
             "This phone's video decoder couldn't play it. That's a limit of the phone, " +
                 "not damage to the file."
         PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
-            "This video's file is missing from the vault."
+            "This video's file is missing from the app's storage."
         else -> "Playback failed."
     }
     return PlaybackProblem(message, code)

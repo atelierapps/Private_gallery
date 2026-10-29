@@ -36,7 +36,9 @@ server, no account, and no network access of any kind.
    bump — a library that merges one in must be caught.
 3. **Stay inconspicuous.** No "vault"/padlock branding, no launcher name that
    gives it away, and think twice before adding anything that posts a visible
-   notification.
+   notification. That includes **text on screen** and **system dialogs**: the
+   fingerprint prompt once read "Unlock Vault — Your media is encrypted on this
+   device". `BiometricAuth` now titles itself with the active disguise's name.
 4. **Never lose the owner's media.** Anything that rewrites live data gets a
    verify-then-swap design and a "back up first" warning in the reply.
 
@@ -96,6 +98,15 @@ ui/          one package per screen; ui/theme is the design system
   per-chip live counts and the "on this item" group. Recent tags are kept in
   `TagPrefs` as **ids only** — prefs are plaintext, and a list of tag names
   would be a summary of the library sitting outside the encrypted database.
+- **Every chip is `VaultChip` or `VaultActionChip`** (`ui/theme/VaultChips.kt`).
+  Material's selected chip fills with `secondaryContainer`, which was never
+  mapped, so every selected chip drew in stock M3 purple-grey. Selected is now a
+  brass outline + brass label + check on `SurfaceHigh`; never call `FilterChip`
+  / `InputChip` / `AssistChip` directly.
+- **The design lives on two Artifacts:** the Link Design System
+  (https://claude.ai/artifact/TZhopxithumxZJzLbFZbdp — tokens, components,
+  brand rules) and the screen canvas (https://claude.ai/artifact/Mbv6vHi5s9qFUWtDTRWs2L).
+  Screens are rebuilt from the canvas in batches.
 
 ## Traps that have already cost time here
 
@@ -163,7 +174,8 @@ manager + auto-tag rules, duplicate finder, search, six sort orders, date
 sections, fast scroller, one-tap Favourites / Untagged / Short filter chips
 (Source was dropped from the bar — it only ever said "Download"; sources now
 sit at the bottom of the Type menu), play a selection, every video loops by
-default unless a slideshow is running (Settings → Playback), storage stats, camera capture, share-in target, durable
+default unless a slideshow is running (Settings → Playback), shuffle in the
+viewer's control row (not the home bar) — it shuffles around the current item, storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
 per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button, app disguise + custom home-screen shortcut, encrypted (or plaintext)

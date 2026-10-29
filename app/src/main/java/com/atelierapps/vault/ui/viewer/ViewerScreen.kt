@@ -1,5 +1,16 @@
 package com.atelierapps.vault.ui.viewer
 
+import com.atelierapps.vault.ui.theme.Hairline
+import com.atelierapps.vault.ui.theme.SurfaceHigh
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ModalBottomSheet
+import com.atelierapps.vault.ui.theme.ScrimSoft
+import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -114,6 +125,8 @@ fun ViewerScreen(
     onEdit: (id: String) -> Unit = {},
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
     onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
+    /** Reshuffle everything around this item; the slideshow then starts. */
+    onShuffle: (id: String) -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val autoplayPref = remember { com.atelierapps.vault.session.VideoPrefs.autoplay(context) }
@@ -228,6 +241,7 @@ fun ViewerScreen(
                 onEnded = { if (playMode) advance() },
                 onToggleSlideshow = { playMode = !playMode },
                 onTag = { taggingItem = media[page] },
+                onShuffle = { onShuffle(media[page].media.id); playMode = true },
             )
         }
 
@@ -269,7 +283,7 @@ fun ViewerScreen(
                     // the video bar now carries get a strip here — same buttons,
                     // same size, same corner of the screen either way.
                     Row(
-                        Modifier.fillMaxWidth().background(Scrim).padding(vertical = 2.dp),
+                        Modifier.fillMaxWidth().background(ScrimSoft).padding(vertical = 2.dp),
                         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -278,6 +292,12 @@ fun ViewerScreen(
                             if (playMode) "Pause slideshow" else "Play all",
                             tint = if (playMode) Brass else Color(0x99FFFFFF),
                             onClick = { playMode = !playMode },
+                        )
+                        CtlIcon(
+                            Icons.Outlined.Shuffle,
+                            "Shuffle play",
+                            tint = Color(0x99FFFFFF),
+                            onClick = { onShuffle(current.media.id); playMode = true },
                         )
                         CtlIcon(
                             Icons.Outlined.LocalOffer,
@@ -381,7 +401,15 @@ fun ViewerScreen(
  * Tag the item you're watching, without leaving it. Chips show the tag's current
  * state, so this both adds and removes — a mis-tap mid-playback is undoable
  * here rather than only from the grid.
+ *
+ * A bottom sheet rather than a centred dialog: it opens under the thumb that
+ * tapped the tag button, and it leaves the clip visible above it. That is the
+ * point of tagging from here — the picture is the reminder of what to tag it
+ * with — so the shade behind is light (30%) and the sheet stops short of the
+ * frame. The sheet itself stays opaque: grey text on a see-through sheet fails
+ * the moment a bright frame sits behind it.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ViewerTagDialog(
     allTags: List<com.atelierapps.vault.data.entity.TagEntity>,
@@ -391,37 +419,70 @@ private fun ViewerTagDialog(
 ) {
     val picked = remember(applied) { mutableStateListOf<String>().apply { addAll(applied) } }
     var newTag by remember { mutableStateOf("") }
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("Tags") },
-        text = {
-            Column {
-                if (allTags.isEmpty()) {
-                    Text("No tags yet — name one below.", color = Muted, fontSize = 13.sp)
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = SurfaceHigh,
+        contentColor = Ink,
+        scrimColor = Color(0x4D06080A),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().imePadding().padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Tags", color = Ink, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                if (applied.isNotEmpty()) {
+                    Text(
+                        "" + applied.size + " on this item",
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
-                TagPicker(
-                    tags = allTags,
-                    isPicked = { name -> picked.any { it.equals(name, ignoreCase = true) } },
-                    onToggle = { name ->
-                        if (picked.any { it.equals(name, ignoreCase = true) }) {
-                            picked.removeAll { it.equals(name, ignoreCase = true) }
-                        } else {
-                            picked.add(name)
-                        }
-                    },
-                    text = newTag,
-                    onTextChange = { newTag = it },
+            }
+            if (allTags.isEmpty()) {
+                Text(
+                    "No tags yet — name one below.",
+                    color = Muted,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 6.dp),
                 )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val all = (picked + newTag.split(",")).map { it.trim() }.filter { it.isNotEmpty() }
-                onApply(all.distinctBy { it.lowercase() })
-            }) { Text("Save", color = Brass) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+            TagPicker(
+                tags = allTags,
+                isPicked = { name -> picked.any { it.equals(name, ignoreCase = true) } },
+                onToggle = { name ->
+                    if (picked.any { it.equals(name, ignoreCase = true) }) {
+                        picked.removeAll { it.equals(name, ignoreCase = true) }
+                    } else {
+                        picked.add(name)
+                    }
+                },
+                text = newTag,
+                onTextChange = { newTag = it },
+                modifier = Modifier.padding(top = 10.dp),
+                maxHeight = 260.dp,
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = Hairline, contentColor = Ink),
+                    modifier = Modifier.weight(1f).height(48.dp),
+                ) { Text("Cancel") }
+                Button(
+                    onClick = {
+                        val all = (picked + newTag.split(",")).map { it.trim() }.filter { it.isNotEmpty() }
+                        onApply(all.distinctBy { it.lowercase() })
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Brass, contentColor = BrassInk),
+                    modifier = Modifier.weight(1f).height(48.dp),
+                ) { Text("Save") }
+            }
+        }
+    }
 }
 
 @Composable
@@ -516,6 +577,7 @@ private fun ViewerPage(
     onEnded: () -> Unit,
     onToggleSlideshow: () -> Unit,
     onTag: () -> Unit,
+    onShuffle: () -> Unit,
 ) {
     if (item.media.mimeType.startsWith("video/")) {
         VideoPlayer(
@@ -528,6 +590,7 @@ private fun ViewerPage(
             onEnded = onEnded,
             onToggleSlideshow = onToggleSlideshow,
             onTag = onTag,
+            onShuffle = onShuffle,
             onDismissDrag = onDismissDrag,
             onDismissEnd = onDismissEnd,
             resumeFrom = item.media.resumePositionMillis ?: 0L,
@@ -621,7 +684,7 @@ private fun TopBar(
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().background(Color(0x99000000))
+        Modifier.fillMaxWidth().background(ScrimSoft)
             .statusBarsPadding().displayCutoutPadding()
             .padding(horizontal = 2.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -677,7 +740,7 @@ private fun PlayControls(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier.fillMaxWidth().background(Scrim).navigationBarsPadding()
+        modifier.fillMaxWidth().background(ScrimSoft).navigationBarsPadding()
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),

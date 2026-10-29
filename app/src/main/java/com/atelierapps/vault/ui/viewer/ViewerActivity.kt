@@ -75,6 +75,7 @@ class ViewerActivity : ComponentActivity() {
                         onBack = { finish() },
                         onDelete = { id -> vm.delete(id) { finish() } },
                         onTogglePin = { id -> vm.togglePin(id) },
+                        onShuffle = { id -> vm.shuffleAround(id) },
                         albums = albums,
                         allTags = allTags,
                         onSetTags = { id, names -> vm.setTags(id, names) },

@@ -55,7 +55,6 @@ import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Icon
@@ -217,16 +216,6 @@ fun VaultHome(
                     onExport = onExport,
                     onRestore = onRestore,
                     onCamera = onCamera,
-                    onShuffle = {
-                        val order = vm.shuffledIds()
-                        if (order.isNotEmpty()) {
-                            com.atelierapps.vault.ui.viewer.ViewerSession.orderedIds = order
-                            com.atelierapps.vault.ui.viewer.ViewerSession.startPlaying = true
-                            // Shuffle isn't anchored to a tile, so open the plain way.
-                            TileAnchor.clear()
-                            onOpen(order.first())
-                        }
-                    },
                     onTrash = onTrash,
                     onDuplicates = onDuplicates,
                     onRules = onRules,
@@ -549,7 +538,6 @@ private fun TopAppRow(
     onExport: () -> Unit,
     onRestore: () -> Unit,
     onCamera: () -> Unit,
-    onShuffle: () -> Unit,
     onTrash: () -> Unit,
     onDuplicates: () -> Unit,
     onRules: () -> Unit,
@@ -573,7 +561,6 @@ private fun TopAppRow(
             modifier = Modifier.weight(1f),
         )
         VaultIconButton(Icons.Outlined.PhotoCamera, "Camera", onCamera)
-        VaultIconButton(Icons.Outlined.Shuffle, "Shuffle play", onShuffle)
         VaultIconButton(Icons.Outlined.Search, "Search", onToggleSearch)
         Box {
             VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true })
