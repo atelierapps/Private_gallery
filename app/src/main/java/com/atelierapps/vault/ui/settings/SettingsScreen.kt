@@ -1,5 +1,7 @@
 package com.atelierapps.vault.ui.settings
 
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,6 +90,14 @@ fun SettingsScreen(
     var lockButton by remember { mutableStateOf(LockButtonPrefs.enabled.value) }
     var lockOpacity by remember { mutableFloatStateOf(LockButtonPrefs.opacity.value) }
     val lastBackup by BackupPrefs.lastBackupAtMillis.collectAsState()
+    // What the last backup doesn't have. A date alone ("12 Oct") doesn't say
+    // whether it matters; "41 added since" does. Counted by import time, so a
+    // restore onto this same install also counts as new — on a fresh install
+    // there is no last backup to count from, so it never shows there.
+    val repo = remember { com.atelierapps.vault.VaultGraph.repository(context) }
+    val addedSince by remember(lastBackup) {
+        if (lastBackup == 0L) kotlinx.coroutines.flow.flowOf(0) else repo.observeImportedSince(lastBackup)
+    }.collectAsState(initial = 0)
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     }
@@ -107,28 +117,31 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                 )
+                if (lastBackup != 0L) {
+                    Text(
+                        when (addedSince) {
+                            0 -> "Nothing added since"
+                            1 -> "1 item added since — not in that backup"
+                            else -> "$addedSince items added since — not in that backup"
+                        },
+                        color = if (addedSince > 0) Danger else Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
                 Text(
-                    "Everything here lives in this app's private storage, and the key " +
-                        "that decrypts it belongs to this install. Uninstalling the app " +
-                        "deletes both — there is no cloud copy and no way to recover it " +
-                        "afterwards, by any means. An export is the only copy that " +
-                        "survives.",
+                    "Everything lives in this app's storage, under a key that belongs " +
+                        "to this install. Uninstalling deletes both, with no way back. " +
+                        "An export is the only copy that survives.",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 8.dp),
                 )
-                Row(
-                    Modifier.fillMaxWidth().clickable(onClick = onBackUp).padding(top = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Back up now",
-                        color = Brass,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Icon(Icons.Outlined.KeyboardArrowRight, null, tint = Brass, modifier = Modifier.size(20.dp))
-                }
+                Button(
+                    onClick = onBackUp,
+                    colors = ButtonDefaults.buttonColors(containerColor = Brass, contentColor = BrassInk),
+                    modifier = Modifier.padding(top = 12.dp),
+                ) { Text("Back up now") }
             }
 
             SettingsCard("Playback") {

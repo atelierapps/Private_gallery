@@ -40,6 +40,7 @@ class VaultRepository(
     fun observeTrash() = mediaDao.observeTrash()
     fun observeTrashCount() = mediaDao.observeTrashCount()
     fun observeSourceCounts() = mediaDao.observeSourceCounts()
+    fun observeImportedSince(since: Long) = mediaDao.observeImportedSince(since)
     fun observeTags(): Flow<List<TagEntity>> = tagDao.observeAll()
 
     suspend fun allTrash() = withContext(Dispatchers.IO) { mediaDao.allTrash() }

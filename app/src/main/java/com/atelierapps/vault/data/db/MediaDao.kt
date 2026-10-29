@@ -103,6 +103,10 @@ interface MediaDao {
     @Query("DELETE FROM media WHERE id = :id")
     suspend fun delete(id: String)
 
+    /** Live items added after [since] — what the last backup doesn't have. */
+    @Query("SELECT COUNT(*) FROM media WHERE deletedAtMillis IS NULL AND importedAtMillis > :since")
+    fun observeImportedSince(since: Long): Flow<Int>
+
     /**
      * Distinct sources with counts — the "By source" filter chips (§7). Keyed by
      * the app package when known (share path) and otherwise by the source label,
