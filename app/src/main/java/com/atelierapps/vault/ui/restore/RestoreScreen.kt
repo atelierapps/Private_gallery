@@ -1,5 +1,6 @@
 package com.atelierapps.vault.ui.restore
 
+import com.atelierapps.vault.media.TransferService
 import android.app.Application
 import android.content.Intent
 import android.graphics.Color as AndroidColor
@@ -123,7 +124,10 @@ class RestoreViewModel(app: Application) : AndroidViewModel(app) {
             TransferWake.acquire(getApplication())
             val r = try {
                 runCatching {
-                    VaultRestorer.restoreAll(getApplication(), uri, passphrase) { progress.value = it }
+                    VaultRestorer.restoreAll(getApplication(), uri, passphrase) {
+                        progress.value = it
+                        TransferService.progress(getApplication(), it.done, it.total)
+                    }
                 }
             } finally {
                 TransferWake.release()

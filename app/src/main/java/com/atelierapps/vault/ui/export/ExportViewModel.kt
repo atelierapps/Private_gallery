@@ -1,5 +1,6 @@
 package com.atelierapps.vault.ui.export
 
+import com.atelierapps.vault.media.TransferService
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -144,7 +145,10 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching {
                     VaultExporter.exportAll(
                         getApplication(), treeUri, scopeIds, passphrase,
-                    ) { progress.value = it }
+                    ) {
+                        progress.value = it
+                        TransferService.progress(getApplication(), it.done, it.total)
+                    }
                 }
             } finally {
                 TransferWake.release()
@@ -191,7 +195,12 @@ class ExportViewModel(app: Application) : AndroidViewModel(app) {
         ExportRun.scope.launch {
             TransferWake.acquire(getApplication())
             val outcome = try {
-                runCatching { VaultExporter.retryFailed(getApplication(), retry) { progress.value = it } }
+                runCatching {
+                    VaultExporter.retryFailed(getApplication(), retry) {
+                        progress.value = it
+                        TransferService.progress(getApplication(), it.done, it.total)
+                    }
+                }
             } finally {
                 TransferWake.release()
             }

@@ -81,7 +81,7 @@ class StorageViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         check.value = CheckState(running = true)
         viewModelScope.launch(Dispatchers.IO) {
-            TransferWake.acquire(app)
+            TransferWake.acquire(app, "Checking files")
             try {
                 // Videos first: they are what was reported broken, so their
                 // answer arrives before the photos'.

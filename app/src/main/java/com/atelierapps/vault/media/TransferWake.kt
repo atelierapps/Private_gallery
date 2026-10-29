@@ -24,6 +24,7 @@ object TransferWake {
     private const val TIMEOUT_MS = 4L * 60 * 60 * 1000 // 4 hours
 
     private var lock: PowerManager.WakeLock? = null
+    private var appContext: Context? = null
     @Volatile private var holders = 0
 
     /**
@@ -34,9 +35,20 @@ object TransferWake {
      */
     val busy: Boolean get() = holders > 0
 
+    /**
+     * [label] is the notification's wording while [TransferService] keeps the
+     * process alive: what a file app would say, never what this one is.
+     */
     @Synchronized
-    fun acquire(context: Context) {
+    fun acquire(context: Context, label: String = "Copying files") {
         holders++
+        // The wake lock keeps the CPU up; the service keeps the process from
+        // being frozen by deep Doze or killed for memory. Started once, by the
+        // first holder.
+        if (holders == 1) {
+            appContext = context.applicationContext
+            TransferService.start(context.applicationContext, label)
+        }
         if (lock?.isHeld == true) return
         runCatching {
             val power = context.getSystemService(PowerManager::class.java)
@@ -51,6 +63,8 @@ object TransferWake {
     fun release() {
         holders = (holders - 1).coerceAtLeast(0)
         if (holders > 0) return
+        appContext?.let { TransferService.stop(it) }
+        appContext = null
         runCatching { lock?.takeIf { it.isHeld }?.release() }
             .onFailure { Log.e(TAG, "releasing the wake lock failed", it) }
         lock = null

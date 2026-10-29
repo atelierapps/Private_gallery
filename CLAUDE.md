@@ -225,10 +225,16 @@ corruption.
    part" collects ranges, and each is cut as its own item ("clip (part 2).mp4");
    the original is binned only after *every* part verifies, and a failure stops
    the run with the original kept and the landed parts left as new items.
-2. **Foreground service for long transfers.** Export/restore currently survive
-   leaving the screen (app-scoped coroutine) and screen-off (wake lock), but not
-   deep Doze or process death. Fixing that needs WorkManager + a visible
-   notification — offered and not yet wanted, because of constraint 3.
+2. **Foreground service for long transfers — built** (`media/TransferService.kt`).
+   Started and stopped by `TransferWake` (first acquire / last release), so
+   export, retry, restore and the library check all get it. It does no work; it
+   only keeps the process at foreground priority through deep Doze. Owner-approved
+   notification: silent, low importance, disguise name as title, "Copying files
+   120 / 482". **The app never requests POST_NOTIFICATIONS** — on 13+ the
+   notification only shows if allowed in system settings; the protection works
+   regardless. dataSync type, START_NOT_STICKY, stops on Android 15's 6-hour
+   `onTimeout`. HyperOS battery saver can still kill it; the owner can exempt
+   the app in battery settings.
 
 ### Found by the September audit and deliberately left
 

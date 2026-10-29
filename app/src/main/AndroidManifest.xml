@@ -26,6 +26,12 @@
     -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Keeps a long backup/restore alive through deep Doze (TransferService).
+         No POST_NOTIFICATIONS: the app never asks, so its notification only
+         shows if notifications were allowed in system settings. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <!-- In-app camera: capture straight into the vault (never touches the gallery). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -210,6 +216,11 @@
             android:name=".ui.edit.ImageEditActivity"
             android:exported="false"
             android:theme="@style/Theme.Vault" />
+
+        <service
+            android:name=".media.TransferService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Sort untagged: one item at a time, tag / skip / delete. -->
         <activity
