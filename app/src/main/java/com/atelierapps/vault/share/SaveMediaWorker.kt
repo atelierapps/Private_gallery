@@ -1,5 +1,6 @@
 package com.atelierapps.vault.share
 
+import android.util.Log
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -46,10 +47,27 @@ class SaveMediaWorker(
             ),
         )
 
+        // Nothing to save, now or ever: the spool is gone (the launch sweep
+        // removes spools after six hours). Retrying this used to go on forever.
+        if (!java.io.File(tempPath).exists()) {
+            Log.w(TAG, "share spool missing, giving up: " + tempPath)
+            return Result.failure()
+        }
+
         val result = MediaSaver(applicationContext).save(request)
-        // Retry transient failures once (e.g. Keystore hiccup); success is idempotent-ish
-        // because a re-run recomputes the hash and dedups.
-        return if (result.isSuccess) Result.success() else Result.retry()
+        if (result.isSuccess) return Result.success()
+        // Retry transient failures (a Keystore hiccup) with WorkManager's
+        // backoff; a re-run recomputes the hash and dedups, so it's safe. But
+        // not forever: a file that can never encrypt came back for good. Five
+        // tries spans several minutes of backoff. The shared original is still
+        // in the app it came from, so sharing again is the way back.
+        return if (runAttemptCount + 1 >= MAX_ATTEMPTS) {
+            Log.w(TAG, "share failed " + MAX_ATTEMPTS + " times, giving up", result.exceptionOrNull())
+            runCatching { java.io.File(tempPath).delete() }
+            Result.failure()
+        } else {
+            Result.retry()
+        }
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -80,6 +98,8 @@ class SaveMediaWorker(
         private const val KEY_SRC_LABEL = "srcLabel"
         private const val KEY_SRC_DOMAIN = "srcDomain"
         private const val NOTIF_ID = 4711
+        private const val MAX_ATTEMPTS = 5
+        private const val TAG = "SaveMediaWorker"
 
         fun enqueue(context: Context, request: SaveRequest) {
             val data = Data.Builder()

@@ -92,6 +92,9 @@ class ImportWorker(
             }
 
             ImportQueue.completeFirst(ctx, outcome, entry.uri, originalIsSafe)
+            // Consumed either way (a failed entry isn't retried), so the read
+            // grant taken for it at pick time has done its job.
+            releaseGrant(ctx, entry.uri)
             val s = ImportQueue.state(ctx)
             setProgress(
                 Data.Builder()
@@ -102,7 +105,38 @@ class ImportWorker(
                     .build(),
             )
         }
+        // Grants from before this was fixed were never released, and Android
+        // caps how many an app may hold — past it, picking files just stops
+        // working. With the queue drained nothing can still need one.
+        releaseOrphanedGrants(ctx)
         return Result.success()
+    }
+
+    /**
+     * Release the persistable read grant on one picked document, if we hold one.
+     * Folder (tree) grants are the backup and restore folders', never touched
+     * here. MediaStore uris from the gallery grid never had a grant to release.
+     */
+    private fun releaseGrant(ctx: android.content.Context, uri: android.net.Uri) {
+        runCatching {
+            val held = ctx.contentResolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission }
+            if (held && !android.provider.DocumentsContract.isTreeUri(uri)) {
+                ctx.contentResolver.releasePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }.onFailure { Log.w(TAG, "couldn't release grant for " + uri, it) }
+    }
+
+    private fun releaseOrphanedGrants(ctx: android.content.Context) {
+        if (ImportQueue.peek(ctx) != null) return
+        // Grants taken in the last few minutes may belong to files just picked
+        // and not queued yet — the picker takes them before handing over.
+        val cutoff = System.currentTimeMillis() - 10 * 60 * 1000L
+        runCatching {
+            ctx.contentResolver.persistedUriPermissions
+                .filter { it.isReadPermission && !android.provider.DocumentsContract.isTreeUri(it.uri) }
+                .filter { it.persistedTime < cutoff }
+                .forEach { releaseGrant(ctx, it.uri) }
+        }.onFailure { Log.w(TAG, "grant sweep failed", it) }
     }
 
     companion object {
