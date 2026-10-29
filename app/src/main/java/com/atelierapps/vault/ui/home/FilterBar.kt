@@ -70,6 +70,7 @@ fun FilterBar(
     onToggleFavourites: () -> Unit,
     onToggleUntagged: () -> Unit,
     onToggleShortClips: () -> Unit,
+    onToggleUnwatched: () -> Unit,
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -101,6 +102,7 @@ fun FilterBar(
         item { ToggleChip("Favourites", filter.favourites, onToggleFavourites) }
         item { ToggleChip("Untagged", filter.untagged, onToggleUntagged) }
         item { ToggleChip("Short (≤15s)", filter.shortClips, onToggleShortClips) }
+        item { ToggleChip("Unwatched", filter.unwatched, onToggleUnwatched) }
 
         // ---- category buttons (always the same small set) ----
         item { TypeMenu(filter.type, sources, filter.sources, onSetType, onToggleSource) }

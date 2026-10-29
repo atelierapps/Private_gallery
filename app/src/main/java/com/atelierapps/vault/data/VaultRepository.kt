@@ -89,6 +89,16 @@ class VaultRepository(
     suspend fun setPinned(id: String, pinned: Boolean) =
         withContext(Dispatchers.IO) { mediaDao.setPinned(id, pinned) }
 
+    /** Blank clears it: an empty note is no note. */
+    suspend fun setNote(id: String, note: String?) =
+        withContext(Dispatchers.IO) { mediaDao.setNote(id, note?.trim()?.takeIf { it.isNotEmpty() }) }
+
+    suspend fun markViewed(id: String, at: Long = System.currentTimeMillis()) =
+        withContext(Dispatchers.IO) { mediaDao.markViewed(id, at) }
+
+    suspend fun setViewHistory(id: String, at: Long?, count: Int) =
+        withContext(Dispatchers.IO) { mediaDao.setViewHistory(id, at, count.coerceAtLeast(0)) }
+
     /** Display rotation for a video encoded the wrong way up. */
     suspend fun setVideoRotation(id: String, degrees: Int?) = mediaDao.setVideoRotation(id, degrees)
 

@@ -319,6 +319,13 @@ object VaultExporter {
             // which is what makes resuming an interrupted restore cheap instead
             // of a second full pass over everything that already landed.
             m.contentHash?.let { put("sha256", it) }
+            // Optional on read, so a backup from before schema 9 restores as it
+            // always did. Written only when there is something to say.
+            m.note?.let { put("note", it) }
+            if (m.viewCount > 0) {
+                put("viewCount", m.viewCount)
+                m.lastViewedAtMillis?.let { put("lastViewedAtMillis", it) }
+            }
         }
     }
 

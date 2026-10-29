@@ -43,11 +43,13 @@ data class MediaFilter(
     val untagged: Boolean = false,
     /** Videos of [SHORT_CLIP_MILLIS] or less. */
     val shortClips: Boolean = false,
+    /** Never opened in the viewer (since schema 9, when the history began). */
+    val unwatched: Boolean = false,
 ) {
     val isEmpty: Boolean
         get() = type == MediaTypeFilter.ALL && sources.isEmpty() &&
             tagNames.isEmpty() && date == DateBucket.ANY &&
-            !favourites && !untagged && !shortClips
+            !favourites && !untagged && !shortClips && !unwatched
 
     fun matches(item: MediaWithTags, now: Long): Boolean {
         val isVideo = item.media.mimeType.startsWith("video/")
@@ -62,6 +64,7 @@ data class MediaFilter(
         }
         if (favourites && !item.media.isPinned) return false
         if (untagged && item.tags.isNotEmpty()) return false
+        if (unwatched && item.media.viewCount > 0) return false
         if (shortClips) {
             // A video with no recorded length is left out rather than guessed
             // at: claiming an unknown clip is short is the worse mistake.
@@ -89,6 +92,7 @@ data class MediaFilter(
     fun toggleFavourites() = copy(favourites = !favourites)
     fun toggleUntagged() = copy(untagged = !untagged)
     fun toggleShortClips() = copy(shortClips = !shortClips)
+    fun toggleUnwatched() = copy(unwatched = !unwatched)
 
     companion object {
         const val SHORT_CLIP_MILLIS = 15_000L

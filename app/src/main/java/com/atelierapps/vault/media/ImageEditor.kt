@@ -114,6 +114,8 @@ object ImageEditor {
         }
 
         media.albumId?.let { repo.setAlbumForItems(setOf(newId), it) }
+        // The edit is a new item; its note shouldn't stay behind on the old one.
+        media.note?.let { note -> runCatching { repo.setNote(newId, note) } }
         if (replace) repo.trashMedia(media.id)
         return newId
     }

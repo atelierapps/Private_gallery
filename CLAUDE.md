@@ -67,7 +67,8 @@ server, no account, and no network access of any kind.
 - Room + **SQLCipher** (`net.zetetic:sqlcipher-android:4.9.0` — pinned, *not*
   latest: 4.10+ drags in androidx.sqlite 2.7.0 and kotlin-stdlib 2.2, both ahead
   of Room 2.6.1 / Kotlin 2.0.21 here).
-- **Schema version 8.** Migrations 1→2 … 7→8 all live in `VaultDatabase`.
+- **Schema version 9.** Migrations 1→2 … 8→9 all live in `VaultDatabase`.
+  9 added `note`, `lastViewedAtMillis` and `viewCount` (DEFAULT 0) to `media`.
   Bump the version *and* add the migration; there is no destructive fallback,
   by design.
 - `DbCipher` migrates a legacy plaintext database once, verifying table by table
@@ -178,7 +179,11 @@ default unless a slideshow is running (Settings → Playback), shuffle in the
 viewer's control row (not the home bar) — an on/off switch that shuffles
 around the current item and restores the order around it when turned off.
 Viewer buttons are white when off and brass when on, and shuffle, slideshow
-and loop confirm with a 2-second notice (rotate, speed, mute and tag don't), storage stats, camera capture, share-in target, durable
+and loop confirm with a 2-second notice (rotate, speed, mute and tag don't),
+notes on any item (viewer ⋮ → Note…, searchable, carried through backups and
+image edits), view history (counted after 2 s on screen; Unwatched chip and a
+"Not seen lately" sort — history starts at schema 9, so everything older begins
+as unwatched), storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
 per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button, app disguise + custom home-screen shortcut, encrypted (or plaintext)

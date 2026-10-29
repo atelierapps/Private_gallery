@@ -244,6 +244,7 @@ fun VaultHome(
                     onToggleFavourites = vm::toggleFavourites,
                     onToggleUntagged = vm::toggleUntagged,
                     onToggleShortClips = vm::toggleShortClips,
+                    onToggleUnwatched = vm::toggleUnwatched,
                     onClearAll = vm::clearAll,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -488,7 +489,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
     androidx.compose.material3.OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text("Search name, tag, or source", color = Muted) },
+        placeholder = { Text("Search name, tag, note, or source", color = Muted) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
     )

@@ -33,6 +33,8 @@ enum class SortOrder(val label: String) {
     LONGEST("Longest first"),
     SHORTEST("Shortest first"),
     LARGEST("Largest first"),
+    // Rediscovery: never-seen first, then whatever you last looked at longest ago.
+    NOT_SEEN("Not seen lately"),
 }
 
 /** A source-filter chip: an app that media came from, with its total count (spec §7). */
@@ -338,6 +340,7 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleFavourites() { _filter.value = _filter.value.toggleFavourites() }
     fun toggleUntagged() { _filter.value = _filter.value.toggleUntagged() }
     fun toggleShortClips() { _filter.value = _filter.value.toggleShortClips() }
+    fun toggleUnwatched() { _filter.value = _filter.value.toggleUnwatched() }
     fun clearAll() { _filter.value = MediaFilter() }
 }
 
@@ -371,6 +374,12 @@ fun List<MediaWithTags>.sortedFor(order: SortOrder): List<MediaWithTags> {
         // Plaintext size as recorded at import — what the clip is, which is
         // within a few bytes of what it costs on disk.
         SortOrder.LARGEST -> sortedByDescending { it.media.sizeBytes }
+        // Never seen sorts as 0, i.e. first; among those, newest arrivals first,
+        // since a fresh import is likelier to be wanted than one from a year ago.
+        SortOrder.NOT_SEEN -> sortedWith(
+            compareBy<MediaWithTags> { it.media.lastViewedAtMillis ?: 0L }
+                .thenByDescending { it.media.importedAtMillis },
+        )
     }
     // Pinned items float to the top (stable — keeps sort order within groups).
     return sorted.sortedByDescending { it.media.isPinned }
@@ -381,6 +390,7 @@ fun MediaWithTags.matchesQuery(ql: String): Boolean =
     media.originalName.lowercase().contains(ql) ||
         media.sourceLabel?.lowercase()?.contains(ql) == true ||
         media.sourceDomain?.lowercase()?.contains(ql) == true ||
+        media.note?.lowercase()?.contains(ql) == true ||
         tags.any { it.name.lowercase().contains(ql) }
 
 /** Deterministic, muted chip color per source package. */

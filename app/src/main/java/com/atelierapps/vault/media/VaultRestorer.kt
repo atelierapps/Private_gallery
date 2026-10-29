@@ -138,7 +138,7 @@ object VaultRestorer {
             sourceLabel = obj.optStringOrNull("sourceLabel"),
             sourceDomain = obj.optStringOrNull("sourceDomain"),
         )
-        return saver.save(
+        val saved = saver.save(
             SaveRequest(
                 tempPath = temp.absolutePath,
                 mimeType = obj.optString("mimeType", doc.type ?: "application/octet-stream"),
@@ -147,7 +147,24 @@ object VaultRestorer {
                 tagNames = tags,
                 source = source,
             ),
-        ).isSuccess
+        )
+        // Note and view history go on after the item is safely in, and can't
+        // fail it: by now the media is verified and saved, and a lost note is
+        // a nuisance where a lost item is a loss. A duplicate keeps whatever
+        // the copy already here has.
+        val id = saved.getOrNull()
+        if (id != null && id != MediaSaver.DUPLICATE) {
+            runCatching {
+                val repo = VaultGraph.repository(context)
+                obj.optStringOrNull("note")?.let { repo.setNote(id, it) }
+                val views = obj.optInt("viewCount", 0)
+                if (views > 0) {
+                    val at = if (obj.has("lastViewedAtMillis")) obj.optLong("lastViewedAtMillis") else null
+                    repo.setViewHistory(id, at, views)
+                }
+            }.onFailure { Log.w("VaultRestorer", "note/history not restored for " + id, it) }
+        }
+        return saved.isSuccess
     }
 
     /**

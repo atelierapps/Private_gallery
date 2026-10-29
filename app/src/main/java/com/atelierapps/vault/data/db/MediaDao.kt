@@ -66,6 +66,16 @@ interface MediaDao {
     @Query("UPDATE media SET resumePositionMillis = :millis WHERE id = :id")
     suspend fun setResumePosition(id: String, millis: Long?)
 
+    @Query("UPDATE media SET note = :note WHERE id = :id")
+    suspend fun setNote(id: String, note: String?)
+
+    @Query("UPDATE media SET lastViewedAtMillis = :at, viewCount = viewCount + 1 WHERE id = :id")
+    suspend fun markViewed(id: String, at: Long)
+
+    /** Put a restored item's history back as the backup recorded it. */
+    @Query("UPDATE media SET lastViewedAtMillis = :at, viewCount = :count WHERE id = :id")
+    suspend fun setViewHistory(id: String, at: Long?, count: Int)
+
     @Query("UPDATE media SET originalName = :name WHERE id = :id")
     suspend fun rename(id: String, name: String)
 

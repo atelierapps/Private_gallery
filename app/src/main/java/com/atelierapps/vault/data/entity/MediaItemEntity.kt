@@ -67,4 +67,16 @@ data class MediaItemEntity(
     // stays crooked, so correcting it once should stick rather than being
     // re-done every time it is opened. Display-only: the bytes aren't touched.
     val videoRotationDegrees: Int? = null,
+
+    // A line or two of your own about the item ("use this transition"),
+    // searchable. In this table, so it is encrypted with everything else and
+    // goes into backups the same way tags do.
+    val note: String? = null,
+
+    // When it was last on screen for a couple of seconds, and how many times.
+    // "Unwatched" and "Not seen lately" come from these. The history starts
+    // with schema 9: everything already in the library begins as never seen.
+    val lastViewedAtMillis: Long? = null,
+    @ColumnInfo(defaultValue = "0")
+    val viewCount: Int = 0,
 )

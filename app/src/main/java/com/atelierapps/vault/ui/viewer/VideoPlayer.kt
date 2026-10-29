@@ -1,5 +1,6 @@
 package com.atelierapps.vault.ui.viewer
 
+import androidx.compose.ui.text.style.TextOverflow
 import com.atelierapps.vault.ui.theme.ScrimSoft
 import androidx.compose.material.icons.outlined.Shuffle
 import android.app.Activity
@@ -139,6 +140,8 @@ fun VideoPlayer(
     shuffleActive: Boolean = false,
     /** Brass on the tag button when this clip carries any tag. */
     hasTags: Boolean = false,
+    /** Shown above the scrubber while the controls are up. */
+    note: String? = null,
     /** A two-second confirmation, shown by the viewer, for loop on/off. */
     onNotice: (String) -> Unit = {},
     onDismissDrag: (Float) -> Unit = {},
@@ -591,6 +594,18 @@ fun VideoPlayer(
                     .background(ScrimSoft).navigationBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
             ) {
+                // A video has no info panel, so its note rides with the controls:
+                // there when you reach for them, gone when they hide.
+                note?.let {
+                    Text(
+                        it,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
+                    )
+                }
                 // Row 1 — scrubber gets the full width, so dragging is easy.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(fmt(shown), color = Color.White, fontSize = 12.sp)

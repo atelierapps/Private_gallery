@@ -97,6 +97,30 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Save or clear a note, keeping the pager snapshot in sync. */
+    fun setNote(id: String, note: String?) {
+        viewModelScope.launch {
+            repo.setNote(id, note)
+            updateMedia(id) { it.copy(note = note?.trim()?.takeIf { t -> t.isNotEmpty() }) }
+        }
+    }
+
+    /** Record a view; the snapshot follows so the info panel's count is current. */
+    fun markViewed(id: String) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            repo.markViewed(id, now)
+            updateMedia(id) { it.copy(lastViewedAtMillis = now, viewCount = it.viewCount + 1) }
+        }
+    }
+
+    private fun updateMedia(id: String, change: (com.atelierapps.vault.data.entity.MediaItemEntity) -> com.atelierapps.vault.data.entity.MediaItemEntity) {
+        val list = media.value
+        val idx = list.indexOfFirst { it.media.id == id }
+        if (idx < 0) return
+        media.value = list.toMutableList().also { it[idx] = it[idx].copy(media = change(it[idx].media)) }
+    }
+
     /** Rename an item in place, keeping the pager snapshot in sync. */
     fun rename(id: String, newName: String) {
         val clean = newName.trim()

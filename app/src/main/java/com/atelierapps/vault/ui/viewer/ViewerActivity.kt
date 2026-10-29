@@ -78,6 +78,8 @@ class ViewerActivity : ComponentActivity() {
                         onTogglePin = { id -> vm.togglePin(id) },
                         shuffleActive = shuffled,
                         onShuffle = { id -> vm.toggleShuffle(id) },
+                        onSetNote = { id, note -> vm.setNote(id, note) },
+                        onViewed = { id -> vm.markViewed(id) },
                         albums = albums,
                         allTags = allTags,
                         onSetTags = { id, names -> vm.setTags(id, names) },

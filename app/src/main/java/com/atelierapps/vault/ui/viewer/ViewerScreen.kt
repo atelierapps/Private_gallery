@@ -125,6 +125,10 @@ fun ViewerScreen(
     onEdit: (id: String) -> Unit = {},
     onAddToAlbum: (id: String, albumId: String) -> Unit = { _, _ -> },
     onAddToNewAlbum: (id: String, name: String) -> Unit = { _, _ -> },
+    /** Save (or, with null, clear) the item's note. */
+    onSetNote: (id: String, note: String?) -> Unit = { _, _ -> },
+    /** The item has been on screen long enough to count as seen. */
+    onViewed: (id: String) -> Unit = {},
     /** Whether the order is currently shuffled: drives the button's brass. */
     shuffleActive: Boolean = false,
     /** Shuffle on or off around this item. Turning it on also starts the slideshow. */
@@ -139,6 +143,7 @@ fun ViewerScreen(
     var renaming by remember { mutableStateOf<MediaWithTags?>(null) }
     var albumFor by remember { mutableStateOf<String?>(null) }
     var taggingItem by remember { mutableStateOf<MediaWithTags?>(null) }
+    var notingItem by remember { mutableStateOf<MediaWithTags?>(null) }
     // Shuffle hands us an order and asks for playback to start straight away.
     var playMode by remember { mutableStateOf(ViewerSession.consumeStartPlaying()) }
     var intervalSec by remember { mutableIntStateOf(5) }
@@ -232,6 +237,14 @@ fun ViewerScreen(
     LaunchedEffect(current?.media?.id) {
         current?.media?.id?.let { ViewerSession.lastViewedId.value = it }
     }
+    // Counts as seen once it has been on screen for two seconds. Swiping past
+    // doesn't count, and a looping clip counts once per visit, not per loop:
+    // "Unwatched" and "Not seen lately" are about whether you looked at it.
+    LaunchedEffect(current?.media?.id) {
+        val id = current?.media?.id ?: return@LaunchedEffect
+        delay(2000)
+        onViewed(id)
+    }
     // Slideshow: images advance after the interval; videos advance when they end.
     LaunchedEffect(pagerState.currentPage, playMode, intervalSec, currentIsVideo) {
         if (playMode && current != null && !currentIsVideo) {
@@ -297,6 +310,7 @@ fun ViewerScreen(
                         null
                     },
                     onTag = { taggingItem = current },
+                    onNote = { notingItem = current },
                     onAddToAlbum = { albumFor = current.media.id },
                     onDelete = { pendingDelete = current.media.id },
                 )
@@ -407,6 +421,14 @@ fun ViewerScreen(
             applied = item.tags.map { it.name },
             onApply = { names -> onSetTags(item.media.id, names); taggingItem = null },
             onDismiss = { taggingItem = null },
+        )
+    }
+
+    notingItem?.let { item ->
+        NoteDialog(
+            initial = item.media.note.orEmpty(),
+            onSave = { text -> onSetNote(item.media.id, text); notingItem = null },
+            onDismiss = { notingItem = null },
         )
     }
 
@@ -640,6 +662,7 @@ private fun ViewerPage(
             onShuffle = onShuffle,
             shuffleActive = shuffleActive,
             hasTags = item.tags.isNotEmpty(),
+            note = item.media.note,
             onNotice = onNotice,
             onDismissDrag = onDismissDrag,
             onDismissEnd = onDismissEnd,
@@ -729,6 +752,7 @@ private fun TopBar(
     onRename: () -> Unit,
     onEdit: (() -> Unit)?,
     onTag: () -> Unit,
+    onNote: () -> Unit,
     onAddToAlbum: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -767,6 +791,7 @@ private fun TopBar(
             VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true }, size = 44)
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Tags…") }, onClick = { menu = false; onTag() })
+                DropdownMenuItem(text = { Text("Note…") }, onClick = { menu = false; onNote() })
                 DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
                 if (onEdit != null) {
                     DropdownMenuItem(
@@ -836,7 +861,51 @@ private fun MetadataPanel(item: MediaWithTags, modifier: Modifier) {
         if (item.tags.isNotEmpty()) {
             Text(item.tags.joinToString(" ") { "#${it.name}" }, color = Brass, fontSize = 13.sp)
         }
+        item.media.note?.let { Text(it, color = Ink, fontSize = 13.sp) }
+        Text(seenLine(item), color = Muted, fontSize = 12.sp)
     }
+}
+
+/** "Seen 3 times · last 12 Oct". The count includes this visit once it's counted. */
+private fun seenLine(item: MediaWithTags): String {
+    val n = item.media.viewCount
+    val last = item.media.lastViewedAtMillis
+    return when {
+        n == 0 || last == null -> "Not seen before"
+        n == 1 -> "Seen once · " + dateOf(last)
+        else -> "Seen " + n + " times · last " + dateOf(last)
+    }
+}
+
+/**
+ * A few lines of your own about this item. Searchable from the grid. Saving
+ * an empty box clears the note rather than storing a blank one.
+ */
+@Composable
+private fun NoteDialog(initial: String, onSave: (String?) -> Unit, onDismiss: () -> Unit) {
+    var text by remember(initial) { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Note") },
+        text = {
+            // The field scrolls itself past six lines, so the dialog's
+            // non-scrolling body can't clip it.
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                placeholder = { Text("Anything worth remembering about this one") },
+                minLines = 3,
+                maxLines = 6,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(text.trim().takeIf { it.isNotEmpty() }) }) {
+                Text(if (text.isBlank() && initial.isNotBlank()) "Remove" else "Save", color = Brass)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /** Label and/or host — never the full URL (spec §2.1/§15.4). */
