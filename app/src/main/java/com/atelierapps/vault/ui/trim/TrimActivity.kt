@@ -23,6 +23,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.data.entity.MediaWithTags
+import com.atelierapps.vault.media.TransferWake
 import com.atelierapps.vault.media.VideoTrimmer
 import com.atelierapps.vault.ui.lock.FinishOnLock
 import com.atelierapps.vault.ui.theme.VaultTheme
@@ -51,8 +52,9 @@ class TrimActivity : ComponentActivity() {
         vm.load(id)
 
         setContent {
-            // Locking mid-trim finishes the screen, which clears the view model
-            // and cancels the run; the half-written temp file is deleted then.
+            // The auto-lock waits out a running trim (see TrimViewModel.held),
+            // so this lands after it. A lock that comes anyway clears the view
+            // model and cancels the run; the half-written temp file goes then.
             FinishOnLock { finish() }
             VaultTheme {
                 Surface(Modifier.fillMaxSize()) {
@@ -178,8 +180,10 @@ class TrimViewModel(app: Application) : AndroidViewModel(app) {
         }
         _state.value = s.copy(running = true, progress = 0, error = null)
         job = viewModelScope.launch {
-            val result = VideoTrimmer.trim(getApplication(), item, s.startMs, s.endMs, s.replace) { p ->
-                _state.value = _state.value.copy(progress = p)
+            val result = held {
+                VideoTrimmer.trim(getApplication(), item, s.startMs, s.endMs, s.replace) { p ->
+                    _state.value = _state.value.copy(progress = p)
+                }
             }
             result.fold(
                 onSuccess = { onDone(s.replace) },
@@ -201,37 +205,55 @@ class TrimViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun split(s: TrimState, item: MediaWithTags, onDone: (replaced: Boolean) -> Unit) {
         _state.value = s.copy(running = true, progress = 0, runningPart = 1, error = null)
-        job = viewModelScope.launch {
-            var saved = 0
-            var failure: String? = null
-            for ((i, part) in s.parts.withIndex()) {
-                _state.value = _state.value.copy(runningPart = i + 1, progress = 0)
-                val r = VideoTrimmer.trim(
-                    getApplication(), item, part.first, part.second, replace = false,
-                    onProgress = { p -> _state.value = _state.value.copy(progress = p) },
-                    part = i + 1,
-                )
-                if (r.isSuccess) {
-                    saved++
-                } else {
-                    failure = r.exceptionOrNull()?.message ?: "it failed"
-                    break
-                }
-            }
-            if (failure == null) {
-                if (s.replace) VaultGraph.repository(getApplication()).trashMedia(item.media.id)
-                onDone(s.replace)
+        job = viewModelScope.launch { held { runSplit(s, item, onDone) } }
+    }
+
+    private suspend fun runSplit(s: TrimState, item: MediaWithTags, onDone: (replaced: Boolean) -> Unit) {
+        var saved = 0
+        var failure: String? = null
+        for ((i, part) in s.parts.withIndex()) {
+            _state.value = _state.value.copy(runningPart = i + 1, progress = 0)
+            val r = VideoTrimmer.trim(
+                getApplication(), item, part.first, part.second, replace = false,
+                onProgress = { p -> _state.value = _state.value.copy(progress = p) },
+                part = i + 1,
+            )
+            if (r.isSuccess) {
+                saved++
             } else {
-                _state.value = _state.value.copy(
-                    running = false,
-                    runningPart = 0,
-                    // The parts that landed are already in the library; don't
-                    // offer them again.
-                    parts = s.parts.drop(saved),
-                    error = (if (saved == 0) "Nothing was changed" else "$saved of ${s.parts.size} parts saved") +
-                        ": part ${saved + 1} failed — $failure. The original is kept.",
-                )
+                failure = r.exceptionOrNull()?.message ?: "it failed"
+                break
             }
+        }
+        if (failure == null) {
+            if (s.replace) VaultGraph.repository(getApplication()).trashMedia(item.media.id)
+            onDone(s.replace)
+        } else {
+            _state.value = _state.value.copy(
+                running = false,
+                runningPart = 0,
+                // The parts that landed are already in the library; don't
+                // offer them again.
+                parts = s.parts.drop(saved),
+                error = (if (saved == 0) "Nothing was changed" else "$saved of ${s.parts.size} parts saved") +
+                    ": part ${saved + 1} failed — $failure. The original is kept.",
+            )
+        }
+    }
+
+    /**
+     * Runs [block] as a transfer. Leaving the app mid-trim let the auto-lock
+     * land underneath it, and locking finishes this screen, which cancelled the
+     * run without a word. Held, the auto-lock waits for the run to end (as it
+     * does for a backup) and the process keeps foreground priority with the
+     * screen off; the lock lands once it's done.
+     */
+    private suspend fun <T> held(block: suspend () -> T): T {
+        TransferWake.acquire(getApplication())
+        try {
+            return block()
+        } finally {
+            TransferWake.release()
         }
     }
 }

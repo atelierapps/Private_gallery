@@ -38,6 +38,34 @@ object DekCache {
         return dek
     }
 
+    /**
+     * The current session, read by a caller about to [put] a key — read it
+     * *before* checking that the vault is unlocked, so a lock landing in between
+     * is caught by [put] rather than missed.
+     */
+    val session: Int get() = generation
+
+    /**
+     * Cache a key this process has just made, while it still has it in hand.
+     *
+     * A new file's key would otherwise have to be unwrapped back from the file,
+     * and the private key only allows that within five minutes of the last
+     * unlock. Past that, everything that reads a file straight after writing it
+     * failed: a trim's integrity check binned its own good output, and a new
+     * thumbnail drew blank until the next unlock. Stores a copy; the caller
+     * still zeroes its own. Dropped if a lock has happened since [session].
+     */
+    fun put(key: String, dek: ByteArray, session: Int) {
+        val copy = dek.copyOf()
+        synchronized(this) {
+            if (generation == session) {
+                map.put(key, copy)?.let { Arrays.fill(it, 0) }
+                return
+            }
+        }
+        Arrays.fill(copy, 0)
+    }
+
     fun size(): Int = map.size
 
     /** Drop and zero a single entry (e.g. when its media is deleted). */

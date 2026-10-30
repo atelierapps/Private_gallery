@@ -28,7 +28,11 @@ object EnvelopeCodec {
 
     // ---------------- GCM (images, thumbnails) ----------------
 
-    fun encryptGcm(plaintext: ByteArray, wrapper: KeyWrapper): ByteArray {
+    /**
+     * [onKey] is handed the plaintext DEK before it is zeroed, for a caller that
+     * wants to cache it ([DekCache.put]). It must copy, not keep, the array.
+     */
+    fun encryptGcm(plaintext: ByteArray, wrapper: KeyWrapper, onKey: ((ByteArray) -> Unit)? = null): ByteArray {
         val dek = ByteArray(EnvelopeFormat.DEK_LEN).also { rng.nextBytes(it) }
         try {
             val wrapped = wrapper.wrap(dek)
@@ -47,6 +51,7 @@ object EnvelopeCodec {
             cipher.updateAAD(header)
             val body = cipher.doFinal(plaintext)
 
+            onKey?.invoke(dek)
             return header + body
         } finally {
             Arrays.fill(dek, 0)
@@ -91,8 +96,16 @@ object EnvelopeCodec {
 
     // ---------------- CTR (video) ----------------
 
-    /** Stream-encrypt [source] into [sink] as a CTR envelope. Closes neither stream. */
-    fun encryptCtr(source: InputStream, sink: OutputStream, wrapper: KeyWrapper) {
+    /**
+     * Stream-encrypt [source] into [sink] as a CTR envelope. Closes neither
+     * stream. [onKey] as for [encryptGcm].
+     */
+    fun encryptCtr(
+        source: InputStream,
+        sink: OutputStream,
+        wrapper: KeyWrapper,
+        onKey: ((ByteArray) -> Unit)? = null,
+    ) {
         val dek = ByteArray(EnvelopeFormat.DEK_LEN).also { rng.nextBytes(it) }
         try {
             val wrapped = wrapper.wrap(dek)
@@ -115,6 +128,7 @@ object EnvelopeCodec {
             val fin = cipher.doFinal()
             if (fin != null && fin.isNotEmpty()) sink.write(fin)
             sink.flush()
+            onKey?.invoke(dek)
         } finally {
             Arrays.fill(dek, 0)
         }

@@ -7,6 +7,7 @@ import coil3.SingletonImageLoader
 import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.crypto.DekCache
 import com.atelierapps.vault.crypto.EnvelopeCodec
+import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.crypto.EnvelopeFormat
 import com.atelierapps.vault.crypto.VaultKeys
 import java.io.File
@@ -35,7 +36,12 @@ object ThumbnailSetter {
         return try {
             val jpeg = Thumbnailer.jpegFrom(frame)
             if (jpeg.isEmpty()) return false
-            val sealed = EnvelopeCodec.encryptGcm(jpeg, VaultKeys.wrapper)
+            // Held until the swap: the new key can only go into the cache once
+            // the old one, under the same path, has been dropped.
+            val session = DekCache.session
+            val cacheKey = !VaultSession.locked.value
+            var key: ByteArray? = null
+            val sealed = EnvelopeCodec.encryptGcm(jpeg, VaultKeys.wrapper) { key = it.copyOf() }
             FileOutputStream(side).use { out ->
                 out.write(sealed)
                 out.flush()
@@ -47,6 +53,13 @@ object ThumbnailSetter {
             // The old thumbnail's key is cached under this same path; left
             // there, it would be tried on the new file and fail every time.
             DekCache.remove(thumb.absolutePath)
+            // And the new one goes in, so the tile draws now rather than at the
+            // next unlock: unwrapping it back from the file needs an unlock in
+            // the last five minutes.
+            key?.let {
+                if (cacheKey) DekCache.put(thumb.absolutePath, it, session)
+                java.util.Arrays.fill(it, 0)
+            }
             // And the decoded old picture is in Coil's memory cache.
             runCatching { SingletonImageLoader.get(context).memoryCache?.clear() }
             true

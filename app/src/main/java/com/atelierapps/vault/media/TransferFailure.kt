@@ -29,8 +29,12 @@ data class TransferFailure(val name: String, val reason: String) {
             val name = error?.javaClass?.simpleName.orEmpty()
             val message = error?.message.orEmpty()
             return when {
+                // Not a lock: the Keystore lets the media key be used for five
+                // minutes after an unlock, and this is that running out. It
+                // used to say "the app locked", which sent people looking for
+                // a lock that never happened.
                 name.contains("UserNotAuthenticated") ->
-                    "the app locked partway through — unlock and run it again"
+                    "the unlock had timed out (it lasts five minutes) — lock, unlock and run it again"
                 name.contains("KeyPermanentlyInvalidated") ->
                     "this phone's encryption key no longer works, so this file can't be decrypted"
                 // CipherInputStream reports a bad GCM tag as end-of-stream, so a

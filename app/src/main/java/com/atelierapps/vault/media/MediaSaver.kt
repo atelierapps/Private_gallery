@@ -3,12 +3,13 @@ package com.atelierapps.vault.media
 import android.content.Context
 import android.util.Log
 import com.atelierapps.vault.VaultGraph
+import com.atelierapps.vault.crypto.DekCache
 import com.atelierapps.vault.crypto.EnvelopeCodec
 import com.atelierapps.vault.crypto.EnvelopeFormat
 import com.atelierapps.vault.crypto.KeyWrapper
-import com.atelierapps.vault.crypto.MediaCrypto
 import com.atelierapps.vault.crypto.VaultKeys
 import com.atelierapps.vault.data.entity.MediaItemEntity
+import com.atelierapps.vault.session.VaultSession
 import com.atelierapps.vault.storage.VaultStorage
 import java.io.File
 import java.io.FileInputStream
@@ -73,8 +74,21 @@ class MediaSaver(
                 return Result.success(DUPLICATE)
             }
 
+            // The new files' keys go into the cache as they're made, so the item
+            // opens — and a trim can verify it — without unwrapping them back,
+            // which the Keystore only allows within five minutes of an unlock.
+            // Only while unlocked: a save from the share sheet with the vault
+            // locked must not leave live keys behind. Session read first; see
+            // DekCache.session.
+            val session = DekCache.session
+            val cacheKeys = !VaultSession.locked.value
+            fun cacheAs(file: File): ((ByteArray) -> Unit)? {
+                if (!cacheKeys) return null
+                return { dek -> DekCache.put(file.absolutePath, dek, session) }
+            }
+
             // 1. Encrypt + fsync.
-            if (isVideo) encryptCtr(temp, blob) else encryptGcm(temp, blob)
+            if (isVideo) encryptCtr(temp, blob, cacheAs(blob)) else encryptGcm(temp, blob, cacheAs(blob))
 
             // 2. Verify on-disk length before trusting the blob.
             val expected = EnvelopeFormat.headerLen(mode) + plaintextLen +
@@ -86,7 +100,7 @@ class MediaSaver(
             // 3. Thumbnail (best-effort) + fsync.
             val thumbBytes = Thumbnailer.jpegBytes(temp, request.mimeType)
             if (thumbBytes.isNotEmpty()) {
-                writeFsync(thumb, EnvelopeCodec.encryptGcm(thumbBytes, wrapper))
+                writeFsync(thumb, EnvelopeCodec.encryptGcm(thumbBytes, wrapper, cacheAs(thumb)))
             }
 
             // 4. Probe intrinsic metadata and persist the row (+ tags).
@@ -119,12 +133,6 @@ class MediaSaver(
             )
             repository.saveMedia(entity, (request.tagNames + autoTags).distinct())
 
-            // Cache this file's DEK now, while we're still inside the Keystore
-            // auth window, so it's immediately viewable/playable this session
-            // without another unwrap (spec §3.2).
-            runCatching { MediaCrypto.prewarm(blob) }
-            runCatching { MediaCrypto.prewarm(thumb) }
-
             // 5. Only now is the spool disposable.
             temp.delete()
             return Result.success(id)
@@ -132,20 +140,22 @@ class MediaSaver(
             Log.e(TAG, "save failed for ${request.originalName}", t)
             blob.delete()
             thumb.delete()
+            DekCache.remove(blob.absolutePath)
+            DekCache.remove(thumb.absolutePath)
             // leave temp for retry / sweep
             return Result.failure(t)
         }
     }
 
-    private fun encryptGcm(temp: File, blob: File) {
-        val cipher = EnvelopeCodec.encryptGcm(temp.readBytes(), wrapper)
+    private fun encryptGcm(temp: File, blob: File, onKey: ((ByteArray) -> Unit)?) {
+        val cipher = EnvelopeCodec.encryptGcm(temp.readBytes(), wrapper, onKey)
         writeFsync(blob, cipher)
     }
 
-    private fun encryptCtr(temp: File, blob: File) {
+    private fun encryptCtr(temp: File, blob: File, onKey: ((ByteArray) -> Unit)?) {
         FileInputStream(temp).use { input ->
             FileOutputStream(blob).use { output ->
-                EnvelopeCodec.encryptCtr(input, output, wrapper)
+                EnvelopeCodec.encryptCtr(input, output, wrapper, onKey)
                 output.fd.sync()
             }
         }
