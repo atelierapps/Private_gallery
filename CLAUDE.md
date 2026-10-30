@@ -61,6 +61,14 @@ server, no account, and no network access of any kind.
 - **The 300-second window is the cause of a whole family of bugs.** Anything
   long-running that unwraps media DEKs will fail partway. `MainActivity`
   prewarms both thumb and blob DEKs at unlock for this reason.
+  It also bit anything that **reads a file straight after writing it**: a new
+  file's key isn't in the cache, so verifying it means an unwrap, which fails
+  once you've been unlocked over five minutes. That was the trim failures —
+  the integrity check binned good output with "the app locked partway
+  through", though nothing had locked. `EnvelopeCodec` now hands the fresh
+  DEK to an `onKey` callback and `MediaSaver` / `ThumbnailSetter` put it in
+  `DekCache` directly (only while unlocked, guarded by `DekCache.session`).
+  `UserNotAuthenticatedException` now reads "the unlock had timed out".
 
 ## Database
 
@@ -194,13 +202,17 @@ image edits), video trim (keeps one stretch; original to Recently deleted only
 after the copy verifies) and a chosen video thumbnail (⋮ → Set thumbnail…, the
 same screen in its own Thumbnail mode — a single scrubber, no trim handles)
 (captured from the preview's TextureView, so no plaintext file; swapped in
-by write-beside, length check, rename — `media/ThumbnailSetter.kt`), Sort untagged (home ⋮ → one untagged item at a time with
+by write-beside, length check, rename — `media/ThumbnailSetter.kt`; the
+scrubber seeks to keyframes while dragging and exactly on release, with
+±1 frame / ±1 s steps), the viewer's tag sheet is half see-through with no
+scrim so the clip shows through while tagging, Sort untagged (home ⋮ → one untagged item at a time with
 the tag row open: Tag & next / Skip / Delete with undo — `ui/triage/`), view history (counted after 2 s on screen; Unwatched chip and a
 "Not seen lately" sort — history starts at schema 9, so everything older begins
 as unwatched), storage stats, camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
 per-video display rotation, resume playback, slideshow, shuffle, floating lock
-button, app disguise + custom home-screen shortcut, encrypted (or plaintext)
+button (with a "back to top" arrow docked to it once the home grid is a
+quarter scrolled — one draggable pair, so they can't overlap), app disguise + custom home-screen shortcut, encrypted (or plaintext)
 backup with round-trip restore, and an uninstall warning.
 
 Diagnostics, because "won't play" and "is damaged" look identical on screen:
@@ -225,6 +237,7 @@ corruption.
    part" collects ranges, and each is cut as its own item ("clip (part 2).mp4");
    the original is binned only after *every* part verifies, and a failure stops
    the run with the original kept and the landed parts left as new items.
+   A run holds `TransferWake`, so the auto-lock waits for it to finish.
 2. **Foreground service for long transfers — built** (`media/TransferService.kt`).
    Started and stopped by `TransferWake` (first acquire / last release), so
    export, retry, restore and the library check all get it. It does no work; it
