@@ -1,7 +1,6 @@
 package com.atelierapps.vault.ui.viewer
 
 import com.atelierapps.vault.ui.theme.Hairline
-import com.atelierapps.vault.ui.theme.SurfaceHigh
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.ButtonDefaults
@@ -71,6 +70,7 @@ import com.atelierapps.vault.ui.theme.TagPicker
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
@@ -486,9 +486,10 @@ fun ViewerScreen(
  * A bottom sheet rather than a centred dialog: it opens under the thumb that
  * tapped the tag button, and it leaves the clip visible above it. That is the
  * point of tagging from here — the picture is the reminder of what to tag it
- * with — so the shade behind is light (30%) and the sheet stops short of the
- * frame. The sheet itself stays opaque: grey text on a see-through sheet fails
- * the moment a bright frame sits behind it.
+ * with. So nothing dims the frame above the sheet, and the sheet itself is
+ * half see-through: the video carries on underneath it, and you tag by what's
+ * actually in it. The tag chips keep their own solid fill, so the names stay
+ * readable over a bright frame; only the ground between them shows through.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -504,9 +505,11 @@ private fun ViewerTagDialog(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        containerColor = SurfaceHigh,
+        // Half transparent, on the darkest ground there is, so white text still
+        // has something under it when the frame behind is bright.
+        containerColor = Bg.copy(alpha = 0.5f),
         contentColor = Ink,
-        scrimColor = Color(0x4D06080A),
+        scrimColor = Color.Transparent,
     ) {
         Column(
             Modifier.fillMaxWidth().imePadding().padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
