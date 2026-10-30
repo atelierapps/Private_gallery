@@ -64,6 +64,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import com.atelierapps.vault.session.TileAnchor
 import com.atelierapps.vault.session.AppDisguise
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -83,6 +84,8 @@ fun VaultGridScreen(
     onLongPress: (id: String) -> Unit,
     onToggleSelect: (id: String) -> Unit,
     modifier: Modifier = Modifier,
+    // Hoisted so the host can tell how far down you are and take you back up.
+    gridState: LazyGridState = rememberLazyGridState(),
     showSectionHeaders: Boolean = false,
     // Which date the sections and the scrubber label read. Sorting by "Recently
     // added" orders on importedAt, so bucketing on dateTaken would head a run of
@@ -131,7 +134,6 @@ fun VaultGridScreen(
     // catch up on when you return. Nothing happens if the item is already on
     // screen — the common case of opening and immediately closing shouldn't
     // move the grid at all.
-    val gridState = rememberLazyGridState()
     val lastViewed by ViewerSession.lastViewedId.collectAsState()
     // Honour each item once. `media` has to be a key — on a cold start the list
     // arrives after this first runs, and the index isn't findable until it does

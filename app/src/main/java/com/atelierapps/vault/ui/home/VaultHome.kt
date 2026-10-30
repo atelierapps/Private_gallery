@@ -83,6 +83,8 @@ import kotlinx.coroutines.launch
 import com.atelierapps.vault.ui.lock.FloatingLockButton
 import com.atelierapps.vault.session.BackupPrefs
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ContentCopy
 
@@ -159,6 +161,18 @@ fun VaultHome(
     // vanish with nothing to say it worked, or that it hadn't.
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // "Back to top" rides with the floating lock once you're a quarter of the
+    // way down. Counted in grid slots, so it means the same at any column count.
+    val gridState = rememberLazyGridState()
+    val pastQuarter by remember {
+        derivedStateOf {
+            val total = gridState.layoutInfo.totalItemsCount
+            val first = gridState.firstVisibleItemIndex
+            total > 0 && first > 0 && first * 4 >= total
+        }
+    }
+
     fun say(message: String, action: String? = null, onAction: () -> Unit = {}) {
         scope.launch {
             // One at a time: a queue of stale confirmations is worse than none.
@@ -268,6 +282,7 @@ fun VaultHome(
                 onLongPress = vm::longPress,
                 onToggleSelect = vm::toggleSelection,
                 modifier = Modifier.weight(1f),
+                gridState = gridState,
                 showSectionHeaders = dateHeadersPref &&
                     (sort == SortOrder.RECENT || sort == SortOrder.NEWEST || sort == SortOrder.OLDEST),
                 dateOf = if (sort == SortOrder.RECENT) {
@@ -308,7 +323,13 @@ fun VaultHome(
 
         // Stood down during selection: the selection bar already owns the top of
         // the screen and a stray tap there would throw the selection away.
-        FloatingLockButton(visible = !selectionMode)
+        FloatingLockButton(
+            visible = !selectionMode,
+            showTop = pastQuarter,
+            // Straight there, not animated: animating past thousands of tiles
+            // decodes every thumbnail on the way.
+            onTop = { scope.launch { gridState.scrollToItem(0) } },
+        )
     }
 
     if (confirmDelete) {
