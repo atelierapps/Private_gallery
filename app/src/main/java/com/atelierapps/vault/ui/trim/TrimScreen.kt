@@ -79,6 +79,11 @@ import com.atelierapps.vault.ui.theme.ScreenHeader
 import com.atelierapps.vault.ui.theme.SurfaceHigh
 import com.atelierapps.vault.ui.theme.VaultIconButton
 import kotlinx.coroutines.delay
+import kotlin.math.roundToLong
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.conflate
+import androidx.compose.runtime.snapshotFlow
+import androidx.media3.exoplayer.SeekParameters
 
 /**
  * Pick the stretch to keep, see what it saves, cut.
@@ -202,6 +207,29 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                 delay(150)
             }
         }
+
+        // Scrubbing for a thumbnail. Every drag step used to be an exact seek,
+        // and an exact seek decodes forward from the keyframe before it — far
+        // slower than a finger moves — so seeks queued up and the picture
+        // trailed the slider. While dragging, seeks now go to the nearest
+        // keyframe (cheap; the picture keeps up) at most every 60 ms; letting
+        // go makes one exact seek, which lands on the frame under the thumb.
+        // The step buttons then move by one frame or one second.
+        var scrubTo by remember { mutableLongStateOf(-1L) }
+        LaunchedEffect(player) {
+            snapshotFlow { scrubTo }
+                .filter { it >= 0L }
+                .conflate()
+                .collect { ms ->
+                    player.seekTo(ms)
+                    delay(60)
+                }
+        }
+        val exactSeek: (Long) -> Unit = { ms ->
+            player.setSeekParameters(SeekParameters.EXACT)
+            positionMs = ms
+            player.seekTo(ms)
+        }
         val useFrame: () -> Unit = useFrame@{
             if (savingThumb || state.running) return@useFrame
             player.pause()
@@ -244,7 +272,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                         { if (playing) player.pause() else player.play() },
                     )
                     Text(
-                        clock(positionMs) + " / " + clock(duration),
+                        clockFine(positionMs) + " / " + clock(duration),
                         color = Ink,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(start = 6.dp),
@@ -253,11 +281,19 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                 Slider(
                     value = positionMs.coerceIn(0L, duration).toFloat(),
                     onValueChange = { v ->
-                        dragging = true
+                        if (!dragging) {
+                            dragging = true
+                            player.pause()
+                            player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
+                        }
                         positionMs = v.toLong()
-                        player.seekTo(positionMs)
+                        scrubTo = positionMs
                     },
-                    onValueChangeFinished = { dragging = false },
+                    onValueChangeFinished = {
+                        scrubTo = -1L
+                        exactSeek(positionMs)
+                        dragging = false
+                    },
                     valueRange = 0f..duration.toFloat(),
                     colors = SliderDefaults.colors(
                         thumbColor = Brass,
@@ -265,8 +301,27 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                         inactiveTrackColor = Hairline,
                     ),
                 )
+                // Fine adjustment, from wherever the slider or a pause left it.
+                // A frame is read off the video's own frame rate; 30 fps if
+                // the file doesn't say.
+                val stepBy: (Long) -> Unit = { delta ->
+                    player.pause()
+                    exactSeek((positionMs + delta).coerceIn(0L, duration))
+                }
+                val frameMs: () -> Long = {
+                    player.videoFormat?.frameRate?.takeIf { it > 1f }?.let { (1000f / it).roundToLong() } ?: 33L
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    VaultActionChip("−1s", { stepBy(-1_000L) })
+                    VaultActionChip("−1 frame", { stepBy(-frameMs()) })
+                    VaultActionChip("+1 frame", { stepBy(frameMs()) })
+                    VaultActionChip("+1s", { stepBy(1_000L) })
+                }
                 Text(
-                    "Find the frame with the slider, or play and pause where you want it. " +
+                    "Drag to get close, then step a frame at a time to the one you want. " +
                         "Only the tile changes — the video itself isn't touched.",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
@@ -474,6 +529,9 @@ private fun clock(ms: Long): String {
     val s = total % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
+
+/** To the tenth of a second, so a one-frame step visibly moves the readout. */
+private fun clockFine(ms: Long): String = clock(ms) + "." + (ms % 1000) / 100
 
 private fun mb(bytes: Long): String =
     if (bytes >= 1_000_000_000L) "%.1f GB".format(bytes / 1e9) else "%.0f MB".format((bytes / 1e6).coerceAtLeast(1.0))
