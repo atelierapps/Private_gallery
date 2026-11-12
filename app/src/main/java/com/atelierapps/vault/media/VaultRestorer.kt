@@ -5,7 +5,12 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.data.entity.SourceType
+import com.atelierapps.vault.data.entity.AutoTagRuleEntity
+import com.atelierapps.vault.data.entity.RuleMatchKind
+import com.atelierapps.vault.data.entity.TagEntity
+import kotlinx.coroutines.flow.first
 import org.json.JSONObject
+import java.util.UUID
 import java.io.File
 import javax.crypto.SecretKey
 import android.util.Log
@@ -17,12 +22,17 @@ data class RestoreResult(
     val total: Int,
     val hadManifest: Boolean,
     val failures: List<TransferFailure> = emptyList(),
+    /** Created by this restore; ones already here by the same name aren't counted. */
+    val albums: Int = 0,
+    val rules: Int = 0,
+    val views: Int = 0,
 )
 
 /**
  * Rebuilds the vault from an export folder (spec §11 round-trip). Reads
  * `manifest.json`, re-encrypts each listed file back into the vault, and
- * restores its tags + source metadata. Dedup in [MediaSaver] makes restore
+ * restores its tags + source metadata, then the albums, rules and saved views
+ * built on top of them. Dedup in [MediaSaver] makes restore
  * idempotent — re-running skips items already present.
  */
 object VaultRestorer {
@@ -70,6 +80,9 @@ object VaultRestorer {
         val repo = VaultGraph.repository(context)
         val failures = ArrayList<TransferFailure>()
         var imported = 0
+        // Where each item that names an album ended up in the vault, new or
+        // already here, for putting albums back together once all are in.
+        val placed = ArrayList<Pair<String, String>>()
         for (i in 0 until items.length()) {
             val obj = items.getJSONObject(i)
             // Encrypted entries carry their own opaque filename; plaintext ones
@@ -88,9 +101,10 @@ object VaultRestorer {
             // Held means held: a live row whose file is gone does not count, or
             // restoring from a backup would skip precisely the items that most
             // need it.
-            val held = knownHash != null &&
-                repo.liveIdByHash(knownHash)?.let { VaultGraph.storage(context).blob(it).exists() } == true
-            if (held) {
+            val heldId = knownHash?.let { repo.liveIdByHash(it) }
+                ?.takeIf { VaultGraph.storage(context).blob(it).exists() }
+            if (heldId != null) {
+                obj.optStringOrNull("albumId")?.let { placed.add(heldId to it) }
                 imported++
                 onProgress(RestoreProgress(i + 1, items.length(), imported, failures.size))
                 continue
@@ -101,8 +115,13 @@ object VaultRestorer {
                 failures.add(TransferFailure(shown, "not in the folder — was it copied whole?"))
             } else {
                 val attempt = runCatching { restoreOne(context, saver, doc, obj, key) }
+                val landed = attempt.getOrNull()
                 when {
-                    attempt.getOrDefault(false) -> imported++
+                    landed != null -> {
+                        imported++
+                        val albumId = obj.optStringOrNull("albumId")
+                        if (albumId != null && landed.isNotEmpty()) placed.add(landed to albumId)
+                    }
                     else -> {
                         Log.e(TAG, "restore failed: " + shown, attempt.exceptionOrNull())
                         failures.add(
@@ -117,8 +136,124 @@ object VaultRestorer {
             }
             onProgress(RestoreProgress(i + 1, items.length(), imported, failures.size))
         }
-        return RestoreResult(imported, failures.size, items.length(), true, failures)
+        // After every item, so an album's members are all in place, and never
+        // allowed to fail the restore: the media is what matters, and it's in.
+        val organised = runCatching { organisation(context, JSONObject(json), placed) }
+            .onFailure { Log.e(TAG, "albums/rules/views not restored", it) }
+            .getOrNull()
+        return RestoreResult(
+            imported, failures.size, items.length(), true, failures,
+            albums = organised?.albums ?: 0,
+            rules = organised?.rules ?: 0,
+            views = organised?.views ?: 0,
+        )
     }
+
+    private data class Organised(val albums: Int, val rules: Int, val views: Int)
+
+    /**
+     * Rebuilds albums, auto-tag rules and saved views from the manifest. All
+     * three sections are optional, so a backup from before they were written
+     * restores as it always did.
+     *
+     * Only ever adds. Restoring into a library that already has things:
+     *  - an album with the same name is reused, not doubled, and keeps its cover;
+     *  - an item already in an album stays where it is;
+     *  - a rule identical to one already here, or a view with a name already
+     *    taken, is skipped.
+     * That also makes running the same restore twice harmless.
+     */
+    private suspend fun organisation(
+        context: Context,
+        root: JSONObject,
+        placed: List<Pair<String, String>>,
+    ): Organised {
+        val repo = VaultGraph.repository(context)
+
+        // ---- albums ----
+        var albumsMade = 0
+        val albumFor = HashMap<String, String>() // backup album id -> vault album id
+        val existingAlbums = repo.observeAlbums().first()
+        val albums = root.optJSONArray("albums")
+        for (i in 0 until (albums?.length() ?: 0)) {
+            val a = albums!!.optJSONObject(i) ?: continue
+            val name = a.optString("name").trim()
+            val backupId = a.optString("id")
+            if (name.isEmpty() || backupId.isEmpty()) continue
+            val match = existingAlbums.firstOrNull { it.name.equals(name, ignoreCase = true) }
+            albumFor[backupId] = match?.id ?: run {
+                val made = repo.createAlbum(name, a.optLong("createdAtMillis", System.currentTimeMillis()))
+                albumsMade++
+                a.optStringOrNull("cover")?.let { sha -> repo.liveIdByHash(sha)?.let { repo.setAlbumCover(made, it) } }
+                made
+            }
+        }
+        placed.groupBy({ albumFor[it.second] }, { it.first }).forEach { (album, ids) ->
+            if (album == null) return@forEach
+            val free = ids.filter { repo.mediaById(it)?.media?.albumId == null }
+            if (free.isNotEmpty()) repo.setAlbumForItems(free, album)
+        }
+
+        // ---- auto-tag rules ----
+        var rulesMade = 0
+        val existingRules = repo.observeRules().first()
+        val rules = root.optJSONArray("rules")
+        for (i in 0 until (rules?.length() ?: 0)) {
+            val r = rules!!.optJSONObject(i) ?: continue
+            val kind = RuleMatchKind.entries.firstOrNull { it.name == r.optString("matchKind") } ?: continue
+            val value = r.optString("matchValue")
+            val tagNames = r.optString("tagNames")
+            val rule = AutoTagRuleEntity(
+                id = UUID.randomUUID().toString(),
+                matchKind = kind,
+                matchValue = value,
+                tagNames = tagNames,
+                enabled = r.optBoolean("enabled", true),
+                createdAtMillis = r.optLong("createdAtMillis", System.currentTimeMillis()),
+            )
+            val tagKey = rule.tags().map { it.lowercase() }.sorted()
+            val same = existingRules.any {
+                it.matchKind == kind && it.matchValue.trim().equals(value.trim(), ignoreCase = true) &&
+                    it.tags().map { t -> t.lowercase() }.sorted() == tagKey
+            }
+            if (same || tagKey.isEmpty()) continue
+            repo.upsertRule(rule)
+            rulesMade++
+        }
+
+        // ---- saved views ----
+        var viewsMade = 0
+        val takenNames = repo.observeSavedViews().first().mapTo(HashSet()) { it.name.lowercase() }
+        val tags = repo.observeTags().first()
+        val views = root.optJSONArray("views")
+        for (i in 0 until (views?.length() ?: 0)) {
+            val v = views!!.optJSONObject(i) ?: continue
+            val name = v.optString("name").trim()
+            val spec = v.optString("spec")
+            if (name.isEmpty() || spec.isEmpty() || name.lowercase() in takenNames) continue
+            repo.createSavedView(name, withCurrentTagIds(spec, tags), v.optLong("createdAtMillis", System.currentTimeMillis()))
+            takenNames.add(name.lowercase())
+            viewsMade++
+        }
+        return Organised(albumsMade, rulesMade, viewsMade)
+    }
+
+    /**
+     * A view names its tags by id, and the ids in a backup are the old
+     * library's. Point them at this library's tags of the same name, so the
+     * view survives a later rename here too. Left as it was if it won't parse:
+     * the view still matches by the names stored alongside.
+     */
+    private fun withCurrentTagIds(spec: String, tags: List<TagEntity>): String = runCatching {
+        val o = JSONObject(spec)
+        val arr = o.optJSONArray("tags") ?: return spec
+        for (i in 0 until arr.length()) {
+            val t = arr.getJSONObject(i)
+            val tag = tags.firstOrNull { it.name.equals(t.optString("name"), ignoreCase = true) }
+            t.put("id", tag?.id ?: "")
+        }
+        o.toString()
+    }.getOrDefault(spec)
 
     private suspend fun restoreOne(
         context: Context,
@@ -126,7 +261,7 @@ object VaultRestorer {
         doc: DocumentFile,
         obj: JSONObject,
         key: SecretKey?,
-    ): Boolean {
+    ): String? {
         val temp = if (key == null) spool(context, doc.uri) else unseal(context, doc.uri, obj, key)
         val tags = obj.optJSONArray("tags")?.let { arr ->
             (0 until arr.length()).map { arr.getString(it) }
@@ -162,9 +297,17 @@ object VaultRestorer {
                     val at = if (obj.has("lastViewedAtMillis")) obj.optLong("lastViewedAtMillis") else null
                     repo.setViewHistory(id, at, views)
                 }
+                if (obj.optBoolean("pinned", false)) repo.setPinned(id, true)
+                if (obj.has("videoRotationDegrees")) repo.setVideoRotation(id, obj.optInt("videoRotationDegrees"))
             }.onFailure { Log.w("VaultRestorer", "note/history not restored for " + id, it) }
         }
-        return saved.isSuccess
+        // The item's id here, whether just saved or already held under
+        // another; "" when it landed but which item it is isn't known.
+        return when {
+            id == null -> null
+            id == MediaSaver.DUPLICATE -> saver.duplicateOf ?: ""
+            else -> id
+        }
     }
 
     /**

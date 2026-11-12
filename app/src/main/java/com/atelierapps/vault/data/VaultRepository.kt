@@ -252,9 +252,13 @@ class VaultRepository(
 
     suspend fun tagCount(): Int = withContext(Dispatchers.IO) { tagDao.count() }
 
-    suspend fun createAlbum(name: String): String = withContext(Dispatchers.IO) {
+    /** [createdAtMillis] is given by a restore, so albums keep their order. */
+    suspend fun createAlbum(
+        name: String,
+        createdAtMillis: Long = System.currentTimeMillis(),
+    ): String = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
-        albumDao.upsert(AlbumEntity(id, name.trim(), System.currentTimeMillis()))
+        albumDao.upsert(AlbumEntity(id, name.trim(), createdAtMillis))
         id
     }
 
@@ -278,9 +282,13 @@ class VaultRepository(
 
     fun observeSavedViews(): Flow<List<SavedViewEntity>> = savedViewDao.observeAll()
 
-    suspend fun createSavedView(name: String, spec: String): String = withContext(Dispatchers.IO) {
+    suspend fun createSavedView(
+        name: String,
+        spec: String,
+        createdAtMillis: Long = System.currentTimeMillis(),
+    ): String = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
-        savedViewDao.upsert(SavedViewEntity(id, name.trim(), spec, System.currentTimeMillis()))
+        savedViewDao.upsert(SavedViewEntity(id, name.trim(), spec, createdAtMillis))
         id
     }
 

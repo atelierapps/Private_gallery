@@ -198,8 +198,7 @@ with a resume point past a tenth of the clip, 3–30 s floor) and Most watched,
 plus your own saved views — a named filter + sort stored as JSON in
 `saved_view`, tags by id so a rename doesn't break one. Which view is active
 is derived from filter + sort, not stored; a view's sort overlays the chosen
-one and is never persisted as the default. Saved views are not in backups
-(nor are albums or rules). Play a selection, every video loops by
+one and is never persisted as the default. Play a selection, every video loops by
 default unless a slideshow is running (Settings → Playback), shuffle in the
 viewer's control row (not the home bar) — an on/off switch that shuffles
 around the current item and restores the order around it when turned off.
@@ -221,7 +220,13 @@ bulk import with batch tagging, template bulk rename, image rotate/crop,
 per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button (with a "back to top" arrow docked to it once the home grid is a
 quarter scrolled — one draggable pair, so they can't overlap), app disguise + custom home-screen shortcut, encrypted (or plaintext)
-backup with round-trip restore, and an uninstall warning.
+backup with round-trip restore, and an uninstall warning. Backups carry each
+item's tags, source, note, view history, pin, video rotation and album, plus
+manifest-level `albums` (only those used; cover by sha256), and — whole-library
+backups only — `rules` and `views`. All optional on read. Restore rebuilds
+them after the items and only adds: same-name albums are reused, an item
+already in an album stays put, identical rules and same-name views are
+skipped, and view specs get this library's tag ids.
 
 Diagnostics, because "won't play" and "is damaged" look identical on screen:
 the video player names the cause when playback fails (with ExoPlayer's error

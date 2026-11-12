@@ -9,6 +9,7 @@ import com.atelierapps.vault.crypto.MediaCrypto
 import com.atelierapps.vault.data.entity.MediaWithTags
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.flow.first
 import javax.crypto.SecretKey
 
 data class ExportProgress(val done: Int, val total: Int, val failed: Int)
@@ -166,7 +167,7 @@ object VaultExporter {
             onProgress(ExportProgress(done, items.size, failures.size))
         }
 
-        val manifestWritten = runCatching { writeManifest(context, tree, manifest, key) }
+        val manifestWritten = runCatching { writeManifest(context, tree, manifest, key, wholeLibrary = onlyIds == null) }
             .onFailure { Log.e(TAG, "manifest write failed", it) }
             .getOrDefault(false)
 
@@ -230,7 +231,9 @@ object VaultExporter {
             onProgress(ExportProgress(done, items.size, failures.size))
         }
 
-        val manifestWritten = runCatching { writeManifest(context, tree, manifest, retry.key) }
+        val manifestWritten = runCatching {
+            writeManifest(context, tree, manifest, retry.key, retry.wholeLibrary)
+        }
             .onFailure { Log.e(TAG, "manifest rewrite failed", it) }
             .getOrDefault(false)
         if (!manifestWritten) {
@@ -326,14 +329,82 @@ object VaultExporter {
                 put("viewCount", m.viewCount)
                 m.lastViewedAtMillis?.let { put("lastViewedAtMillis", it) }
             }
+            // Also optional on read. Favourites and a sideways video's
+            // rotation used to be lost on every restore; the album is
+            // resolved through the manifest's "albums" list (see
+            // [organisation]), since ids are minted fresh on the way back in.
+            if (m.isPinned) put("pinned", true)
+            m.videoRotationDegrees?.let { put("videoRotationDegrees", it) }
+            m.albumId?.let { put("albumId", it) }
         }
     }
 
-    private fun writeManifest(
+    /**
+     * Everything that organises the library rather than being in it: albums,
+     * auto-tag rules and saved views. Before this a restore brought back every
+     * item and tag but none of the structure built on top of them.
+     *
+     * Albums go in for any backup, but only the ones its items belong to. Rules
+     * and views only go in a whole-library backup: a backup of a selection is
+     * that selection, not a copy of how everything else is arranged.
+     *
+     * Best-effort: a failure here leaves the manifest without these sections,
+     * which restores exactly as a backup from before they existed.
+     */
+    private suspend fun organisation(context: Context, root: JSONObject, manifest: JSONArray, wholeLibrary: Boolean) {
+        val repo = VaultGraph.repository(context)
+        val used = HashSet<String>()
+        for (i in 0 until manifest.length()) {
+            manifest.optJSONObject(i)?.optString("albumId")?.takeIf { it.isNotEmpty() }?.let { used.add(it) }
+        }
+        if (used.isNotEmpty()) {
+            val albums = JSONArray()
+            repo.observeAlbums().first().filter { it.id in used }.forEach { a ->
+                albums.put(
+                    JSONObject().apply {
+                        put("id", a.id)
+                        put("name", a.name)
+                        put("createdAtMillis", a.createdAtMillis)
+                        // By content, like the items: the cover's id won't survive.
+                        a.coverId?.let { repo.mediaById(it)?.media?.contentHash }?.let { put("cover", it) }
+                    },
+                )
+            }
+            root.put("albums", albums)
+        }
+        if (!wholeLibrary) return
+        val rules = JSONArray()
+        repo.observeRules().first().forEach { r ->
+            rules.put(
+                JSONObject().apply {
+                    put("matchKind", r.matchKind.name)
+                    put("matchValue", r.matchValue)
+                    put("tagNames", r.tagNames)
+                    put("enabled", r.enabled)
+                    put("createdAtMillis", r.createdAtMillis)
+                },
+            )
+        }
+        root.put("rules", rules)
+        val views = JSONArray()
+        repo.observeSavedViews().first().forEach { v ->
+            views.put(
+                JSONObject().apply {
+                    put("name", v.name)
+                    put("spec", v.spec)
+                    put("createdAtMillis", v.createdAtMillis)
+                },
+            )
+        }
+        root.put("views", views)
+    }
+
+    private suspend fun writeManifest(
         context: Context,
         tree: DocumentFile,
         manifest: JSONArray,
         key: SecretKey?,
+        wholeLibrary: Boolean,
     ): Boolean {
         val name = if (key == null) "manifest.json" else BackupCrypto.MANIFEST
         tree.findFile(name)?.delete()
@@ -343,6 +414,8 @@ object VaultExporter {
             put("version", 1)
             put("items", manifest)
         }
+        runCatching { organisation(context, root, manifest, wholeLibrary) }
+            .onFailure { Log.w(TAG, "albums/rules/views left out of the manifest", it) }
         val bytes = root.toString(2).toByteArray()
         context.contentResolver.openOutputStream(file.uri)!!.use { out ->
             // The manifest holds names, tags and sources — the same metadata the
