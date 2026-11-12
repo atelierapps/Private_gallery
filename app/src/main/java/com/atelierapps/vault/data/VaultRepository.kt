@@ -3,11 +3,13 @@ package com.atelierapps.vault.data
 import com.atelierapps.vault.data.db.AlbumDao
 import com.atelierapps.vault.data.db.AutoTagRuleDao
 import com.atelierapps.vault.data.db.MediaDao
+import com.atelierapps.vault.data.db.SavedViewDao
 import com.atelierapps.vault.data.db.TagDao
 import com.atelierapps.vault.data.entity.AlbumEntity
 import com.atelierapps.vault.data.entity.AutoTagRuleEntity
 import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.data.entity.MediaTagCrossRef
+import com.atelierapps.vault.data.entity.SavedViewEntity
 import com.atelierapps.vault.data.entity.SourceType
 import com.atelierapps.vault.data.entity.TagEntity
 import android.util.Log
@@ -22,6 +24,7 @@ class VaultRepository(
     private val tagDao: TagDao,
     private val ruleDao: AutoTagRuleDao,
     private val albumDao: AlbumDao,
+    private val savedViewDao: SavedViewDao,
 ) {
     /**
      * Told which tag ids were just applied, so pickers can offer them first.
@@ -270,6 +273,23 @@ class VaultRepository(
 
     suspend fun setAlbumForItems(ids: Collection<String>, albumId: String?) =
         withContext(Dispatchers.IO) { albumDao.setAlbumForIds(ids.toList(), albumId) }
+
+    // ---- saved views ----
+
+    fun observeSavedViews(): Flow<List<SavedViewEntity>> = savedViewDao.observeAll()
+
+    suspend fun createSavedView(name: String, spec: String): String = withContext(Dispatchers.IO) {
+        val id = UUID.randomUUID().toString()
+        savedViewDao.upsert(SavedViewEntity(id, name.trim(), spec, System.currentTimeMillis()))
+        id
+    }
+
+    suspend fun renameSavedView(id: String, name: String) =
+        withContext(Dispatchers.IO) { savedViewDao.rename(id, name.trim()) }
+
+    /** Only the view goes; it never held any items. */
+    suspend fun deleteSavedView(id: String) =
+        withContext(Dispatchers.IO) { savedViewDao.delete(id) }
 
     private fun defaultColorFor(name: String): String {
         val palette = listOf("#D8B463", "#7FA88B", "#C08A6E", "#8091C0", "#B07FA8", "#6EA8B0")

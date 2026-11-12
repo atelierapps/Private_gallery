@@ -18,7 +18,7 @@ object VaultGraph {
             repo ?: run {
                 val db = VaultDatabase.get(context)
                 val app = context.applicationContext
-                VaultRepository(db.mediaDao(), db.tagDao(), db.autoTagRuleDao(), db.albumDao())
+                VaultRepository(db.mediaDao(), db.tagDao(), db.autoTagRuleDao(), db.albumDao(), db.savedViewDao())
                     .also { r -> r.onTagsUsed = { ids -> TagPrefs.noteUsed(app, ids) } }
                     .also { repo = it }
             }
