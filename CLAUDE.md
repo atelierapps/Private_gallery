@@ -75,8 +75,9 @@ server, no account, and no network access of any kind.
 - Room + **SQLCipher** (`net.zetetic:sqlcipher-android:4.9.0` — pinned, *not*
   latest: 4.10+ drags in androidx.sqlite 2.7.0 and kotlin-stdlib 2.2, both ahead
   of Room 2.6.1 / Kotlin 2.0.21 here).
-- **Schema version 9.** Migrations 1→2 … 8→9 all live in `VaultDatabase`.
-  9 added `note`, `lastViewedAtMillis` and `viewCount` (DEFAULT 0) to `media`.
+- **Schema version 10.** Migrations 1→2 … 9→10 all live in `VaultDatabase`.
+  9 added `note`, `lastViewedAtMillis` and `viewCount` (DEFAULT 0) to `media`;
+  10 added the `saved_view` table (id, name, spec JSON, createdAtMillis).
   Bump the version *and* add the migration; there is no destructive fallback,
   by design.
 - `DbCipher` migrates a legacy plaintext database once, verifying table by table
@@ -191,7 +192,14 @@ Everything in the spec, plus: recycle bin with 30-day purge, albums, tags +
 manager + auto-tag rules, duplicate finder, search, six sort orders, date
 sections, fast scroller, one-tap Favourites / Untagged / Short filter chips
 (Source was dropped from the bar — it only ever said "Download"; sources now
-sit at the bottom of the Type menu), play a selection, every video loops by
+sit at the bottom of the Type menu), a **views row** above the filters
+(`ui/home/ViewsRow.kt`, `SavedViews.kt`): built-in Continue watching (videos
+with a resume point past a tenth of the clip, 3–30 s floor) and Most watched,
+plus your own saved views — a named filter + sort stored as JSON in
+`saved_view`, tags by id so a rename doesn't break one. Which view is active
+is derived from filter + sort, not stored; a view's sort overlays the chosen
+one and is never persisted as the default. Saved views are not in backups
+(nor are albums or rules). Play a selection, every video loops by
 default unless a slideshow is running (Settings → Playback), shuffle in the
 viewer's control row (not the home bar) — an on/off switch that shuffles
 around the current item and restores the order around it when turned off.
