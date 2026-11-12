@@ -73,6 +73,9 @@ fun FilterBar(
     onToggleUnwatched: () -> Unit,
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
+    // Set only by a view, so they show as removable chips rather than toggles.
+    onToggleInProgress: () -> Unit = {},
+    onToggleWatched: () -> Unit = {},
 ) {
     var tagPicker by remember { mutableStateOf(false) }
 
@@ -96,6 +99,12 @@ fun FilterBar(
         }
         if (filter.date != DateBucket.ANY) {
             item { ActiveChip(filter.date.label) { onSetDate(DateBucket.ANY) } }
+        }
+        if (filter.inProgress) {
+            item { ActiveChip("In progress") { onToggleInProgress() } }
+        }
+        if (filter.watched) {
+            item { ActiveChip("Watched") { onToggleWatched() } }
         }
 
         // ---- one-tap toggles: they show their own on/off, so no active chip ----

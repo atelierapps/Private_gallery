@@ -135,8 +135,13 @@ fun VaultHome(
     val trashCount by vm.trashCount.collectAsState()
     val duplicateCount by vm.duplicateCount.collectAsState()
     val albums by vm.albums.collectAsState()
+    val views by vm.views.collectAsState()
+    val viewCounts by vm.viewCounts.collectAsState()
+    val activeViewId by vm.activeViewId.collectAsState()
 
     var confirmDelete by remember { mutableStateOf(false) }
+    var savingView by remember { mutableStateOf(false) }
+    var editingView by remember { mutableStateOf<SavedView?>(null) }
     var searchOpen by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var showAlbumDialog by remember { mutableStateOf(false) }
@@ -252,6 +257,21 @@ fun VaultHome(
                 if (searchOpen) {
                     SearchField(query = query, onQueryChange = vm::setQuery)
                 }
+                ViewsRow(
+                    views = views,
+                    counts = viewCounts,
+                    activeId = activeViewId,
+                    canSave = !filter.isEmpty && activeViewId == null,
+                    onApply = { view ->
+                        vm.applyView(view)
+                        // A different set of things: start at its top, not
+                        // wherever the last one was scrolled to.
+                        scope.launch { gridState.scrollToItem(0) }
+                    },
+                    onSave = { savingView = true },
+                    onEdit = { editingView = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 FilterBar(
                     filter = filter,
                     sources = sources,
@@ -266,6 +286,8 @@ fun VaultHome(
                     onToggleUnwatched = vm::toggleUnwatched,
                     onClearAll = vm::clearAll,
                     modifier = Modifier.fillMaxWidth(),
+                    onToggleInProgress = vm::toggleInProgress,
+                    onToggleWatched = vm::toggleWatched,
                 )
                 ResultsLine(count = media.size, sort = sort, onSetSort = vm::setSort)
             }
@@ -329,6 +351,33 @@ fun VaultHome(
             // Straight there, not animated: animating past thousands of tiles
             // decodes every thumbnail on the way.
             onTop = { scope.launch { gridState.scrollToItem(0) } },
+        )
+    }
+
+    val sourceLabel: (String) -> String = { pkg -> sources.firstOrNull { it.pkg == pkg }?.label ?: pkg }
+    if (savingView) {
+        SaveViewDialog(
+            summary = SavedViews.describe(filter, sort, sourceLabel),
+            onSave = { name ->
+                savingView = false
+                vm.saveCurrentView(name) { saved -> say("Saved view \u201C" + saved + "\u201D") }
+            },
+            onDismiss = { savingView = false },
+        )
+    }
+    editingView?.let { view ->
+        EditViewDialog(
+            view = view,
+            summary = SavedViews.describe(view.filter, view.sort, sourceLabel),
+            onRename = { name ->
+                vm.renameView(view.id, name)
+                editingView = null
+            },
+            onDelete = {
+                vm.deleteView(view.id)
+                editingView = null
+            },
+            onDismiss = { editingView = null },
         )
     }
 

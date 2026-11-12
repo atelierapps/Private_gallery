@@ -45,11 +45,16 @@ data class MediaFilter(
     val shortClips: Boolean = false,
     /** Never opened in the viewer (since schema 9, when the history began). */
     val unwatched: Boolean = false,
+    /** Videos left partway through: the "Continue watching" view. */
+    val inProgress: Boolean = false,
+    /** Opened at least once: the "Most watched" view, so the never-seen don't trail it. */
+    val watched: Boolean = false,
 ) {
     val isEmpty: Boolean
         get() = type == MediaTypeFilter.ALL && sources.isEmpty() &&
             tagNames.isEmpty() && date == DateBucket.ANY &&
-            !favourites && !untagged && !shortClips && !unwatched
+            !favourites && !untagged && !shortClips && !unwatched &&
+            !inProgress && !watched
 
     fun matches(item: MediaWithTags, now: Long): Boolean {
         val isVideo = item.media.mimeType.startsWith("video/")
@@ -65,6 +70,10 @@ data class MediaFilter(
         if (favourites && !item.media.isPinned) return false
         if (untagged && item.tags.isNotEmpty()) return false
         if (unwatched && item.media.viewCount > 0) return false
+        if (watched && item.media.viewCount == 0) return false
+        if (inProgress && !(isVideo && isInProgress(item.media.resumePositionMillis, item.media.durationMillis))) {
+            return false
+        }
         if (shortClips) {
             // A video with no recorded length is left out rather than guessed
             // at: claiming an unknown clip is short is the worse mistake.
@@ -93,8 +102,24 @@ data class MediaFilter(
     fun toggleUntagged() = copy(untagged = !untagged)
     fun toggleShortClips() = copy(shortClips = !shortClips)
     fun toggleUnwatched() = copy(unwatched = !unwatched)
+    fun toggleInProgress() = copy(inProgress = !inProgress)
+    fun toggleWatched() = copy(watched = !watched)
 
     companion object {
         const val SHORT_CLIP_MILLIS = 15_000L
+
+        /**
+         * Worth offering to continue. The player keeps a resume point for
+         * anything stopped short of the last second and a half, so a clip
+         * glanced at for a second has one too; without a floor, "Continue
+         * watching" would be everything you've ever opened. A tenth of the
+         * clip, but never under 3 s and never more than 30 s to qualify.
+         */
+        fun isInProgress(resumeMillis: Long?, durationMillis: Long?): Boolean {
+            val pos = resumeMillis ?: return false
+            val d = durationMillis ?: 0L
+            val floor = (d / 10).coerceIn(3_000L, 30_000L)
+            return pos >= floor
+        }
     }
 }

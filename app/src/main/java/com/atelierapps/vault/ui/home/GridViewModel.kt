@@ -35,6 +35,9 @@ enum class SortOrder(val label: String) {
     LARGEST("Largest first"),
     // Rediscovery: never-seen first, then whatever you last looked at longest ago.
     NOT_SEEN("Not seen lately"),
+    // The views row's two built-ins sort by these; they're in the menu too.
+    LAST_WATCHED("Recently watched"),
+    MOST_WATCHED("Most watched"),
 }
 
 /** A source-filter chip: an app that media came from, with its total count (spec §7). */
@@ -66,11 +69,19 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     // Sort sticks across launches, like every other display preference. Picking
     // "Longest first" once and having it silently revert to Newest next launch
     // was the odd one out.
-    private val _sort = MutableStateFlow(
+    private val _chosenSort = MutableStateFlow(
         DisplayPrefs.sort(app)?.let { name -> SortOrder.entries.firstOrNull { it.name == name } }
             ?: SortOrder.RECENT,
     )
-    val sort: StateFlow<SortOrder> = _sort
+
+    // A view's own order, laid over the chosen one while the view is in use
+    // and never saved as the default: tapping "Most watched" once must not
+    // leave the grid sorted by it at the next launch.
+    private val _viewSort = MutableStateFlow<SortOrder?>(null)
+
+    val sort: StateFlow<SortOrder> =
+        combine(_chosenSort, _viewSort) { chosen, view -> view ?: chosen }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, _chosenSort.value)
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query
@@ -118,7 +129,7 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val media: StateFlow<List<MediaWithTags>> =
-        combine(repo.observeAll(), _filter, _sort, _query) { list, f, s, q ->
+        combine(repo.observeAll(), _filter, sort, _query) { list, f, s, q ->
             var out = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
             if (q.isNotBlank()) {
                 val ql = q.trim().lowercase()
@@ -129,11 +140,76 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun matchesQuery(item: MediaWithTags, ql: String): Boolean = item.matchesQuery(ql)
 
+    // ---- views ----
+
+    /** The two built-ins, then the ones you saved, oldest first. */
+    val views: StateFlow<List<SavedView>> =
+        combine(repo.observeSavedViews(), repo.observeTags()) { rows, tags ->
+            SavedViews.builtIns + rows.mapNotNull { SavedViews.decode(it, tags) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SavedViews.builtIns)
+
+    /**
+     * How many items each view holds right now, ignoring search. Lets the row
+     * leave out a built-in with nothing in it, and say how full the rest are.
+     */
+    val viewCounts: StateFlow<Map<String, Int>> =
+        combine(repo.observeAll(), views) { all, vs ->
+            val now = System.currentTimeMillis()
+            vs.associate { v -> v.id to all.count { v.filter.matches(it, now) } }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * The view the grid is showing, if any: worked out from the filter and
+     * sort rather than remembered, so changing either by hand quietly leaves
+     * the view, and setting them back by hand lands in it again.
+     */
+    val activeViewId: StateFlow<String?> =
+        combine(views, _filter, sort) { vs, f, s ->
+            if (f.isEmpty) null
+            else vs.firstOrNull { it.filter == f && (it.sort == null || it.sort == s) }?.id
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Tap a view to show it; tap the one you're in to leave it. */
+    fun applyView(view: SavedView) {
+        if (activeViewId.value == view.id) {
+            clearAll()
+            return
+        }
+        _filter.value = view.filter
+        _viewSort.value = view.sort
+    }
+
+    /** Keep the current filters and order as a view of their own. */
+    fun saveCurrentView(name: String, onDone: (String) -> Unit = {}) {
+        val clean = name.trim()
+        val f = _filter.value
+        if (clean.isEmpty() || f.isEmpty) return
+        val spec = SavedViews.encode(f, sort.value, tagChips.value)
+        viewModelScope.launch {
+            repo.createSavedView(clean, spec)
+            onDone(clean)
+        }
+    }
+
+    fun renameView(id: String, name: String) {
+        val clean = name.trim()
+        if (clean.isEmpty() || id.startsWith("builtin:")) return
+        viewModelScope.launch { repo.renameSavedView(id, clean) }
+    }
+
+    /** The view only; it never held anything, so nothing else changes. */
+    fun deleteView(id: String) {
+        if (id.startsWith("builtin:")) return
+        if (activeViewId.value == id) clearAll()
+        viewModelScope.launch { repo.deleteSavedView(id) }
+    }
+
     fun setType(t: com.atelierapps.vault.filter.MediaTypeFilter) {
         _filter.value = _filter.value.withType(t)
     }
     fun setSort(s: SortOrder) {
-        _sort.value = s
+        _viewSort.value = null
+        _chosenSort.value = s
         DisplayPrefs.setSort(getApplication(), s.name)
     }
 
@@ -341,7 +417,14 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleUntagged() { _filter.value = _filter.value.toggleUntagged() }
     fun toggleShortClips() { _filter.value = _filter.value.toggleShortClips() }
     fun toggleUnwatched() { _filter.value = _filter.value.toggleUnwatched() }
-    fun clearAll() { _filter.value = MediaFilter() }
+    fun toggleInProgress() { _filter.value = _filter.value.toggleInProgress() }
+    fun toggleWatched() { _filter.value = _filter.value.toggleWatched() }
+
+    /** Back to everything, in the order you chose — a view's order goes with it. */
+    fun clearAll() {
+        _filter.value = MediaFilter()
+        _viewSort.value = null
+    }
 }
 
 /**
@@ -379,6 +462,13 @@ fun List<MediaWithTags>.sortedFor(order: SortOrder): List<MediaWithTags> {
         SortOrder.NOT_SEEN -> sortedWith(
             compareBy<MediaWithTags> { it.media.lastViewedAtMillis ?: 0L }
                 .thenByDescending { it.media.importedAtMillis },
+        )
+        // Never seen goes last, not first: this is "what was I just watching".
+        SortOrder.LAST_WATCHED -> sortedByDescending { it.media.lastViewedAtMillis ?: Long.MIN_VALUE }
+        // Ties (common: lots of things seen once) go to the more recently seen.
+        SortOrder.MOST_WATCHED -> sortedWith(
+            compareByDescending<MediaWithTags> { it.media.viewCount }
+                .thenByDescending { it.media.lastViewedAtMillis ?: 0L },
         )
     }
     // Pinned items float to the top (stable — keeps sort order within groups).
