@@ -75,9 +75,10 @@ server, no account, and no network access of any kind.
 - Room + **SQLCipher** (`net.zetetic:sqlcipher-android:4.9.0` — pinned, *not*
   latest: 4.10+ drags in androidx.sqlite 2.7.0 and kotlin-stdlib 2.2, both ahead
   of Room 2.6.1 / Kotlin 2.0.21 here).
-- **Schema version 10.** Migrations 1→2 … 9→10 all live in `VaultDatabase`.
+- **Schema version 11.** Migrations 1→2 … 10→11 all live in `VaultDatabase`.
   9 added `note`, `lastViewedAtMillis` and `viewCount` (DEFAULT 0) to `media`;
-  10 added the `saved_view` table (id, name, spec JSON, createdAtMillis).
+  10 added the `saved_view` table (id, name, spec JSON, createdAtMillis);
+  11 added `bookmarks` (comma-joined ms) and `watchLaterAtMillis` to `media`.
   Bump the version *and* add the migration; there is no destructive fallback,
   by design.
 - `DbCipher` migrates a legacy plaintext database once, verifying table by table
@@ -193,12 +194,19 @@ manager + auto-tag rules, duplicate finder, search, six sort orders, date
 sections, fast scroller, one-tap Favourites / Untagged / Short filter chips
 (Source was dropped from the bar — it only ever said "Download"; sources now
 sit at the bottom of the Type menu), a **views row** above the filters
-(`ui/home/ViewsRow.kt`, `SavedViews.kt`): built-in Continue watching (videos
+(`ui/home/ViewsRow.kt`, `SavedViews.kt`): built-in Watch later (a queue,
+oldest-added first; viewer ⋮ or selection ⋮ → Add to Watch later; removed by
+hand, not on watching), Continue watching (videos
 with a resume point past a tenth of the clip, 3–30 s floor) and Most watched,
 plus your own saved views — a named filter + sort stored as JSON in
 `saved_view`, tags by id so a rename doesn't break one. Which view is active
 is derived from filter + sort, not stored; a view's sort overlays the chosen
-one and is never persisted as the default. Play a selection, every video loops by
+one and is never persisted as the default. Search is typo-tolerant
+(`filter/Search.kt`, unit-tested): each word matched anywhere, words of 4+
+letters may be 1 edit off (8+: 2), a swapped pair counts as one edit, and
+exact matches rank ahead of near ones. In the player, a marks row under the
+scrubber: A–B repeat (per clip, never saved, off during a slideshow) and
+timeline bookmarks (+ Mark; tap to jump, long-press to remove). Play a selection, every video loops by
 default unless a slideshow is running (Settings → Playback), shuffle in the
 viewer's control row (not the home bar) — an on/off switch that shuffles
 around the current item and restores the order around it when turned off.
@@ -221,7 +229,8 @@ per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button (with a "back to top" arrow docked to it once the home grid is a
 quarter scrolled — one draggable pair, so they can't overlap), app disguise + custom home-screen shortcut, encrypted (or plaintext)
 backup with round-trip restore, and an uninstall warning. Backups carry each
-item's tags, source, note, view history, pin, video rotation and album, plus
+item's tags, source, note, view history, pin, video rotation, album,
+bookmarks and watch-later place, plus
 manifest-level `albums` (only those used; cover by sha256), and — whole-library
 backups only — `rules` and `views`. All optional on read. Restore rebuilds
 them after the items and only adds: same-name albums are reused, an item
