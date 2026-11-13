@@ -60,6 +60,8 @@ Schema went **9 → 12** this session; every migration is additive.
   videos) with albums intact; restoring again over the existing library
   created no duplicates.
 - **Watching stats card** — "looks nice".
+- **Auto-tag rules removed** — built and installed; the owner confirmed the
+  feature is gone.
 
 ### Built but not yet tested by the owner
 
