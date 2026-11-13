@@ -107,7 +107,7 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
                 StatRow("Opened at least once", "${stats.opened} of ${stats.items} (${stats.opened * 100 / items}%)")
                 StatRow("Never opened", "${stats.items - stats.opened}")
                 StatRow("Total views", "${stats.totalViews}")
-                StatRow("Left partway", "${stats.inProgress}")
+                StatRow("Left partway today", "${stats.inProgress}")
                 StatRow("In Watch later", "${stats.watchLater}")
                 StatRow("With bookmarks", "${stats.bookmarked}")
                 StatRow("Length of all videos", formatDuration(stats.videoMillis))

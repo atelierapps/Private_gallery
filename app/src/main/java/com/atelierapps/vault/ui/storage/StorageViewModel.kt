@@ -175,7 +175,10 @@ class StorageViewModel(app: Application) : AndroidViewModel(app) {
             totalViews = live.sumOf { it.media.viewCount },
             inProgress = live.count {
                 it.media.mimeType.startsWith("video/") &&
-                    MediaFilter.isInProgress(it.media.resumePositionMillis, it.media.durationMillis)
+                    MediaFilter.isInProgress(
+                        it.media.resumePositionMillis, it.media.durationMillis,
+                        it.media.lastViewedAtMillis, System.currentTimeMillis(),
+                    )
             },
             watchLater = live.count { it.media.watchLaterAtMillis != null },
             bookmarked = live.count { it.media.bookmarkList().isNotEmpty() },

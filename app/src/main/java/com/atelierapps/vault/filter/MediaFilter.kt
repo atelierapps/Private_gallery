@@ -83,7 +83,7 @@ data class MediaFilter(
         if (watched && item.media.viewCount == 0) return false
         if (watchLater && item.media.watchLaterAtMillis == null) return false
         if (topWatched > 0 && item.media.viewCount < 2) return false
-        if (inProgress && !(isVideo && isInProgress(item.media.resumePositionMillis, item.media.durationMillis))) {
+        if (inProgress && !(isVideo && isInProgress(item.media.resumePositionMillis, item.media.durationMillis, item.media.lastViewedAtMillis, now))) {
             return false
         }
         if (shortClips) {
@@ -163,7 +163,11 @@ data class MediaFilter(
          * watching" would be everything you've ever opened. A tenth of the
          * clip, but never under 3 s and never more than 30 s to qualify.
          */
-        fun isInProgress(resumeMillis: Long?, durationMillis: Long?): Boolean {
+        fun isInProgress(resumeMillis: Long?, durationMillis: Long?, lastViewedMillis: Long?, now: Long): Boolean {
+            // Only what would actually resume: past the day a video starts
+            // from the top (see RESUME_FRESH_MILLIS), so listing it under
+            // "Continue watching" would be a promise the player doesn't keep.
+            if (lastViewedMillis == null || now - lastViewedMillis >= RESUME_FRESH_MILLIS) return false
             val pos = resumeMillis ?: return false
             val d = durationMillis ?: 0L
             val floor = (d / 10).coerceIn(3_000L, 30_000L)
