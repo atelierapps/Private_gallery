@@ -9,7 +9,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.atelierapps.vault.ui.home.SortOrder
@@ -49,6 +52,56 @@ class AlbumViewModel(app: Application) : AndroidViewModel(app) {
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setAlbum(id: String) { albumId.value = id }
+
+    // ---- following tags ----
+
+    /** The tags this album follows, or null for one filled by hand. */
+    val rule: StateFlow<AlbumTagRule?> =
+        combine(repo.observeAlbums(), repo.observeTags(), albumId) { albums, tags, id ->
+            AlbumTagRule.decode(albums.firstOrNull { it.id == id }?.tagRule, tags)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val skips = albumId.flatMapLatest { id ->
+        if (id == null) flowOf(emptyList()) else repo.observeAlbumSkips(id)
+    }
+
+    /**
+     * Items that carry this album's tags but aren't in it yet: the ones to
+     * offer. Not ones already in another album (an item has one album, and
+     * taking it would quietly empty that one), and not ones turned down or
+     * removed before.
+     */
+    val pending: StateFlow<List<MediaWithTags>> =
+        combine(repo.observeAll(), rule, skips, albumId) { all, r, skipped, id ->
+            if (r == null || id == null) {
+                emptyList()
+            } else {
+                val skipSet = skipped.toHashSet()
+                val free = matchTags(all, r.names, r.requireAll, id).free.toHashSet()
+                all.filter { it.media.id in free && it.media.id !in skipSet }
+                    .sortedByDescending { it.media.importedAtMillis }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Add the [chosen] ones; the rest of [offered] are not offered again.
+     * Unticking is the answer "not this one", not "ask me later".
+     */
+    fun reviewPending(offered: List<String>, chosen: Set<String>) {
+        val album = albumId.value ?: return
+        viewModelScope.launch {
+            val add = offered.filter { it in chosen }
+            if (add.isNotEmpty()) repo.setAlbumForItems(add, album)
+            repo.skipForAlbum(album, offered.filter { it !in chosen })
+        }
+    }
+
+    /** Stop offering new matches; the album keeps what it has. */
+    fun stopFollowing() {
+        val album = albumId.value ?: return
+        viewModelScope.launch { repo.setAlbumTagRule(album, null) }
+    }
 
     // Range-select anchor — same behaviour as the main grid, so the gesture
     // means the same thing wherever you are.
@@ -119,13 +172,19 @@ class AlbumViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Remove selected items from this album — they stay in the library. */
+    /**
+     * Remove selected items from this album — they stay in the library. In an
+     * album that follows tags they also go on its skip list, or they'd be
+     * offered straight back the next time it opened.
+     */
     fun removeSelected() {
         val ids = selectedIds.value
         if (ids.isEmpty()) return
+        val album = albumId.value
         working.value = true
         viewModelScope.launch(Dispatchers.IO) {
             repo.setAlbumForItems(ids, null)
+            if (album != null && rule.value != null) repo.skipForAlbum(album, ids)
             working.value = false
             clearSelection()
         }

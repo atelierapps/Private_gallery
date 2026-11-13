@@ -32,6 +32,8 @@ import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.TagPicker
 import com.atelierapps.vault.ui.theme.VaultChip
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * What a set of tags would bring into an album. An item belongs to at most
@@ -46,6 +48,43 @@ data class TagMatch(
     /** Already in this album. */
     val already: Int,
 )
+
+/**
+ * The tags an album follows, in and out of [com.atelierapps.vault.data.entity.AlbumEntity.tagRule].
+ * Same shape as a saved view's tags (`{"id","name"}` pairs under "tags"), so a
+ * restore can re-point the ids at the new library's tags the same way.
+ */
+data class AlbumTagRule(val names: List<String>, val requireAll: Boolean) {
+
+    fun describe(): String =
+        names.joinToString(if (requireAll) " + " else " · ") { "#$it" }
+
+    companion object {
+        fun encode(names: Collection<String>, requireAll: Boolean, tags: List<TagEntity>): String {
+            val arr = JSONArray()
+            names.forEach { n ->
+                val tag = tags.firstOrNull { it.name.equals(n, ignoreCase = true) }
+                arr.put(JSONObject().put("id", tag?.id ?: "").put("name", tag?.name ?: n))
+            }
+            return JSONObject().put("all", requireAll).put("tags", arr).toString()
+        }
+
+        /** Null for an album filled by hand, or a rule that won't parse. */
+        fun decode(rule: String?, tags: List<TagEntity>): AlbumTagRule? {
+            if (rule.isNullOrBlank()) return null
+            return runCatching {
+                val o = JSONObject(rule)
+                val byId = tags.associateBy { it.id }
+                val arr = o.optJSONArray("tags") ?: JSONArray()
+                val names = (0 until arr.length()).map { i ->
+                    val t = arr.getJSONObject(i)
+                    byId[t.optString("id")]?.name ?: t.optString("name")
+                }.filter { it.isNotEmpty() }
+                AlbumTagRule(names, o.optBoolean("all"))
+            }.getOrNull()?.takeIf { it.names.isNotEmpty() }
+        }
+    }
+}
 
 fun matchTags(
     library: List<MediaWithTags>,
@@ -83,7 +122,8 @@ fun AlbumFromTagsDialog(
     albumId: String?,
     tags: List<TagEntity>,
     library: List<MediaWithTags>,
-    onConfirm: (name: String, ids: List<String>) -> Unit,
+    /** [tags] and [requireAll] become the album's rule, so it keeps following them. */
+    onConfirm: (name: String, ids: List<String>, tags: List<String>, requireAll: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
@@ -170,7 +210,9 @@ fun AlbumFromTagsDialog(
                         }
                     }
                     Text(
-                        "Anything that doesn't belong: select it in the album and Remove — it stays in your library.",
+                        "The album keeps following these tags: anything tagged like this later is offered " +
+                            "when you open it. Anything that doesn't belong: select it in the album and " +
+                            "Remove — it stays in your library and isn't offered again.",
                         color = Muted,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 8.dp),
@@ -180,11 +222,13 @@ fun AlbumFromTagsDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim(), ids) },
-                enabled = if (askName) name.isNotBlank() else ids.isNotEmpty(),
+                onClick = { onConfirm(name.trim(), ids, picked.toList(), requireAll) },
+                enabled = if (askName) name.isNotBlank() else picked.isNotEmpty(),
             ) {
                 Text(
                     when {
+                        // Nothing new right now is still worth following.
+                        !askName && ids.isEmpty() -> "Follow these tags"
                         !askName -> "Add " + ids.size
                         ids.isEmpty() -> "Create"
                         else -> "Create with " + ids.size

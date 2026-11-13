@@ -117,7 +117,7 @@ fun AlbumsScreen(
             albumId = null,
             tags = tags,
             library = library,
-            onConfirm = { name, ids -> vm.create(name, ids); showCreate = false },
+            onConfirm = { name, ids, tagNames, all -> vm.create(name, ids, tagNames, all); showCreate = false },
             onDismiss = { showCreate = false },
         )
     }
@@ -128,7 +128,7 @@ fun AlbumsScreen(
             albumId = card.album.id,
             tags = tags,
             library = library,
-            onConfirm = { _, ids -> vm.addToAlbum(card.album.id, ids); filling = null },
+            onConfirm = { _, ids, tagNames, all -> vm.addToAlbum(card.album.id, ids, tagNames, all); filling = null },
             onDismiss = { filling = null },
         )
     }

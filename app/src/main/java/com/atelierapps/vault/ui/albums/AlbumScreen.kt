@@ -1,6 +1,8 @@
 package com.atelierapps.vault.ui.albums
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -68,6 +70,9 @@ fun AlbumScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     var previewing by remember { mutableStateOf<com.atelierapps.vault.data.entity.MediaWithTags?>(null) }
+    val rule by vm.rule.collectAsState()
+    val pending by vm.pending.collectAsState()
+    var reviewing by remember { mutableStateOf(false) }
 
     // Same rule as the main grid: back leaves the selection before it leaves
     // the album.
@@ -141,6 +146,13 @@ fun AlbumScreen(
                                 text = { Text("Export album", color = Ink) },
                                 onClick = { menu = false; onExport(media.map { it.media.id }.toSet()) },
                             )
+                            if (rule != null) {
+                                // Keeps everything already in it; only the offers stop.
+                                DropdownMenuItem(
+                                    text = { Text("Stop following tags", color = Ink) },
+                                    onClick = { menu = false; vm.stopFollowing() },
+                                )
+                            }
                         }
                     }
                 }
@@ -153,6 +165,29 @@ fun AlbumScreen(
                         modifier = Modifier.fillMaxWidth()
                             .padding(horizontal = 14.dp, vertical = 4.dp),
                     )
+                }
+            }
+
+            // An album that follows tags says when there's something new for
+            // it, and stays quiet otherwise.
+            val followed = rule
+            if (followed != null && pending.isNotEmpty() && !selectionMode) {
+                Row(
+                    Modifier.fillMaxWidth().background(SurfaceHigh)
+                        .clickable { reviewing = true }
+                        .padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        (if (pending.size == 1) "1 new item" else "${pending.size} new items") +
+                            " tagged " + followed.describe(),
+                        color = Ink,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { reviewing = true }) { Text("Review", color = Brass) }
                 }
             }
 
@@ -170,6 +205,24 @@ fun AlbumScreen(
                 onPreview = { id ->
                     vm.undoLongPress()
                     previewing = media.firstOrNull { it.media.id == id }
+                },
+            )
+        }
+
+        val followed = rule
+        if (reviewing && followed != null) {
+            AlbumReview(
+                albumName = albumName,
+                rule = followed,
+                items = pending,
+                onDone = { offered, chosen ->
+                    vm.reviewPending(offered, chosen)
+                    reviewing = false
+                },
+                onClose = { reviewing = false },
+                onOpenItem = { id, order ->
+                    ViewerSession.orderedIds = order
+                    onOpen(id)
                 },
             )
         }

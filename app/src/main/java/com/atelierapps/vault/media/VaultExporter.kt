@@ -363,7 +363,13 @@ object VaultExporter {
         }
         if (used.isNotEmpty()) {
             val albums = JSONArray()
+            // Item id to content hash, built only if some album has a skip list.
+            var hashOf: Map<String, String?>? = null
             repo.observeAlbums().first().filter { it.id in used }.forEach { a ->
+                val skipped = if (a.tagRule != null) repo.albumSkips(a.id) else emptyList()
+                if (skipped.isNotEmpty() && hashOf == null) {
+                    hashOf = repo.allMedia().associate { it.media.id to it.media.contentHash }
+                }
                 albums.put(
                     JSONObject().apply {
                         put("id", a.id)
@@ -371,6 +377,12 @@ object VaultExporter {
                         put("createdAtMillis", a.createdAtMillis)
                         // By content, like the items: the cover's id won't survive.
                         a.coverId?.let { repo.mediaById(it)?.media?.contentHash }?.let { put("cover", it) }
+                        // The tags it follows, and what it was told not to offer
+                        // (by content too).
+                        a.tagRule?.let { put("tagRule", it) }
+                        if (skipped.isNotEmpty()) {
+                            put("skip", JSONArray().apply { skipped.mapNotNull { hashOf?.get(it) }.forEach { put(it) } })
+                        }
                     },
                 )
             }

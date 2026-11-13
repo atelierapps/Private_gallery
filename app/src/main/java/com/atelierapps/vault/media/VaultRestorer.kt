@@ -174,6 +174,7 @@ object VaultRestorer {
         var albumsMade = 0
         val albumFor = HashMap<String, String>() // backup album id -> vault album id
         val existingAlbums = repo.observeAlbums().first()
+        val tags = repo.observeTags().first()
         val albums = root.optJSONArray("albums")
         for (i in 0 until (albums?.length() ?: 0)) {
             val a = albums!!.optJSONObject(i) ?: continue
@@ -186,6 +187,18 @@ object VaultRestorer {
                 albumsMade++
                 a.optStringOrNull("cover")?.let { sha -> repo.liveIdByHash(sha)?.let { repo.setAlbumCover(made, it) } }
                 made
+            }
+            // The tags it follows, unless the album here already follows some,
+            // and its skip list, so restoring doesn't re-offer what was turned
+            // down. Ids re-pointed at this library's tags and items.
+            val target = albumFor.getValue(backupId)
+            val rule = a.optStringOrNull("tagRule")
+            if (rule != null && existingAlbums.firstOrNull { it.id == target }?.tagRule == null) {
+                repo.setAlbumTagRule(target, withCurrentTagIds(rule, tags))
+            }
+            a.optJSONArray("skip")?.let { arr ->
+                val ids = (0 until arr.length()).mapNotNull { repo.liveIdByHash(arr.optString(it)) }
+                repo.skipForAlbum(target, ids)
             }
         }
         placed.groupBy({ albumFor[it.second] }, { it.first }).forEach { (album, ids) ->
@@ -224,7 +237,6 @@ object VaultRestorer {
         // ---- saved views ----
         var viewsMade = 0
         val takenNames = repo.observeSavedViews().first().mapTo(HashSet()) { it.name.lowercase() }
-        val tags = repo.observeTags().first()
         val views = root.optJSONArray("views")
         for (i in 0 until (views?.length() ?: 0)) {
             val v = views!!.optJSONObject(i) ?: continue

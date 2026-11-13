@@ -40,19 +40,30 @@ class AlbumsViewModel(app: Application) : AndroidViewModel(app) {
     val library: StateFlow<List<MediaWithTags>> =
         repo.observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** A new album, filled with [ids] (which may be none). */
-    fun create(name: String, ids: Collection<String> = emptyList()) {
+    /**
+     * A new album, filled with [ids] (which may be none). Made from tags, it
+     * keeps following them.
+     */
+    fun create(name: String, ids: Collection<String> = emptyList(), tagNames: List<String> = emptyList(), requireAll: Boolean = false) {
         val clean = name.trim()
         if (clean.isEmpty()) return
         viewModelScope.launch {
             val id = repo.createAlbum(clean)
             if (ids.isNotEmpty()) repo.setAlbumForItems(ids, id)
+            if (tagNames.isNotEmpty()) {
+                repo.setAlbumTagRule(id, AlbumTagRule.encode(tagNames, requireAll, tags.value))
+            }
         }
     }
 
-    fun addToAlbum(albumId: String, ids: Collection<String>) {
-        if (ids.isEmpty()) return
-        viewModelScope.launch { repo.setAlbumForItems(ids, albumId) }
+    /** Fill an existing album from tags; it follows those tags from now on. */
+    fun addToAlbum(albumId: String, ids: Collection<String>, tagNames: List<String>, requireAll: Boolean) {
+        viewModelScope.launch {
+            if (ids.isNotEmpty()) repo.setAlbumForItems(ids, albumId)
+            if (tagNames.isNotEmpty()) {
+                repo.setAlbumTagRule(albumId, AlbumTagRule.encode(tagNames, requireAll, tags.value))
+            }
+        }
     }
 
     fun rename(id: String, name: String) {
