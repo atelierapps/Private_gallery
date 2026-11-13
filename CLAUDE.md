@@ -167,6 +167,11 @@ ui/          one package per screen; ui/theme is the design system
 - **A trailing lambda binds to the *last* parameter.** Adding a parameter
   after a callback that callers pass as a trailing lambda breaks every one of
   them; keep callbacks last (`VideoTrimmer.trim`'s `part` nearly did this).
+- **Make the player act at a position, don't poll for it.** A-B repeat first
+  checked `currentPosition` from a `LaunchedEffect` loop and seeked back at
+  B; on the owner's phone it never fired and the clip played straight past
+  B, for reasons never pinned down. `player.createMessage { … }.setPosition(b)
+  .setDeleteAfterDelivery(false).send()` has the player call back itself.
 - **Media3 has its own `ExportResult`**, which clashes with the backup one in
   `media/`; import it aliased (`as TransformerResult`).
 - **Verify call sites, not diffs.** A partly-applied edit once shipped a commit
@@ -195,9 +200,13 @@ sections, fast scroller, one-tap Favourites / Untagged / Short filter chips
 (Source was dropped from the bar — it only ever said "Download"; sources now
 sit at the bottom of the Type menu), a **views row** above the filters
 (`ui/home/ViewsRow.kt`, `SavedViews.kt`): built-in Watch later (a queue,
-oldest-added first; viewer ⋮ or selection ⋮ → Add to Watch later; removed by
-hand, not on watching), Continue watching (videos
-with a resume point past a tenth of the clip, 3–30 s floor) and Most watched,
+oldest-added first; the clock button on the viewer's top bar, brass when
+queued, or selection ⋮ → Add to Watch later; removed by hand, not on
+watching), Continue watching (videos
+with a resume point past a tenth of the clip, 3–30 s floor) and Most watched
+(the 30 most viewed among items opened at least twice — `topWatched`, applied
+over the whole list by `MediaFilter.applyTo`, which every count and list uses;
+"opened once" was 231 of 650 items),
 plus your own saved views — a named filter + sort stored as JSON in
 `saved_view`, tags by id so a rename doesn't break one. Which view is active
 is derived from filter + sort, not stored; a view's sort overlays the chosen
@@ -205,7 +214,9 @@ one and is never persisted as the default. Search is typo-tolerant
 (`filter/Search.kt`, unit-tested): each word matched anywhere, words of 4+
 letters may be 1 edit off (8+: 2), a swapped pair counts as one edit, and
 exact matches rank ahead of near ones. In the player, a marks row under the
-scrubber: A–B repeat (per clip, never saved, off during a slideshow) and
+scrubber: A–B repeat (per clip, never saved, off during a slideshow; looped by
+an ExoPlayer `PlayerMessage` pinned at B with `setDeleteAfterDelivery(false)`)
+and
 timeline bookmarks (+ Mark; tap to jump, long-press to remove). Play a selection, every video loops by
 default unless a slideshow is running (Settings → Playback), shuffle in the
 viewer's control row (not the home bar) — an on/off switch that shuffles
