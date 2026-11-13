@@ -69,6 +69,12 @@ interface MediaDao {
     @Query("UPDATE media SET note = :note WHERE id = :id")
     suspend fun setNote(id: String, note: String?)
 
+    @Query("UPDATE media SET bookmarks = :bookmarks WHERE id = :id")
+    suspend fun setBookmarks(id: String, bookmarks: String?)
+
+    @Query("UPDATE media SET watchLaterAtMillis = :at WHERE id IN (:ids)")
+    suspend fun setWatchLater(ids: List<String>, at: Long?)
+
     @Query("UPDATE media SET lastViewedAtMillis = :at, viewCount = viewCount + 1 WHERE id = :id")
     suspend fun markViewed(id: String, at: Long)
 

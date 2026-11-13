@@ -79,4 +79,24 @@ data class MediaItemEntity(
     val lastViewedAtMillis: Long? = null,
     @ColumnInfo(defaultValue = "0")
     val viewCount: Int = 0,
-)
+
+    // Timeline bookmarks: positions in milliseconds, ascending, comma-joined.
+    // A column rather than a table because they are only ever read and written
+    // whole, with the item; they go when the item is purged, with no orphan
+    // rows to sweep. Use [bookmarkList] and [encodeBookmarks].
+    val bookmarks: String? = null,
+
+    // When it joined the watch-later queue; null when it isn't in it. The
+    // queue plays oldest-added first.
+    val watchLaterAtMillis: Long? = null,
+) {
+    /** The bookmarks as positions, ascending; empty when there are none or the column is unreadable. */
+    fun bookmarkList(): List<Long> =
+        bookmarks.orEmpty().split(',').mapNotNull { it.trim().toLongOrNull() }.filter { it >= 0 }.sorted()
+
+    companion object {
+        /** Null for none, so an item with no marks stores nothing. */
+        fun encodeBookmarks(marks: Collection<Long>): String? =
+            marks.filter { it >= 0 }.distinct().sorted().takeIf { it.isNotEmpty() }?.joinToString(",")
+    }
+}

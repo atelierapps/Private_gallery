@@ -31,7 +31,7 @@ import android.util.Log
         MediaItemEntity::class, TagEntity::class, MediaTagCrossRef::class,
         AutoTagRuleEntity::class, AlbumEntity::class, SavedViewEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -140,6 +140,15 @@ abstract class VaultDatabase : RoomDatabase() {
             }
         }
 
+        // Bookmarks and the watch-later queue. Additive only: two nullable
+        // columns on media, nothing existing rewritten.
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE media ADD COLUMN bookmarks TEXT")
+                db.execSQL("ALTER TABLE media ADD COLUMN watchLaterAtMillis INTEGER")
+            }
+        }
+
         fun get(context: Context): VaultDatabase =
             instance ?: synchronized(this) {
                 instance ?: build(context.applicationContext).also { instance = it }
@@ -165,7 +174,7 @@ abstract class VaultDatabase : RoomDatabase() {
                 .addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
                     MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-                    MIGRATION_8_9, MIGRATION_9_10,
+                    MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
                 )
             if (cipher) {
                 builder.openHelperFactory(SupportOpenHelperFactory(DbKeyStore.passphraseBytes(app)))

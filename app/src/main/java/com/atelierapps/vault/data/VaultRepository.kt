@@ -111,6 +111,17 @@ class VaultRepository(
     /** Where you got to in a video; null once it has been watched to the end. */
     suspend fun setResumePosition(id: String, millis: Long?) = mediaDao.setResumePosition(id, millis)
 
+    /** Replace an item's timeline bookmarks; an empty list clears them. */
+    suspend fun setBookmarks(id: String, marks: Collection<Long>) =
+        withContext(Dispatchers.IO) { mediaDao.setBookmarks(id, MediaItemEntity.encodeBookmarks(marks)) }
+
+    /**
+     * Put items in the watch-later queue (at [at]) or take them out (null).
+     * Items already queued keep their place only if the caller leaves them out.
+     */
+    suspend fun setWatchLater(ids: Collection<String>, at: Long?) =
+        withContext(Dispatchers.IO) { if (ids.isNotEmpty()) mediaDao.setWatchLater(ids.toList(), at) }
+
     /** Rename an item. Only the display name changes — the blob is untouched. */
     suspend fun renameMedia(id: String, name: String) =
         withContext(Dispatchers.IO) {
