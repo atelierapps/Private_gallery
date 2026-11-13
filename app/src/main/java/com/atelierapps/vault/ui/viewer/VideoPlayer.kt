@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.Shuffle
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
+import android.os.Looper
 import android.view.LayoutInflater
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -357,15 +358,32 @@ fun VideoPlayer(
     // moment now, not a property of the video.
     var abA by remember(id) { mutableStateOf<Long?>(null) }
     var abB by remember(id) { mutableStateOf<Long?>(null) }
-    // Checked far more often than the 250 ms position poll: at that rate the
-    // loop would overrun B by up to a quarter of a second, which on a short
-    // stretch is most of it.
+    // The player itself jumps back at B: a message pinned to that position
+    // and kept after delivery is handed over every time playback reaches it.
+    // The first version polled the position from a coroutine instead, and on
+    // the owner's phone it never fired — the clip played straight past B.
+    // The poll stays below only as a backstop, for being dragged past B,
+    // and with slack so the two don't both seek on the same pass.
+    DisposableEffect(player, abA, abB) {
+        val a = abA
+        val b = abB
+        val message = if (a != null && b != null) {
+            player.createMessage { _, _ -> player.seekTo(a) }
+                .setLooper(Looper.getMainLooper())
+                .setPosition(b)
+                .setDeleteAfterDelivery(false)
+                .send()
+        } else {
+            null
+        }
+        onDispose { message?.cancel() }
+    }
     LaunchedEffect(abA, abB) {
         val a = abA ?: return@LaunchedEffect
         val b = abB ?: return@LaunchedEffect
         while (true) {
-            if (!scrubbing && player.currentPosition >= b) player.seekTo(a)
-            delay(40)
+            if (!scrubbing && player.currentPosition > b + 300) player.seekTo(a)
+            delay(100)
         }
     }
     // A slideshow advances when a clip ends, and an A-B loop means it never
