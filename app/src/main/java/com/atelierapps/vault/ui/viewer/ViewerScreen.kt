@@ -94,6 +94,7 @@ import androidx.compose.animation.core.animate
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.platform.LocalDensity
 import androidx.activity.compose.BackHandler
+import com.atelierapps.vault.filter.MediaFilter
 import com.atelierapps.vault.ui.lock.FloatingLockButton
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.MaterialTheme
@@ -738,6 +739,12 @@ private fun ViewerPage(
             onDismissDrag = onDismissDrag,
             onDismissEnd = onDismissEnd,
             resumeFrom = item.media.resumePositionMillis ?: 0L,
+            // Only resume something left within the last day; older than
+            // that, start again from the top. History from before view
+            // tracking (no last-viewed time) counts as old.
+            allowResume = item.media.lastViewedAtMillis?.let {
+                System.currentTimeMillis() - it < MediaFilter.RESUME_FRESH_MILLIS
+            } ?: false,
             onResumePosition = { onResumePosition(item.media.id, it) },
             initialRotation = item.media.videoRotationDegrees ?: 0,
             onRotationChanged = { onVideoRotation(item.media.id, it) },

@@ -151,6 +151,11 @@ fun VideoPlayer(
     onDismissEnd: () -> Unit = {},
     /** Where a previous run of the app left off, 0 for the start. */
     resumeFrom: Long = 0L,
+    /**
+     * False when this clip was last watched over a day ago: then even this
+     * session's remembered spot is ignored and it starts from the beginning.
+     */
+    allowResume: Boolean = true,
     /** Persist where this run left off; null means watched to the end. */
     onResumePosition: (Long?) -> Unit = {},
     /** Stored display rotation for this video, in degrees. */
@@ -205,7 +210,9 @@ fun VideoPlayer(
                 // Resume where the clip was left off (in-memory only).
                 // This session's position wins — you may have moved since the
                 // stored one was written — and the stored one covers a restart.
-                (ViewerSession.positions[id] ?: resumeFrom).let { if (it > 0) seekTo(it) }
+                if (allowResume) {
+                    (ViewerSession.positions[id] ?: resumeFrom).let { if (it > 0) seekTo(it) }
+                }
                 playWhenReady = autoPlay
                 // Never start in repeat-one: a repeating player never emits
                 // STATE_ENDED, which is what slideshow advance listens for.

@@ -126,17 +126,35 @@ data class MediaFilter(
      * filtered list goes through this, so a view's count and its contents agree.
      */
     fun applyTo(list: List<MediaWithTags>, now: Long): List<MediaWithTags> {
-        val hits = if (isEmpty) list else list.filter { matches(it, now) }
-        if (topWatched <= 0 || hits.size <= topWatched) return hits
-        val keep = hits.sortedWith(
-            compareByDescending<MediaWithTags> { it.media.viewCount }
-                .thenByDescending { it.media.lastViewedAtMillis ?: 0L },
-        ).take(topWatched).mapTo(HashSet()) { it.media.id }
-        return hits.filter { it.media.id in keep }
+        var hits = if (isEmpty) list else list.filter { matches(it, now) }
+        if (topWatched in 1 until hits.size) {
+            val keep = hits.sortedWith(
+                compareByDescending<MediaWithTags> { it.media.viewCount }
+                    .thenByDescending { it.media.lastViewedAtMillis ?: 0L },
+            ).take(topWatched).mapTo(HashSet()) { it.media.id }
+            hits = hits.filter { it.media.id in keep }
+        }
+        // "Continue watching" is a shortlist like "Most watched": the most
+        // recently left, not every clip ever stopped partway.
+        if (inProgress && hits.size > CONTINUE_WATCHING_LIMIT) {
+            val keep = hits.sortedByDescending { it.media.lastViewedAtMillis ?: 0L }
+                .take(CONTINUE_WATCHING_LIMIT).mapTo(HashSet()) { it.media.id }
+            hits = hits.filter { it.media.id in keep }
+        }
+        return hits
     }
 
     companion object {
         const val SHORT_CLIP_MILLIS = 15_000L
+
+        /** How many "Continue watching" shows. */
+        const val CONTINUE_WATCHING_LIMIT = 30
+
+        /**
+         * A resume point older than this is ignored and the video starts from
+         * the beginning: a day later, the first half is as good as unwatched.
+         */
+        const val RESUME_FRESH_MILLIS = 24L * 60 * 60 * 1000
 
         /**
          * Worth offering to continue. The player keeps a resume point for
