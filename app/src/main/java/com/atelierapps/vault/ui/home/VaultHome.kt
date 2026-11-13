@@ -295,6 +295,7 @@ fun VaultHome(
                     onToggleInProgress = vm::toggleInProgress,
                     onToggleWatched = vm::toggleWatched,
                     onToggleWatchLater = vm::toggleWatchLater,
+                    onClearTopWatched = vm::clearTopWatched,
                 )
                 ResultsLine(count = media.size, sort = sort, onSetSort = vm::setSort)
             }
@@ -732,11 +733,11 @@ private fun SelectionBar(
         Box {
             VaultIconButton(Icons.Outlined.MoreVert, "More", { more = true }, enabled = count > 0)
             DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                MenuRow(Icons.Outlined.WatchLater, "Add to Watch later") { more = false; onWatchLater() }
                 MenuRow(Icons.Outlined.Edit, "Rename & organise…") {
                     more = false
                     onOrganise()
                 }
-                MenuRow(Icons.Outlined.WatchLater, "Add to Watch later") { more = false; onWatchLater() }
                 MenuRow(Icons.Outlined.Upload, "Export selection…") { more = false; onExport() }
                 MenuRow(Icons.Outlined.PhotoLibrary, "Move back to gallery") { more = false; onMove() }
             }

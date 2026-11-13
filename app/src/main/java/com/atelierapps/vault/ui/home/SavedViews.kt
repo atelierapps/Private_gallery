@@ -30,6 +30,9 @@ object SavedViews {
     const val MOST_WATCHED_ID = "builtin:most"
     const val WATCH_LATER_ID = "builtin:later"
 
+    /** How many "Most watched" shows: a shortlist, not everything you've opened. */
+    const val MOST_WATCHED_COUNT = 30
+
     /**
      * Built from the view history and resume points the viewer already
      * records, so both work on day one for anything watched since schema 9.
@@ -53,7 +56,7 @@ object SavedViews {
         SavedView(
             id = MOST_WATCHED_ID,
             name = "Most watched",
-            filter = MediaFilter(watched = true),
+            filter = MediaFilter(topWatched = MOST_WATCHED_COUNT),
             sort = SortOrder.MOST_WATCHED,
             builtIn = true,
         ),
@@ -83,6 +86,7 @@ object SavedViews {
             .put("inProgress", filter.inProgress)
             .put("watched", filter.watched)
             .put("watchLater", filter.watchLater)
+            .put("topWatched", filter.topWatched)
             .apply { if (sort != null) put("sort", sort.name) }
             .toString()
     }
@@ -110,6 +114,7 @@ object SavedViews {
             inProgress = o.optBoolean("inProgress"),
             watched = o.optBoolean("watched"),
             watchLater = o.optBoolean("watchLater"),
+            topWatched = o.optInt("topWatched", 0).coerceAtLeast(0),
         )
         val sort = o.optString("sort").takeIf { it.isNotEmpty() }
             ?.let { name -> SortOrder.entries.firstOrNull { it.name == name } }
@@ -134,6 +139,7 @@ object SavedViews {
             if (filter.inProgress) add("In progress")
             if (filter.watched) add("Watched")
             if (filter.watchLater) add("Watch later")
+            if (filter.topWatched > 0) add("Top " + filter.topWatched + " most watched")
         }
         val what = parts.joinToString(" · ").ifEmpty { "Everything" }
         return if (sort == null) what else what + " — " + sort.label.lowercase()

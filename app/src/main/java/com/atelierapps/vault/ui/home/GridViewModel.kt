@@ -133,8 +133,7 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
 
     val media: StateFlow<List<MediaWithTags>> =
         combine(repo.observeAll(), _filter, sort, _query) { list, f, s, q ->
-            val out = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
-            out.searchedAndSorted(q, s)
+            f.applyTo(list, System.currentTimeMillis()).searchedAndSorted(q, s)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
 
@@ -153,7 +152,7 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     val viewCounts: StateFlow<Map<String, Int>> =
         combine(repo.observeAll(), views) { all, vs ->
             val now = System.currentTimeMillis()
-            vs.associate { v -> v.id to all.count { v.filter.matches(it, now) } }
+            vs.associate { v -> v.id to v.filter.applyTo(all, now).size }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /**
@@ -418,6 +417,7 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleInProgress() { _filter.value = _filter.value.toggleInProgress() }
     fun toggleWatched() { _filter.value = _filter.value.toggleWatched() }
     fun toggleWatchLater() { _filter.value = _filter.value.toggleWatchLater() }
+    fun clearTopWatched() { _filter.value = _filter.value.withoutTopWatched() }
 
     /**
      * Queue the selection, in the order it sits on screen, after whatever is

@@ -77,6 +77,7 @@ fun FilterBar(
     onToggleInProgress: () -> Unit = {},
     onToggleWatched: () -> Unit = {},
     onToggleWatchLater: () -> Unit = {},
+    onClearTopWatched: () -> Unit = {},
 ) {
     var tagPicker by remember { mutableStateOf(false) }
 
@@ -109,6 +110,9 @@ fun FilterBar(
         }
         if (filter.watchLater) {
             item { ActiveChip("Watch later") { onToggleWatchLater() } }
+        }
+        if (filter.topWatched > 0) {
+            item { ActiveChip("Most watched") { onClearTopWatched() } }
         }
 
         // ---- one-tap toggles: they show their own on/off, so no active chip ----

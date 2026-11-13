@@ -51,12 +51,20 @@ data class MediaFilter(
     val watched: Boolean = false,
     /** In the watch-later queue. */
     val watchLater: Boolean = false,
+    /**
+     * Only the N most viewed, among things opened at least twice; 0 is off.
+     * "Most watched" used to be anything opened once, which on a 650-item
+     * library was 231 items — a list of everything you'd looked at, not a
+     * list of favourites. Applied over the whole result by [applyTo], since
+     * "top N" can't be decided one item at a time.
+     */
+    val topWatched: Int = 0,
 ) {
     val isEmpty: Boolean
         get() = type == MediaTypeFilter.ALL && sources.isEmpty() &&
             tagNames.isEmpty() && date == DateBucket.ANY &&
             !favourites && !untagged && !shortClips && !unwatched &&
-            !inProgress && !watched && !watchLater
+            !inProgress && !watched && !watchLater && topWatched == 0
 
     fun matches(item: MediaWithTags, now: Long): Boolean {
         val isVideo = item.media.mimeType.startsWith("video/")
@@ -74,6 +82,7 @@ data class MediaFilter(
         if (unwatched && item.media.viewCount > 0) return false
         if (watched && item.media.viewCount == 0) return false
         if (watchLater && item.media.watchLaterAtMillis == null) return false
+        if (topWatched > 0 && item.media.viewCount < 2) return false
         if (inProgress && !(isVideo && isInProgress(item.media.resumePositionMillis, item.media.durationMillis))) {
             return false
         }
@@ -108,6 +117,23 @@ data class MediaFilter(
     fun toggleInProgress() = copy(inProgress = !inProgress)
     fun toggleWatched() = copy(watched = !watched)
     fun toggleWatchLater() = copy(watchLater = !watchLater)
+    fun withoutTopWatched() = copy(topWatched = 0)
+
+    /**
+     * [matches] over a whole list, then the [topWatched] cap: the most viewed,
+     * ties going to the more recently seen. Returned in the list's own order —
+     * sorting is the caller's business. Everything that counts or shows a
+     * filtered list goes through this, so a view's count and its contents agree.
+     */
+    fun applyTo(list: List<MediaWithTags>, now: Long): List<MediaWithTags> {
+        val hits = if (isEmpty) list else list.filter { matches(it, now) }
+        if (topWatched <= 0 || hits.size <= topWatched) return hits
+        val keep = hits.sortedWith(
+            compareByDescending<MediaWithTags> { it.media.viewCount }
+                .thenByDescending { it.media.lastViewedAtMillis ?: 0L },
+        ).take(topWatched).mapTo(HashSet()) { it.media.id }
+        return hits.filter { it.media.id in keep }
+    }
 
     companion object {
         const val SHORT_CLIP_MILLIS = 15_000L

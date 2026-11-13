@@ -59,6 +59,14 @@ fun ViewsRow(
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // The two actions lead the row. At the end they sat past the right
+        // edge, behind three views, where nobody ever scrolled to find them.
+        if (canSave) {
+            item(key = "view:save") { VaultActionChip("+ Save view", onClick = onSave) }
+        }
+        if (active != null && !active.builtIn) {
+            item(key = "view:edit") { VaultActionChip("Edit view", onClick = { onEdit(active) }) }
+        }
         items(shown, key = { "view:" + it.id }) { view ->
             VaultChip(
                 label = view.name,
@@ -66,12 +74,6 @@ fun ViewsRow(
                 onClick = { onApply(view) },
                 count = counts[view.id],
             )
-        }
-        if (active != null && !active.builtIn) {
-            item(key = "view:edit") { VaultActionChip("Edit view", onClick = { onEdit(active) }) }
-        }
-        if (canSave) {
-            item(key = "view:save") { VaultActionChip("+ Save view", onClick = onSave) }
         }
     }
 }
