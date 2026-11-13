@@ -4,7 +4,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +33,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.abs
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -94,6 +97,8 @@ fun VaultGridScreen(
     initialColumns: Int = 3,
     onImport: (() -> Unit)? = null,
     onCamera: (() -> Unit)? = null,
+    /** Long-press, then flick down without lifting: preview this item. Null turns it off. */
+    onPreview: ((String) -> Unit)? = null,
 ) {
     if (media.isEmpty()) {
         EmptyState(modifier, onImport, onCamera)
@@ -191,6 +196,7 @@ fun VaultGridScreen(
                     onOpen = onOpen,
                     onLongPress = onLongPress,
                     onToggleSelect = onToggleSelect,
+                    onPreview = onPreview,
                 )
             }
             if (showSectionHeaders) {
@@ -296,8 +302,17 @@ private fun MediaTile(
     onOpen: (String) -> Unit,
     onLongPress: (String) -> Unit,
     onToggleSelect: (String) -> Unit,
+    onPreview: ((String) -> Unit)?,
 ) {
     val id = item.media.id
+    val haptics = LocalHapticFeedback.current
+    // The gesture handler below is set up once per tile and outlives
+    // recompositions; it reads these, never the values it was created with.
+    val inSelection by rememberUpdatedState(selectionMode)
+    val currentOnOpen by rememberUpdatedState(onOpen)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
+    val currentOnToggle by rememberUpdatedState(onToggleSelect)
+    val currentOnPreview by rememberUpdatedState(onPreview)
 
     // Held outside snapshot state on purpose: this is written on every layout
     // pass while the grid scrolls, and routing it through mutableStateOf would
@@ -320,17 +335,64 @@ private fun MediaTile(
             .clip(RoundedCornerShape(2.dp))
             .background(SurfaceHigh)
             .onGloballyPositioned { coords[0] = it }
-            .combinedClickable(
-                onClick = {
-                    if (selectionMode) {
-                        onToggleSelect(id)
-                    } else {
-                        coords[0]?.takeIf { it.isAttached }?.let { TileAnchor.record(it.boundsInWindow()) }
-                        onOpen(id)
+            // Tap, long-press, and long-press-then-flick-down, by hand rather
+            // than combinedClickable, which can't see what the finger does
+            // after the long press. Long-press selects exactly as it always
+            // did; carrying on downward without lifting is the preview, and
+            // the selection it just made is undone. Selecting never drags, so
+            // the two can't be confused.
+            .pointerInput(id) {
+                val slop = viewConfiguration.touchSlop
+                val flickPx = PREVIEW_FLICK_DP.dp.toPx()
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    // Before the long press: a lift is a tap, a move is the
+                    // grid scrolling — left alone, so the grid still gets it.
+                    val early = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                        while (true) {
+                            val c = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                                ?: return@withTimeoutOrNull GONE
+                            if (!c.pressed) return@withTimeoutOrNull if (c.isConsumed) GONE else TAPPED
+                            if (c.isConsumed || (c.position - down.position).getDistance() > slop) {
+                                return@withTimeoutOrNull GONE
+                            }
+                        }
+                        // Not reached; the loop only leaves by returning.
+                        GONE
                     }
-                },
-                onLongClick = { onLongPress(id) },
-            )
+                    when (early) {
+                        TAPPED -> {
+                            if (inSelection) {
+                                currentOnToggle(id)
+                            } else {
+                                coords[0]?.takeIf { it.isAttached }?.let { TileAnchor.record(it.boundsInWindow()) }
+                                currentOnOpen(id)
+                            }
+                        }
+                        GONE -> Unit
+                        else -> {
+                            // Held: the long press, as before.
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            currentOnLongPress(id)
+                            // Now ours until the finger lifts, so the grid
+                            // doesn't scroll under a flick.
+                            var previewed = false
+                            while (true) {
+                                val c = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                                c.consume()
+                                if (!c.pressed) break
+                                val d = c.position - down.position
+                                if (!previewed && d.y > flickPx && d.y > abs(d.x) * 1.5f) {
+                                    currentOnPreview?.let { preview ->
+                                        previewed = true
+                                        preview(id)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             .then(if (selected) Modifier.border(2.5.dp, Brass, RoundedCornerShape(2.dp)) else Modifier),
     ) {
         AsyncImage(
@@ -388,6 +450,13 @@ private fun MediaTile(
         }
     }
 }
+
+/** How far down the thumb travels after a long press to mean "preview". */
+private const val PREVIEW_FLICK_DP = 48
+
+// What the finger did before the long-press timeout.
+private const val TAPPED = 1
+private const val GONE = 2
 
 /**
  * First run. Rather than a dead-end sentence, this names the three ways media

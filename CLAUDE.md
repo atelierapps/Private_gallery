@@ -224,7 +224,15 @@ only ever set them off by accident; the phone's buttons do that. Instead a
 **low-light** button in the floating dock above the lock (same fade and
 opacity): system → low (window brightness 0.15) → ultra low (0.01 plus a 55%
 shade over the picture), for the viewer window only, reset on leaving.
-Editors keep no swipe gestures, by the owner's choice. Play a selection, every video loops by
+Editors keep no swipe gestures, by the owner's choice. **Grid preview:**
+long-press a tile (selects, as always), then carry on downward without lifting
+(48 dp) — the selection is undone (`GridViewModel.undoLongPress`) and
+`ui/home/GridPreview.kt` opens: a card drawn in the home window, not a Dialog
+(a Dialog is its own window and wouldn't inherit FLAG_SECURE). Videos play at
+most 20 s (a `PlayerMessage`, plus a clock backstop), then `stop()` releases
+the decoder; closing releases the player. One at a time; photos show full size.
+Tile gestures are hand-rolled in `MediaTile` because `combinedClickable` can't
+see the finger after a long press. Play a selection, every video loops by
 default unless a slideshow is running (Settings → Playback), shuffle in the
 viewer's control row (not the home bar) — an on/off switch that shuffles
 around the current item and restores the order around it when turned off.

@@ -225,7 +225,22 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
      * forty taps before this.
      */
     fun longPress(id: String) {
+        beforeLongPress = Triple(selectionMode.value, selectedIds.value, anchorId)
         if (selectionMode.value) selectRangeTo(id) else startSelection(id)
+    }
+
+    // What the selection was just before the last long press, so carrying on
+    // into the preview flick can put it back exactly — the long press fires
+    // before anyone can know a flick is coming.
+    private var beforeLongPress: Triple<Boolean, Set<String>, String?>? = null
+
+    /** Undo the last long press's selection: it turned out to be a preview. */
+    fun undoLongPress() {
+        val (mode, ids, anchor) = beforeLongPress ?: return
+        selectionMode.value = mode
+        selectedIds.value = ids
+        anchorId = anchor
+        beforeLongPress = null
     }
 
     private fun selectRangeTo(id: String) {

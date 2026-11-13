@@ -142,6 +142,7 @@ fun VaultHome(
 
     var confirmDelete by remember { mutableStateOf(false) }
     var savingView by remember { mutableStateOf(false) }
+    var previewing by remember { mutableStateOf<com.atelierapps.vault.data.entity.MediaWithTags?>(null) }
     var editingView by remember { mutableStateOf<SavedView?>(null) }
     var searchOpen by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
@@ -323,6 +324,12 @@ fun VaultHome(
                 initialColumns = columnsPref,
                 onImport = onImport,
                 onCamera = onCamera,
+                onPreview = { id ->
+                    // The long press that led here selected the item; it was
+                    // the start of a preview, so put the selection back.
+                    vm.undoLongPress()
+                    previewing = media.firstOrNull { it.media.id == id }
+                },
             )
         }
 
@@ -350,6 +357,18 @@ fun VaultHome(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
         )
+
+        previewing?.let { item ->
+            GridPreview(
+                item = item,
+                onOpen = {
+                    previewing = null
+                    com.atelierapps.vault.ui.viewer.ViewerSession.orderedIds = media.map { it.media.id }
+                    onOpen(item.media.id)
+                },
+                onClose = { previewing = null },
+            )
+        }
 
         // Stood down during selection: the selection bar already owns the top of
         // the screen and a stray tap there would throw the selection away.
