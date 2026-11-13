@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,15 +66,16 @@ private const val PREVIEW_MILLIS = 20_000L
  * A quick look at one item without leaving the grid: long-press a tile, then
  * carry on downward without lifting.
  *
- * Drawn inside the home screen's own window, not as a Dialog: a Dialog is a
- * separate window, which doesn't inherit the activity's FLAG_SECURE, and a
- * playing video is exactly what must stay out of screenshots and the
- * recent-apps thumbnail.
+ * Drawn inside the screen's own window rather than as a Dialog — not for
+ * FLAG_SECURE (Compose dialogs inherit it from the parent window; checked
+ * against the Compose source), but so the long press that opened it can carry
+ * straight on without a new window taking the touch.
  *
  * Battery is the whole design constraint. One preview at a time (this is the
  * only player the grid ever makes), at most [PREVIEW_MILLIS] of playback, and
  * then the player is stopped, which releases its decoder; leaving the preview
- * releases the player itself. Nothing keeps running once you've looked.
+ * releases the player itself. Nothing keeps running once you've looked. Tap
+ * the stopped picture for the same twenty seconds again; Open for the rest.
  * Sound follows the app's mute setting.
  */
 @UnstableApi
@@ -159,6 +161,9 @@ private fun previewAspect(item: MediaWithTags): Float {
 private fun PreviewVideo(id: String) {
     val context = LocalContext.current
     var over by remember(id) { mutableStateOf(false) }
+    // Bumped by each replay, so the stop-at-20-s message is set up afresh: a
+    // delivered message is gone, and stop() threw the media away with it.
+    var round by remember(id) { mutableIntStateOf(0) }
     val player = remember(id) {
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(DefaultMediaSourceFactory(VaultCtrDataSource.Factory(context)))
@@ -172,13 +177,6 @@ private fun PreviewVideo(id: String) {
             }
     }
     DisposableEffect(player) {
-        // The player stops itself at the limit (see CLAUDE.md: act at a
-        // position, don't poll for it). stop() releases the decoder; the
-        // poster below covers the black it leaves.
-        val message = player.createMessage { _, _ -> over = true }
-            .setLooper(Looper.getMainLooper())
-            .setPosition(PREVIEW_MILLIS)
-            .send()
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_ENDED) over = true
@@ -186,16 +184,25 @@ private fun PreviewVideo(id: String) {
         }
         player.addListener(listener)
         onDispose {
-            message.cancel()
             player.removeListener(listener)
             player.release()
         }
     }
+    // The player stops itself at the limit (see CLAUDE.md: act at a position,
+    // don't poll for it), once per round.
+    DisposableEffect(player, round) {
+        val message = player.createMessage { _, _ -> over = true }
+            .setLooper(Looper.getMainLooper())
+            .setPosition(PREVIEW_MILLIS)
+            .send()
+        onDispose { message.cancel() }
+    }
     // Backstop, by the clock, in case the clip stalls before reaching the mark.
-    LaunchedEffect(player) {
+    LaunchedEffect(player, round) {
         delay(PREVIEW_MILLIS + 5_000L)
         over = true
     }
+    // stop() releases the decoder; the poster below covers the black it leaves.
     LaunchedEffect(over) { if (over) player.stop() }
 
     if (!over) {
@@ -207,20 +214,18 @@ private fun PreviewVideo(id: String) {
             modifier = Modifier.fillMaxSize(),
         )
     } else {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            AsyncImage(
-                model = VaultMediaKey(id, full = false),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
-            Text(
-                "Preview over — Open to keep watching",
-                color = Ink,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clip(RoundedCornerShape(9999.dp)).background(Scrim)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            )
-        }
+        // Just stops: no message over it. A tap plays the same stretch again.
+        AsyncImage(
+            model = VaultMediaKey(id, full = false),
+            contentDescription = "Play the preview again",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize().clickable {
+                over = false
+                player.seekTo(0)
+                player.prepare()
+                player.play()
+                round++
+            },
+        )
     }
 }

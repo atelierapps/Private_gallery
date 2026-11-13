@@ -172,6 +172,13 @@ ui/          one package per screen; ui/theme is the design system
   B; on the owner's phone it never fired and the clip played straight past
   B, for reasons never pinned down. `player.createMessage { … }.setPosition(b)
   .setDeleteAfterDelivery(false).send()` has the player call back itself.
+- **Compose dialogs, sheets and menus already get FLAG_SECURE.** `Dialog`,
+  `AlertDialog`, `ModalBottomSheet` and `Popup`/`DropdownMenu` default to
+  `SecureFlagPolicy.Inherit`, copying the flag from the parent window (checked
+  in the Compose source), and every activity sets it before `setContent`. A
+  session once claimed otherwise; it was wrong. Only a non-Compose window
+  (`android.app.Dialog`, `PopupWindow`) would need it set by hand — there are
+  none.
 - **Media3 has its own `ExportResult`**, which clashes with the backup one in
   `media/`; import it aliased (`as TransformerResult`).
 - **Verify call sites, not diffs.** A partly-applied edit once shipped a commit
@@ -227,10 +234,11 @@ shade over the picture), for the viewer window only, reset on leaving.
 Editors keep no swipe gestures, by the owner's choice. **Grid preview:**
 long-press a tile (selects, as always), then carry on downward without lifting
 (48 dp) — the selection is undone (`GridViewModel.undoLongPress`) and
-`ui/home/GridPreview.kt` opens: a card drawn in the home window, not a Dialog
-(a Dialog is its own window and wouldn't inherit FLAG_SECURE). Videos play at
-most 20 s (a `PlayerMessage`, plus a clock backstop), then `stop()` releases
-the decoder; closing releases the player. One at a time; photos show full size.
+`ui/home/GridPreview.kt` opens, on the home grid and in albums: a card drawn
+in the screen's own window. Videos play at most 20 s (a `PlayerMessage`, plus
+a clock backstop), then just stop — `stop()` releases the decoder, no message
+— and a tap replays the same 20 s; closing releases the player. One at a
+time; photos show full size.
 Tile gestures are hand-rolled in `MediaTile` because `combinedClickable` can't
 see the finger after a long press. Play a selection, every video loops by
 default unless a slideshow is running (Settings → Playback), shuffle in the

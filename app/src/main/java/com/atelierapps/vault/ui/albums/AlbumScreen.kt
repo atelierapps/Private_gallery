@@ -45,6 +45,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
+import com.atelierapps.vault.ui.home.GridPreview
 import com.atelierapps.vault.ui.home.SortOrder
 import com.atelierapps.vault.ui.theme.Hairline
 import com.atelierapps.vault.ui.theme.Muted
@@ -66,6 +67,7 @@ fun AlbumScreen(
     val sort by vm.sort.collectAsState()
     var confirmDelete by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
+    var previewing by remember { mutableStateOf<com.atelierapps.vault.data.entity.MediaWithTags?>(null) }
 
     // Same rule as the main grid: back leaves the selection before it leaves
     // the album.
@@ -165,6 +167,22 @@ fun AlbumScreen(
                 onLongPress = vm::longPress,
                 onToggleSelect = vm::toggleSelection,
                 modifier = Modifier.weight(1f),
+                onPreview = { id ->
+                    vm.undoLongPress()
+                    previewing = media.firstOrNull { it.media.id == id }
+                },
+            )
+        }
+
+        previewing?.let { item ->
+            GridPreview(
+                item = item,
+                onOpen = {
+                    previewing = null
+                    ViewerSession.orderedIds = media.map { it.media.id }
+                    onOpen(item.media.id)
+                },
+                onClose = { previewing = null },
             )
         }
 

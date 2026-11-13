@@ -56,7 +56,21 @@ class AlbumViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Long-press: starts selection, or extends it from the anchor to here. */
     fun longPress(id: String) {
+        beforeLongPress = Triple(selectionMode.value, selectedIds.value, anchorId)
         if (selectionMode.value) selectRangeTo(id) else startSelection(id)
+    }
+
+    // As on the main grid: the long press selects before anyone can know a
+    // preview flick is coming, so the flick needs to put the selection back.
+    private var beforeLongPress: Triple<Boolean, Set<String>, String?>? = null
+
+    /** Undo the last long press's selection: it turned out to be a preview. */
+    fun undoLongPress() {
+        val (mode, ids, anchor) = beforeLongPress ?: return
+        selectionMode.value = mode
+        selectedIds.value = ids
+        anchorId = anchor
+        beforeLongPress = null
     }
 
     private fun selectRangeTo(id: String) {
