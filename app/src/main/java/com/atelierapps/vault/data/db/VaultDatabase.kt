@@ -40,7 +40,6 @@ import android.util.Log
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun mediaDao(): MediaDao
     abstract fun tagDao(): TagDao
-    abstract fun autoTagRuleDao(): AutoTagRuleDao
     abstract fun albumDao(): AlbumDao
     abstract fun savedViewDao(): SavedViewDao
 
@@ -63,7 +62,8 @@ abstract class VaultDatabase : RoomDatabase() {
             }
         }
 
-        // Auto-tag rules table. Column defs must match what Room generates for
+        // Auto-tag rules table (feature since retired; table kept, see
+        // AutoTagRuleEntity). Column defs must match what Room generates for
         // AutoTagRuleEntity (types, NOT NULL, DEFAULT 1 on enabled, PK on id).
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {

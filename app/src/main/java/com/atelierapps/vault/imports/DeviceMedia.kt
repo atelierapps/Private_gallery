@@ -17,7 +17,7 @@ data class DeviceMedia(
     val origin: SourceType, // LOCAL_IMPORT or FOLDER_IMPORT
     // The MediaStore bucket (folder) this item lives in, e.g. "Instagram",
     // "Download", "Screenshots" — the best available provenance for imports,
-    // captured as the source so it's visible and matchable by auto-tag rules.
+    // captured as the source so it's visible (and searchable).
     val bucketName: String? = null,
 ) {
     val isVideo: Boolean get() = mimeType.startsWith("video/")

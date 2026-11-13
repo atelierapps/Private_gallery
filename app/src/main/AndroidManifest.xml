@@ -164,12 +164,6 @@
             android:exported="false"
             android:theme="@style/Theme.Vault" />
 
-        <!-- Auto-tag rules manager (spec §7). -->
-        <activity
-            android:name=".ui.rules.RulesActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Vault" />
-
         <!-- Tag manager (spec §7). -->
         <activity
             android:name=".ui.tags.TagsActivity"

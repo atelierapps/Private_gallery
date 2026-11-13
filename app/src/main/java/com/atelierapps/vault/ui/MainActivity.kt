@@ -24,7 +24,6 @@ import com.atelierapps.vault.ui.albums.AlbumsActivity
 import com.atelierapps.vault.ui.camera.CameraActivity
 import com.atelierapps.vault.ui.export.ExportActivity
 import com.atelierapps.vault.ui.restore.RestoreActivity
-import com.atelierapps.vault.ui.rules.RulesActivity
 import com.atelierapps.vault.ui.settings.SettingsActivity
 import com.atelierapps.vault.ui.tags.TagsActivity
 import com.atelierapps.vault.ui.trash.TrashActivity
@@ -119,9 +118,6 @@ class MainActivity : FragmentActivity() {
                                     startActivity(
                                         Intent(this@MainActivity, DuplicatesActivity::class.java),
                                     )
-                                },
-                                onRules = {
-                                    startActivity(Intent(this@MainActivity, RulesActivity::class.java))
                                 },
                                 onAlbums = {
                                     startActivity(Intent(this@MainActivity, AlbumsActivity::class.java))

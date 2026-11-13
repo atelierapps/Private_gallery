@@ -42,7 +42,6 @@ import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -103,7 +102,6 @@ fun VaultHome(
     onCamera: () -> Unit,
     onTrash: () -> Unit,
     onDuplicates: () -> Unit,
-    onRules: () -> Unit,
     onAlbums: () -> Unit,
     onTags: () -> Unit,
     onSettings: () -> Unit,
@@ -244,7 +242,6 @@ fun VaultHome(
                     onCamera = onCamera,
                     onTrash = onTrash,
                     onDuplicates = onDuplicates,
-                    onRules = onRules,
                     onTriage = {
                         context.startActivity(
                             android.content.Intent(context, com.atelierapps.vault.ui.triage.TriageActivity::class.java),
@@ -642,7 +639,6 @@ private fun TopAppRow(
     onCamera: () -> Unit,
     onTrash: () -> Unit,
     onDuplicates: () -> Unit,
-    onRules: () -> Unit,
     onTriage: () -> Unit,
     onAlbums: () -> Unit,
     onTags: () -> Unit,
@@ -672,7 +668,6 @@ private fun TopAppRow(
                 MenuRow(Icons.Outlined.PhotoAlbum, "Albums") { menu = false; onAlbums() }
                 MenuRow(Icons.Outlined.LocalOffer, "Tags") { menu = false; onTags() }
                 MenuRow(Icons.Outlined.LocalOffer, "Sort untagged") { menu = false; onTriage() }
-                MenuRow(Icons.Outlined.AutoAwesome, "Auto-tag rules") { menu = false; onRules() }
                 MenuRow(
                     Icons.Outlined.ContentCopy,
                     "Duplicates" + if (duplicateCount > 0) "  ($duplicateCount)" else "",

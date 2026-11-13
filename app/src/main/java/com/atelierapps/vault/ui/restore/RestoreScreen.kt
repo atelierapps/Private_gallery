@@ -200,11 +200,10 @@ class RestoreActivity : ComponentActivity() {
     }
 }
 
-/** "\nAlso 3 albums · 2 rules · 1 view", or nothing if none were made. */
+/** "\nAlso 3 albums · 1 view", or nothing if none were made. */
 private fun organisedLine(r: RestoreResult): String {
     val parts = listOfNotNull(
         r.albums.takeIf { it > 0 }?.let { if (it == 1) "1 album" else "$it albums" },
-        r.rules.takeIf { it > 0 }?.let { if (it == 1) "1 rule" else "$it rules" },
         r.views.takeIf { it > 0 }?.let { if (it == 1) "1 view" else "$it views" },
     )
     return if (parts.isEmpty()) "" else "\nAlso " + parts.joinToString(" · ")

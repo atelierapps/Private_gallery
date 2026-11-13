@@ -73,6 +73,12 @@ Schema went **9 → 12** this session; every migration is additive.
   (they break the no-internet / stay-hidden rules).
 - Tag groups and hidden albums/decoy dropped as unnecessary.
 - Grid preview gesture is long-press then slide down, not a separate button.
+- **Auto-tag rules retired.** They matched only source app/domain, and
+  nearly everything arrives as a gallery download, so they never tagged by
+  content; on-device recognition was ruled out (generic labels, no identity,
+  and Google's on-device ML pulls in network transport). Removed from the UI,
+  from saving and from backups; the table stays so the schema doesn't
+  change. Tags rules had already applied stay on their items.
 - Continue watching and resume both use the 24-hour cut-off.
 
 ### Corrections made this session

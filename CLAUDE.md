@@ -207,7 +207,11 @@ ui/          one package per screen; ui/theme is the design system
 ## What exists now
 
 Everything in the spec, plus: recycle bin with 30-day purge, albums, tags +
-manager + auto-tag rules, albums filled from tags (New album or album ⋮ → Add
+manager (**auto-tag rules were retired** by the owner: they could only match
+an item's source, and nearly everything arrives as a gallery download, so they
+never tagged by content. Screen, save-time tagging and backup section removed;
+the `auto_tag_rule` table and `AutoTagRuleEntity` stay only so the schema
+doesn't change — nothing reads or writes them), albums filled from tags (New album or album ⋮ → Add
 from tags…: any/all of the picked tags; items already in another album are
 left there unless "Also move" is on, since an item has one album —
 `ui/albums/AlbumFromTags.kt`). An album made or filled from tags **follows**
@@ -286,10 +290,10 @@ item's tags, source, note, view history, pin, video rotation, album,
 bookmarks and watch-later place, plus
 manifest-level `albums` (only those used; cover by sha256, plus its `tagRule`
 and `skip` list by sha256), and — whole-library
-backups only — `rules` and `views`. All optional on read. Restore rebuilds
-them after the items and only adds: same-name albums are reused, an item
-already in an album stays put, identical rules and same-name views are
-skipped, and view specs get this library's tag ids.
+backups only — `views`. All optional on read (an old backup's `rules` section
+is ignored). Restore rebuilds them after the items and only adds: same-name
+albums are reused, an item already in an album stays put, same-name views
+are skipped, and view specs get this library's tag ids.
 
 Diagnostics, because "won't play" and "is damaged" look identical on screen:
 the video player names the cause when playback fails (with ExoPlayer's error

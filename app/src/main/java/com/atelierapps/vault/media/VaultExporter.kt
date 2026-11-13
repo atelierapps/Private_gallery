@@ -344,12 +344,14 @@ object VaultExporter {
     }
 
     /**
-     * Everything that organises the library rather than being in it: albums,
-     * auto-tag rules and saved views. Before this a restore brought back every
-     * item and tag but none of the structure built on top of them.
+     * Everything that organises the library rather than being in it: albums
+     * and saved views. Before this a restore brought back every item and tag
+     * but none of the structure built on top of them. (Auto-tag rules were
+     * here too until the feature was retired; older backups' "rules" section
+     * is simply ignored on restore.)
      *
-     * Albums go in for any backup, but only the ones its items belong to. Rules
-     * and views only go in a whole-library backup: a backup of a selection is
+     * Albums go in for any backup, but only the ones its items belong to.
+     * Views only go in a whole-library backup: a backup of a selection is
      * that selection, not a copy of how everything else is arranged.
      *
      * Best-effort: a failure here leaves the manifest without these sections,
@@ -389,19 +391,6 @@ object VaultExporter {
             root.put("albums", albums)
         }
         if (!wholeLibrary) return
-        val rules = JSONArray()
-        repo.observeRules().first().forEach { r ->
-            rules.put(
-                JSONObject().apply {
-                    put("matchKind", r.matchKind.name)
-                    put("matchValue", r.matchValue)
-                    put("tagNames", r.tagNames)
-                    put("enabled", r.enabled)
-                    put("createdAtMillis", r.createdAtMillis)
-                },
-            )
-        }
-        root.put("rules", rules)
         val views = JSONArray()
         repo.observeSavedViews().first().forEach { v ->
             views.put(

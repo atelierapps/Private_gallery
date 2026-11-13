@@ -5,12 +5,9 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.atelierapps.vault.VaultGraph
 import com.atelierapps.vault.data.entity.SourceType
-import com.atelierapps.vault.data.entity.AutoTagRuleEntity
-import com.atelierapps.vault.data.entity.RuleMatchKind
 import com.atelierapps.vault.data.entity.TagEntity
 import kotlinx.coroutines.flow.first
 import org.json.JSONObject
-import java.util.UUID
 import java.io.File
 import javax.crypto.SecretKey
 import android.util.Log
@@ -24,14 +21,13 @@ data class RestoreResult(
     val failures: List<TransferFailure> = emptyList(),
     /** Created by this restore; ones already here by the same name aren't counted. */
     val albums: Int = 0,
-    val rules: Int = 0,
     val views: Int = 0,
 )
 
 /**
  * Rebuilds the vault from an export folder (spec §11 round-trip). Reads
  * `manifest.json`, re-encrypts each listed file back into the vault, and
- * restores its tags + source metadata, then the albums, rules and saved views
+ * restores its tags + source metadata, then the albums and saved views
  * built on top of them. Dedup in [MediaSaver] makes restore
  * idempotent — re-running skips items already present.
  */
@@ -144,23 +140,22 @@ object VaultRestorer {
         return RestoreResult(
             imported, failures.size, items.length(), true, failures,
             albums = organised?.albums ?: 0,
-            rules = organised?.rules ?: 0,
             views = organised?.views ?: 0,
         )
     }
 
-    private data class Organised(val albums: Int, val rules: Int, val views: Int)
+    private data class Organised(val albums: Int, val views: Int)
 
     /**
-     * Rebuilds albums, auto-tag rules and saved views from the manifest. All
-     * three sections are optional, so a backup from before they were written
+     * Rebuilds albums and saved views from the manifest. Both sections are
+     * optional (and a "rules" section from before auto-tag rules were retired
+     * is ignored), so a backup from before they were written
      * restores as it always did.
      *
      * Only ever adds. Restoring into a library that already has things:
      *  - an album with the same name is reused, not doubled, and keeps its cover;
      *  - an item already in an album stays where it is;
-     *  - a rule identical to one already here, or a view with a name already
-     *    taken, is skipped.
+     *  - a view with a name already taken is skipped.
      * That also makes running the same restore twice harmless.
      */
     private suspend fun organisation(
@@ -207,33 +202,6 @@ object VaultRestorer {
             if (free.isNotEmpty()) repo.setAlbumForItems(free, album)
         }
 
-        // ---- auto-tag rules ----
-        var rulesMade = 0
-        val existingRules = repo.observeRules().first()
-        val rules = root.optJSONArray("rules")
-        for (i in 0 until (rules?.length() ?: 0)) {
-            val r = rules!!.optJSONObject(i) ?: continue
-            val kind = RuleMatchKind.entries.firstOrNull { it.name == r.optString("matchKind") } ?: continue
-            val value = r.optString("matchValue")
-            val tagNames = r.optString("tagNames")
-            val rule = AutoTagRuleEntity(
-                id = UUID.randomUUID().toString(),
-                matchKind = kind,
-                matchValue = value,
-                tagNames = tagNames,
-                enabled = r.optBoolean("enabled", true),
-                createdAtMillis = r.optLong("createdAtMillis", System.currentTimeMillis()),
-            )
-            val tagKey = rule.tags().map { it.lowercase() }.sorted()
-            val same = existingRules.any {
-                it.matchKind == kind && it.matchValue.trim().equals(value.trim(), ignoreCase = true) &&
-                    it.tags().map { t -> t.lowercase() }.sorted() == tagKey
-            }
-            if (same || tagKey.isEmpty()) continue
-            repo.upsertRule(rule)
-            rulesMade++
-        }
-
         // ---- saved views ----
         var viewsMade = 0
         val takenNames = repo.observeSavedViews().first().mapTo(HashSet()) { it.name.lowercase() }
@@ -247,7 +215,7 @@ object VaultRestorer {
             takenNames.add(name.lowercase())
             viewsMade++
         }
-        return Organised(albumsMade, rulesMade, viewsMade)
+        return Organised(albumsMade, viewsMade)
     }
 
     /**
