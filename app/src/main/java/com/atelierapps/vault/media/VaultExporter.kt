@@ -336,6 +336,10 @@ object VaultExporter {
             if (m.isPinned) put("pinned", true)
             m.videoRotationDegrees?.let { put("videoRotationDegrees", it) }
             m.albumId?.let { put("albumId", it) }
+            m.bookmarkList().takeIf { it.isNotEmpty() }?.let { marks ->
+                put("bookmarks", JSONArray().apply { marks.forEach { put(it) } })
+            }
+            m.watchLaterAtMillis?.let { put("watchLaterAtMillis", it) }
         }
     }
 

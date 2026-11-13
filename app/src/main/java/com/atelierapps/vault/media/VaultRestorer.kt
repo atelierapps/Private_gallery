@@ -299,6 +299,13 @@ object VaultRestorer {
                 }
                 if (obj.optBoolean("pinned", false)) repo.setPinned(id, true)
                 if (obj.has("videoRotationDegrees")) repo.setVideoRotation(id, obj.optInt("videoRotationDegrees"))
+                obj.optJSONArray("bookmarks")?.let { arr ->
+                    val marks = (0 until arr.length()).map { arr.optLong(it, -1L) }.filter { it >= 0 }
+                    if (marks.isNotEmpty()) repo.setBookmarks(id, marks)
+                }
+                if (obj.has("watchLaterAtMillis")) {
+                    repo.setWatchLater(listOf(id), obj.optLong("watchLaterAtMillis"))
+                }
             }.onFailure { Log.w("VaultRestorer", "note/history not restored for " + id, it) }
         }
         // The item's id here, whether just saved or already held under
