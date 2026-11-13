@@ -78,6 +78,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.IosShare
+import androidx.compose.material.icons.outlined.WatchLater
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.MoreVert
@@ -813,6 +814,15 @@ private fun TopBar(
                 )
             }
         }
+        // On the bar, not in the menu: in the menu nobody found it, and a
+        // queue you have to dig for doesn't get used. Brass while queued.
+        VaultIconButton(
+            Icons.Outlined.WatchLater,
+            if (inWatchLater) "Remove from Watch later" else "Add to Watch later",
+            onWatchLater,
+            tint = if (inWatchLater) Brass else Ink,
+            size = 44,
+        )
         VaultIconButton(Icons.Outlined.IosShare, "Share", onShare, size = 44)
         VaultIconButton(
             Icons.Filled.PushPin,
@@ -841,10 +851,6 @@ private fun TopBar(
                     )
                 }
                 DropdownMenuItem(text = { Text("Add to album…") }, onClick = { menu = false; onAddToAlbum() })
-                DropdownMenuItem(
-                    text = { Text(if (inWatchLater) "Remove from Watch later" else "Add to Watch later") },
-                    onClick = { menu = false; onWatchLater() },
-                )
             }
         }
     }
