@@ -217,7 +217,14 @@ exact matches rank ahead of near ones. In the player, a marks row under the
 scrubber: A–B repeat (per clip, never saved, off during a slideshow; looped by
 an ExoPlayer `PlayerMessage` pinned at B with `setDeleteAfterDelivery(false)`)
 and
-timeline bookmarks (+ Mark; tap to jump, long-press to remove). Play a selection, every video loops by
+timeline bookmarks (+ Mark; tap to jump, long-press to remove). Viewer
+gestures: swipe down (or flick) closes, swipe up opens the tags, hold a video
+for 2× while the finger is down. **No brightness or volume drags** — the owner
+only ever set them off by accident; the phone's buttons do that. Instead a
+**low-light** button in the floating dock above the lock (same fade and
+opacity): system → low (window brightness 0.15) → ultra low (0.01 plus a 55%
+shade over the picture), for the viewer window only, reset on leaving.
+Editors keep no swipe gestures, by the owner's choice. Play a selection, every video loops by
 default unless a slideshow is running (Settings → Playback), shuffle in the
 viewer's control row (not the home bar) — an on/off switch that shuffles
 around the current item and restores the order around it when turned off.
@@ -234,11 +241,14 @@ scrubber seeks to keyframes while dragging and exactly on release, with
 scrim so the clip shows through while tagging, Sort untagged (home ⋮ → one untagged item at a time with
 the tag row open: Tag & next / Skip / Delete with undo — `ui/triage/`), view history (counted after 2 s on screen; Unwatched chip and a
 "Not seen lately" sort — history starts at schema 9, so everything older begins
-as unwatched), storage stats, camera capture, share-in target, durable
+as unwatched), storage stats (plus a Watching card: opened / never opened,
+views, left partway, queue, bookmarked, total video length, top-5 most-watched
+and most-used tags — all from existing data; watch *time* isn't recorded), camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
 per-video display rotation, resume playback, slideshow, shuffle, floating lock
 button (with a "back to top" arrow docked to it once the home grid is a
-quarter scrolled — one draggable pair, so they can't overlap), app disguise + custom home-screen shortcut, encrypted (or plaintext)
+quarter scrolled, and the viewer's low-light button — one draggable dock,
+16 dp apart, so they can't overlap), app disguise + custom home-screen shortcut, encrypted (or plaintext)
 backup with round-trip restore, and an uninstall warning. Backups carry each
 item's tags, source, note, view history, pin, video rotation, album,
 bookmarks and watch-later place, plus
