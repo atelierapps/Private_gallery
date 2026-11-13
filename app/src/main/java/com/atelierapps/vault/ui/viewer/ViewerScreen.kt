@@ -48,6 +48,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
@@ -235,6 +237,33 @@ fun ViewerScreen(
         indexVisible = true
         delay(1400)
         indexVisible = false
+    }
+
+    // Low light: 0 the phone's own brightness, 1 dimmed, 2 as dark as the
+    // panel goes plus a shade over the picture — the panel's minimum is still
+    // brighter than a dark room wants, and the shade is what takes it below.
+    // For this window only: leaving the viewer gives the phone its brightness
+    // back, so nothing else is left dim.
+    var lowLight by remember { mutableIntStateOf(0) }
+    val window = (androidx.compose.ui.platform.LocalContext.current as? android.app.Activity)?.window
+    LaunchedEffect(lowLight, window) {
+        window ?: return@LaunchedEffect
+        val lp = window.attributes
+        lp.screenBrightness = when (lowLight) {
+            1 -> LOW_LIGHT_BRIGHTNESS
+            2 -> ULTRA_LOW_BRIGHTNESS
+            else -> android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        }
+        window.attributes = lp
+    }
+    DisposableEffect(window) {
+        onDispose {
+            window?.let { w ->
+                val lp = w.attributes
+                lp.screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                w.attributes = lp
+            }
+        }
     }
 
     var lockVisible by remember { mutableStateOf(true) }
@@ -425,7 +454,19 @@ fun ViewerScreen(
             )
         }
 
-        FloatingLockButton(visible = lockVisible, onLocked = onBack)
+        // Ultra low's shade: over the picture and its controls, under the dock,
+        // and it takes no touches.
+        if (lowLight == 2) {
+            Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
+        }
+
+        FloatingLockButton(
+            visible = lockVisible,
+            onLocked = onBack,
+            lowLight = lowLight,
+            // No notice: the screen dimming is the confirmation.
+            onLowLight = { lowLight = (lowLight + 1) % 3 },
+        )
 
         // Slideshow controls are image-only; videos have their own control bar,
         // so don't double up the bottom of the screen for them.
@@ -709,6 +750,8 @@ private fun ViewerPage(
     // Image: double-tap toggles zoom; pinch/pan only while zoomed, so a
     // single-finger horizontal swipe at rest reaches the pager (fixes paging).
     var scale by remember { mutableFloatStateOf(1f) }
+    // The drag handler below outlives a recomposition; read the latest.
+    val currentOnTag by rememberUpdatedState(onTag)
     var offset by remember { mutableStateOf(Offset.Zero) }
     val transform = rememberTransformableState { zoom, pan, _ ->
         scale = (scale * zoom).coerceIn(1f, 5f)
@@ -738,9 +781,14 @@ private fun ViewerPage(
             .pointerInput(scale > 1f) {
                 if (scale > 1f) return@pointerInput
                 var travelled = 0f
+                val upPx = 90.dp.toPx()
                 detectVerticalDragGestures(
                     onDragStart = { travelled = 0f },
-                    onDragEnd = { onDismissEnd() },
+                    // Up opens the tags, as on a video; down closes.
+                    onDragEnd = {
+                        if (travelled < -upPx) currentOnTag()
+                        onDismissEnd()
+                    },
                     onDragCancel = { onDismissEnd() },
                     onVerticalDrag = { change, delta ->
                         travelled += delta
@@ -1001,3 +1049,9 @@ private fun fileSize(bytes: Long): String {
 
 private fun dateOf(millis: Long): String =
     SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(millis))
+
+/** Low light, as a window brightness: dim enough to notice, still readable. */
+private const val LOW_LIGHT_BRIGHTNESS = 0.15f
+
+/** The panel's floor. Not 0: on some phones 0 reads as "off" rather than "lowest". */
+private const val ULTRA_LOW_BRIGHTNESS = 0.01f
