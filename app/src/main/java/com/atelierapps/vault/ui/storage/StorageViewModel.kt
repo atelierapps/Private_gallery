@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.atelierapps.vault.VaultGraph
+import com.atelierapps.vault.filter.MediaFilter
 import com.atelierapps.vault.media.MediaIntegrity
 import com.atelierapps.vault.media.TransferFailure
 import com.atelierapps.vault.media.TransferWake
@@ -25,6 +26,20 @@ data class StorageStats(
     val albums: Int = 0,
     val tags: Int = 0,
     val tempBytes: Long = 0,
+    // ---- watching: all from the view history, resume points and queue the
+    // viewer already keeps. Nothing new is recorded for these.
+    /** Opened in the viewer at least once (history starts at schema 9). */
+    val opened: Int = 0,
+    val totalViews: Int = 0,
+    val inProgress: Int = 0,
+    val watchLater: Int = 0,
+    val bookmarked: Int = 0,
+    /** Combined length of every video. */
+    val videoMillis: Long = 0,
+    /** Tag name to the views of the items carrying it, most first. */
+    val topWatchedTags: List<Pair<String, Int>> = emptyList(),
+    /** Tag name to how many items carry it, most first. */
+    val topUsedTags: List<Pair<String, Int>> = emptyList(),
 ) {
     val items: Int get() = photos + videos
     val totalBytes: Long get() = liveBytes + thumbBytes + trashBytes + tempBytes
@@ -130,6 +145,21 @@ class StorageViewModel(app: Application) : AndroidViewModel(app) {
         }
         val trashBytes = trashed.sumOf { storage.blob(it.media.id).length() }
 
+        val viewsByTag = HashMap<String, Int>()
+        val itemsByTag = HashMap<String, Int>()
+        live.forEach { item ->
+            item.tags.forEach { t ->
+                itemsByTag[t.name] = (itemsByTag[t.name] ?: 0) + 1
+                if (item.media.viewCount > 0) {
+                    viewsByTag[t.name] = (viewsByTag[t.name] ?: 0) + item.media.viewCount
+                }
+            }
+        }
+        val top: (Map<String, Int>) -> List<Pair<String, Int>> = { m ->
+            m.entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key.lowercase() })
+                .take(TOP_TAGS).map { it.key to it.value }
+        }
+
         return StorageStats(
             photos = photos,
             videos = videos,
@@ -141,7 +171,23 @@ class StorageViewModel(app: Application) : AndroidViewModel(app) {
             tags = repo.tagCount(),
             tempBytes = dirSize(storage.tmpDir) +
                 dirSize(File(getApplication<Application>().cacheDir, "share")),
+            opened = live.count { it.media.viewCount > 0 },
+            totalViews = live.sumOf { it.media.viewCount },
+            inProgress = live.count {
+                it.media.mimeType.startsWith("video/") &&
+                    MediaFilter.isInProgress(it.media.resumePositionMillis, it.media.durationMillis)
+            },
+            watchLater = live.count { it.media.watchLaterAtMillis != null },
+            bookmarked = live.count { it.media.bookmarkList().isNotEmpty() },
+            videoMillis = live.sumOf { if (it.media.mimeType.startsWith("video/")) it.media.durationMillis ?: 0L else 0L },
+            topWatchedTags = top(viewsByTag),
+            topUsedTags = top(itemsByTag),
         )
+    }
+
+    private companion object {
+        /** Long enough to be useful, short enough to read at a glance. */
+        const val TOP_TAGS = 5
     }
 
     private fun dirSize(dir: File): Long {

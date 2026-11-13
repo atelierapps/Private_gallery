@@ -102,6 +102,36 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
                 StatRow("Tags", "${stats.tags}")
             }
 
+            StorageCard("Watching") {
+                val items = stats.items.coerceAtLeast(1)
+                StatRow("Opened at least once", "${stats.opened} of ${stats.items} (${stats.opened * 100 / items}%)")
+                StatRow("Never opened", "${stats.items - stats.opened}")
+                StatRow("Total views", "${stats.totalViews}")
+                StatRow("Left partway", "${stats.inProgress}")
+                StatRow("In Watch later", "${stats.watchLater}")
+                StatRow("With bookmarks", "${stats.bookmarked}")
+                StatRow("Length of all videos", formatDuration(stats.videoMillis))
+                if (stats.topWatchedTags.isNotEmpty()) {
+                    HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 8.dp))
+                    Text("Most-watched tags", color = Brass, style = MaterialTheme.typography.labelMedium)
+                    stats.topWatchedTags.forEach { (name, views) ->
+                        StatRow("#$name", if (views == 1) "1 view" else "$views views")
+                    }
+                }
+                if (stats.topUsedTags.isNotEmpty()) {
+                    HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 8.dp))
+                    Text("Most-used tags", color = Brass, style = MaterialTheme.typography.labelMedium)
+                    stats.topUsedTags.forEach { (name, count) ->
+                        StatRow("#$name", if (count == 1) "1 item" else "$count items")
+                    }
+                }
+                Text(
+                    "Views are counted after two seconds on screen, and only since view " +
+                        "history began, so older favourites may be under-counted.",
+                    color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
             StorageCard("Recycle bin") {
                 StatRow("Items", "${stats.trashCount}")
                 StatRow("Space held", formatBytes(stats.trashBytes))
@@ -249,6 +279,18 @@ private fun StorageCard(title: String, content: @Composable () -> Unit) {
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SurfaceHigh).padding(16.dp),
         ) { content() }
+    }
+}
+
+/** "14 h 32 min", "45 min", "under a minute". */
+private fun formatDuration(ms: Long): String {
+    val minutes = ms / 60_000
+    val h = minutes / 60
+    val m = minutes % 60
+    return when {
+        h > 0 -> "$h h $m min"
+        m > 0 -> "$m min"
+        else -> "under a minute"
     }
 }
 
