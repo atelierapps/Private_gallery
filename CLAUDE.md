@@ -75,10 +75,11 @@ server, no account, and no network access of any kind.
 - Room + **SQLCipher** (`net.zetetic:sqlcipher-android:4.9.0` — pinned, *not*
   latest: 4.10+ drags in androidx.sqlite 2.7.0 and kotlin-stdlib 2.2, both ahead
   of Room 2.6.1 / Kotlin 2.0.21 here).
-- **Schema version 11.** Migrations 1→2 … 10→11 all live in `VaultDatabase`.
+- **Schema version 12.** Migrations 1→2 … 11→12 all live in `VaultDatabase`.
   9 added `note`, `lastViewedAtMillis` and `viewCount` (DEFAULT 0) to `media`;
   10 added the `saved_view` table (id, name, spec JSON, createdAtMillis);
-  11 added `bookmarks` (comma-joined ms) and `watchLaterAtMillis` to `media`.
+  11 added `bookmarks` (comma-joined ms) and `watchLaterAtMillis` to `media`;
+  12 added `tagRule` to `album` and the `album_skip` table (albumId, mediaId).
   Bump the version *and* add the migration; there is no destructive fallback,
   by design.
 - `DbCipher` migrates a legacy plaintext database once, verifying table by table
@@ -205,7 +206,12 @@ Everything in the spec, plus: recycle bin with 30-day purge, albums, tags +
 manager + auto-tag rules, albums filled from tags (New album or album ⋮ → Add
 from tags…: any/all of the picked tags; items already in another album are
 left there unless "Also move" is on, since an item has one album —
-`ui/albums/AlbumFromTags.kt`), duplicate finder, search, six sort orders, date
+`ui/albums/AlbumFromTags.kt`). An album made or filled from tags **follows**
+them (`album.tagRule`, same JSON shape as a view's tags): on opening it, new
+free items carrying them are offered in a banner → `AlbumReview` (all ticked;
+untick to turn down). Turned-down items, and items removed from a following
+album by hand, go on `album_skip` so they're never offered again; "Later"
+records nothing. Album ⋮ → Stop following tags. Manual albums never ask. duplicate finder, search, six sort orders, date
 sections, fast scroller, one-tap Favourites / Untagged / Short filter chips
 (Source was dropped from the bar — it only ever said "Download"; sources now
 sit at the bottom of the Type menu), a **views row** above the filters
@@ -213,7 +219,8 @@ sit at the bottom of the Type menu), a **views row** above the filters
 oldest-added first; the clock button on the viewer's top bar, brass when
 queued, or selection ⋮ → Add to Watch later; removed by hand, not on
 watching), Continue watching (the 30 most recently left videos with a resume
-point past a tenth of the clip, 3–30 s floor) and Most watched
+point past a tenth of the clip, 3–30 s floor, opened within the last 24 h —
+only what would actually resume) and Most watched
 (the 30 most viewed among items opened at least twice — `topWatched`, applied
 over the whole list by `MediaFilter.applyTo`, which every count and list uses;
 "opened once" was 231 of 650 items),
@@ -273,7 +280,8 @@ quarter scrolled, and the viewer's low-light button — one draggable dock,
 backup with round-trip restore, and an uninstall warning. Backups carry each
 item's tags, source, note, view history, pin, video rotation, album,
 bookmarks and watch-later place, plus
-manifest-level `albums` (only those used; cover by sha256), and — whole-library
+manifest-level `albums` (only those used; cover by sha256, plus its `tagRule`
+and `skip` list by sha256), and — whole-library
 backups only — `rules` and `views`. All optional on read. Restore rebuilds
 them after the items and only adds: same-name albums are reused, an item
 already in an album stays put, identical rules and same-name views are

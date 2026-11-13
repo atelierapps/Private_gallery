@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.atelierapps.vault.data.entity.AlbumEntity
+import com.atelierapps.vault.data.entity.AlbumSkipEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -24,6 +25,23 @@ interface AlbumDao {
 
     @Query("SELECT COUNT(*) FROM album")
     suspend fun count(): Int
+
+    @Query("UPDATE album SET tagRule = :rule WHERE id = :id")
+    suspend fun setTagRule(id: String, rule: String?)
+
+    // ---- items a tag-following album no longer offers ----
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun addSkips(skips: List<AlbumSkipEntity>)
+
+    @Query("SELECT mediaId FROM album_skip WHERE albumId = :albumId")
+    fun observeSkips(albumId: String): Flow<List<String>>
+
+    @Query("SELECT mediaId FROM album_skip WHERE albumId = :albumId")
+    suspend fun skips(albumId: String): List<String>
+
+    @Query("DELETE FROM album_skip WHERE albumId = :albumId")
+    suspend fun clearSkips(albumId: String)
 
     @Query("DELETE FROM album WHERE id = :id")
     suspend fun delete(id: String)

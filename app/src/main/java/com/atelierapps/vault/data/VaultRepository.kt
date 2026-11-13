@@ -6,6 +6,7 @@ import com.atelierapps.vault.data.db.MediaDao
 import com.atelierapps.vault.data.db.SavedViewDao
 import com.atelierapps.vault.data.db.TagDao
 import com.atelierapps.vault.data.entity.AlbumEntity
+import com.atelierapps.vault.data.entity.AlbumSkipEntity
 import com.atelierapps.vault.data.entity.AutoTagRuleEntity
 import com.atelierapps.vault.data.entity.MediaItemEntity
 import com.atelierapps.vault.data.entity.MediaTagCrossRef
@@ -279,7 +280,22 @@ class VaultRepository(
     /** Delete the album but keep its items (their albumId is cleared). */
     suspend fun deleteAlbum(id: String) = withContext(Dispatchers.IO) {
         albumDao.clearMembers(id)
+        albumDao.clearSkips(id)
         albumDao.delete(id)
+    }
+
+    /** Set the tags an album follows (JSON, see AlbumEntity.tagRule), or null to stop. */
+    suspend fun setAlbumTagRule(id: String, rule: String?) =
+        withContext(Dispatchers.IO) { albumDao.setTagRule(id, rule) }
+
+    /** Items this album won't offer again. */
+    fun observeAlbumSkips(albumId: String): Flow<List<String>> = albumDao.observeSkips(albumId)
+
+    suspend fun albumSkips(albumId: String): List<String> =
+        withContext(Dispatchers.IO) { albumDao.skips(albumId) }
+
+    suspend fun skipForAlbum(albumId: String, ids: Collection<String>) = withContext(Dispatchers.IO) {
+        if (ids.isNotEmpty()) albumDao.addSkips(ids.map { AlbumSkipEntity(albumId, it) })
     }
 
     /** Pin a specific item as the album's cover (null reverts to most-recent). */
