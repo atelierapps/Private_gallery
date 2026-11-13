@@ -3,9 +3,6 @@ package com.atelierapps.vault.ui.viewer
 import androidx.compose.ui.text.style.TextOverflow
 import com.atelierapps.vault.ui.theme.ScrimSoft
 import androidx.compose.material.icons.outlined.Shuffle
-import android.app.Activity
-import android.content.Context
-import android.media.AudioManager
 import android.os.Looper
 import android.view.LayoutInflater
 import androidx.compose.animation.core.animateFloatAsState
@@ -57,6 +54,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -77,7 +75,6 @@ import com.atelierapps.vault.session.VideoPrefs
 import com.atelierapps.vault.ui.image.VaultMediaKey
 import kotlinx.coroutines.delay
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import com.atelierapps.vault.ui.theme.Brass
 import com.atelierapps.vault.ui.theme.Muted
 import androidx.compose.material.icons.Icons
@@ -110,11 +107,11 @@ private const val SPEED_DEFAULT = 2 // index of 1.0×
  *
  * TextureView-backed so the surface can be pinch-zoomed / panned. Draws its own
  * Compose controls: play/pause, drag-anywhere scrubber, prev/skip/next, speed,
- * mute, loop; plus VLC-style vertical drags (right = volume, left = brightness).
+ * mute, loop. Swipe down closes, swipe up opens the tags, hold for 2x. The
+ * brightness and volume drags that used to be here are gone: they went off by
+ * accident far more often than on purpose, and the phone's own buttons do it.
  *
- * Mute is global and persisted, and while it's on the volume drag is swallowed
- * rather than applied — a mute you have to keep re-applying because a stray
- * swipe undid it isn't a mute. It attenuates the player, never the system
+ * Mute is global and persisted. It attenuates the player, never the system
  * stream, so silencing playback leaves the device's media volume alone.
  *
  * The surface fades in over the clip's own thumbnail once the decoder renders a
@@ -190,9 +187,6 @@ fun VideoPlayer(
     }
 
     val context = LocalContext.current
-    val activity = context as? Activity
-    val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val maxVol = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
     val currentOnEnded by rememberUpdatedState(onEnded)
     val player = remember(id) {
         ExoPlayer.Builder(
@@ -266,6 +260,10 @@ fun VideoPlayer(
         offset = Offset.Zero
     }
     var hud by remember(id) { mutableStateOf<String?>(null) }
+    // True only while a long press is holding playback at 2x.
+    var boosted by remember(id) { mutableStateOf(false) }
+    // Read at gesture end; the swipe-up handler is set up once per clip.
+    val currentOnTag by rememberUpdatedState(onTag)
     // The surface is black until the decoder produces a frame. On an autoplay
     // advance that black gap is what reads as a jolt, so hold the thumbnail
     // underneath and dissolve the video in over it once it's actually showing.
@@ -485,25 +483,23 @@ fun VideoPlayer(
             },
         )
 
-        // Unified gesture surface: two-finger pinch/pan (focal-anchored),
-        // two-finger pull-down to close, and single-finger vertical drags for
-        // volume (right half) / brightness (left half). Horizontal single-finger
-        // drags are left for the pager.
-        //
-        // A video can't use the single-finger pull-down that images do — that
-        // finger is already spoken for by brightness and volume — so closing is
-        // the two-finger gesture here.
+        // Unified gesture surface: two-finger pinch/pan (focal-anchored), a
+        // one-finger pull-down (or two-finger, as before) to close, a one-finger
+        // swipe up for the tags, and a long press for 2x while held.
+        // Horizontal single-finger drags are left for the pager.
         Box(
             Modifier.fillMaxSize().pointerInput(id) {
                 val slop = viewConfiguration.touchSlop
+                val flickPx = FLICK_DP_PER_S.dp.toPx()
+                val upPx = 90.dp.toPx()
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    // 0 undecided, 1 pinch, 2 brightness, 3 volume, 4 pager(bail),
-                    // 5 swallowed volume drag while muted, 6 pull-down to close.
+                    // 0 undecided, 1 pinch, 4 pager (bail), 6 pull-down to close,
+                    // 7 swipe up for tags.
                     var mode = 0
-                    val startVol = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-                    var startBright = activity?.window?.attributes?.screenBrightness ?: 0.5f
-                    if (startBright < 0f) startBright = 0.5f
+                    var upBy = 0f
+                    val velocity = VelocityTracker()
+                    velocity.addPosition(down.uptimeMillis, down.position)
                     // Two-finger evidence, accumulated while undecided.
                     var twoZoom = 1f
                     var twoPan = Offset.Zero
@@ -548,47 +544,59 @@ fun VideoPlayer(
                             val dy = c.position.y - down.position.y
                             if (mode == 0) {
                                 if (abs(dy) > slop && abs(dy) > abs(dx)) {
-                                    val leftHalf = down.position.x < size.width / 2f
-                                    mode = when {
-                                        leftHalf -> 2
-                                        // Muted: swallow the volume drag instead of
-                                        // acting on it, so it can't be undone by accident.
-                                        muted -> 5
-                                        else -> 3
+                                    // Down closes, up opens the tags. The
+                                    // brightness and volume drags that had this
+                                    // finger were only ever set off by accident;
+                                    // the phone's own buttons do that job.
+                                    mode = if (dy > 0) 6 else 7
+                                    if (mode == 6) {
+                                        dismissBy = dy
+                                        onDismissDrag(dismissBy)
                                     }
-                                    if (mode == 5) hud = "Muted"
                                 } else if (abs(dx) > slop) {
                                     mode = 4
                                     break
                                 }
+                            } else if (mode == 7) {
+                                upBy = -dy
                             }
-                            if (mode == 2 || mode == 3) {
-                                val frac = (-dy / size.height) // up = increase
-                                if (mode == 3) {
-                                    val target = (startVol + frac * maxVol).roundToInt().coerceIn(0, maxVol)
-                                    // Can throw under Do-Not-Disturb; never let a drag crash playback.
-                                    runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0) }
-                                    hud = "Volume ${target * 100 / maxVol}%"
-                                } else if (activity != null) {
-                                    val b = (startBright + frac).coerceIn(0.02f, 1f)
-                                    val lp = activity.window.attributes
-                                    lp.screenBrightness = b
-                                    activity.window.attributes = lp
-                                    hud = "Brightness ${(b * 100).toInt()}%"
-                                }
-                                c.consume()
-                            } else if (mode == 5) {
-                                // Swallowed volume drag while muted.
-                                c.consume()
-                            }
+                            // Only once it's ours: consuming while still
+                            // undecided would starve the pager of the
+                            // sideways swipe to the next clip.
+                            if (mode == 6 || mode == 7) c.consume()
                         }
+                        // For telling a flick from a slow pull at the end.
+                        event.changes.firstOrNull()?.let { velocity.addPosition(it.uptimeMillis, it.position) }
                     }
                     // Fingers up. A pull-down that got this far hands back to the
-                    // viewer, which decides between closing and springing back.
-                    if (mode == 6) onDismissEnd()
+                    // viewer, which decides between closing and springing back; a
+                    // quick flick counts as far enough however short it was.
+                    if (mode == 6) {
+                        if (velocity.calculateVelocity().y > flickPx) onDismissDrag(Float.MAX_VALUE)
+                        onDismissEnd()
+                    }
+                    if (mode == 7 && (upBy > upPx || -velocity.calculateVelocity().y > flickPx)) {
+                        currentOnTag()
+                    }
                 }
             }.pointerInput(id) {
                 detectTapGestures(
+                    // Hold for 2x, let go for the speed you had. Not a setting:
+                    // it ends with the finger, so it can't be left on by mistake.
+                    onPress = {
+                        tryAwaitRelease()
+                        if (boosted) {
+                            boosted = false
+                            player.setPlaybackSpeed(SPEEDS[speedIdx])
+                        }
+                    },
+                    onLongPress = {
+                        if (player.playbackParameters.speed < 2f) {
+                            boosted = true
+                            player.setPlaybackSpeed(2f)
+                            hud = "2×"
+                        }
+                    },
                     onTap = { controlsVisible = !controlsVisible },
                     onDoubleTap = { pos ->
                         val w = size.width
@@ -949,6 +957,9 @@ private fun MarkPill(
         )
     }
 }
+
+/** A vertical release faster than this is a flick: it counts as a full swipe. */
+private const val FLICK_DP_PER_S = 1200
 
 /** Shortest A-B stretch worth looping; any less and it stutters on the spot. */
 private const val AB_MIN_MS = 500L
