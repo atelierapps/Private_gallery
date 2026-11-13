@@ -55,14 +55,15 @@ Schema went **9 → 12** this session; every migration is additive.
   are never re-offered; Stop following tags in the album menu.
 - **Backups** now carry albums (with tag rule and skip list), auto-tag rules,
   saved views, pins, video rotation, bookmarks and watch-later place.
+  **Round trip confirmed at full scale:** the owner made a fresh full backup
+  to a new folder, deleted every item, and restored all 803 (photos and
+  videos) with albums intact; restoring again over the existing library
+  created no duplicates.
+- **Watching stats card** — "looks nice".
 
 ### Built but not yet tested by the owner
 
-- **Backup → restore round trip** with the new sections (albums, rules,
-  views, album tag rules and skips). Test: make a fresh whole-library
-  backup, restore it into the same phone; nothing should double, and the
-  summary should report what was recreated.
-- **Watching stats card** — not explicitly reported on.
+- Nothing outstanding.
 
 ### Decisions the owner made (don't undo without asking)
 
@@ -85,6 +86,9 @@ Schema went **9 → 12** this session; every migration is additive.
 - Run the backup → restore test above.
 - Optional: record watch *time* if the owner wants it in stats (needs a new
   column).
+- Optional, owner's own words "nerding out": more detail in the Watching
+  card on which tags get watched (e.g. per-tag views over time, or recently
+  watched tags). Not requested as work.
 - Optional: grid preview from search results or views (already works there,
   since it's the home grid), and inside the Sort untagged screen (not yet).
 - The September audit's "deliberately left" items in `CLAUDE.md` still stand.
