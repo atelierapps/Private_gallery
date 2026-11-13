@@ -89,6 +89,8 @@ class ViewerActivity : ComponentActivity() {
                         onShuffle = { id -> vm.toggleShuffle(id) },
                         onSetNote = { id, note -> vm.setNote(id, note) },
                         onViewed = { id -> vm.markViewed(id) },
+                        onSetBookmarks = { id, marks -> vm.setBookmarks(id, marks) },
+                        onToggleWatchLater = { id -> vm.toggleWatchLater(id) },
                         albums = albums,
                         allTags = allTags,
                         onSetTags = { id, names -> vm.setTags(id, names) },

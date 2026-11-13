@@ -146,6 +146,26 @@ class ViewerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { repo.setResumePosition(id, millis) }
     }
 
+    /** Replace a video's bookmarks; the snapshot follows so the marks row is current. */
+    fun setBookmarks(id: String, marks: List<Long>) {
+        viewModelScope.launch {
+            repo.setBookmarks(id, marks)
+            updateMedia(id) {
+                it.copy(bookmarks = com.atelierapps.vault.data.entity.MediaItemEntity.encodeBookmarks(marks))
+            }
+        }
+    }
+
+    /** In or out of the watch-later queue; joining puts it at the back. */
+    fun toggleWatchLater(id: String) {
+        val item = media.value.firstOrNull { it.media.id == id } ?: return
+        val at = if (item.media.watchLaterAtMillis == null) System.currentTimeMillis() else null
+        viewModelScope.launch {
+            repo.setWatchLater(listOf(id), at)
+            updateMedia(id) { it.copy(watchLaterAtMillis = at) }
+        }
+    }
+
     fun setVideoRotation(id: String, degrees: Int?) {
         viewModelScope.launch { repo.setVideoRotation(id, degrees) }
     }

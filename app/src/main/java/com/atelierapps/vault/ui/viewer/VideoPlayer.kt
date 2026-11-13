@@ -11,6 +11,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
@@ -154,6 +159,10 @@ fun VideoPlayer(
     initialRotation: Int = 0,
     /** Persist a new display rotation; null once it is back to upright. */
     onRotationChanged: (Int?) -> Unit = {},
+    /** This clip's timeline bookmarks, ascending. */
+    bookmarks: List<Long> = emptyList(),
+    /** Persist the whole new set of bookmarks. */
+    onBookmarksChanged: (List<Long>) -> Unit = {},
 ) {
     // Inactive pages: poster only, no decoder held.
     if (!active) {
@@ -343,6 +352,68 @@ fun VideoPlayer(
         delay(700)
         firstFrame = true
     }
+    // A-B repeat: loop one stretch of the clip. A is set, then B, then a third
+    // tap clears both. Held per clip and never saved — it is for studying a
+    // moment now, not a property of the video.
+    var abA by remember(id) { mutableStateOf<Long?>(null) }
+    var abB by remember(id) { mutableStateOf<Long?>(null) }
+    // Checked far more often than the 250 ms position poll: at that rate the
+    // loop would overrun B by up to a quarter of a second, which on a short
+    // stretch is most of it.
+    LaunchedEffect(abA, abB) {
+        val a = abA ?: return@LaunchedEffect
+        val b = abB ?: return@LaunchedEffect
+        while (true) {
+            if (!scrubbing && player.currentPosition >= b) player.seekTo(a)
+            delay(40)
+        }
+    }
+    // A slideshow advances when a clip ends, and an A-B loop means it never
+    // does; starting one ends the other, like loop.
+    LaunchedEffect(slideshowActive) {
+        if (slideshowActive) { abA = null; abB = null }
+    }
+    val cycleAb: () -> Unit = {
+        val at = player.currentPosition.coerceAtLeast(0L)
+        val a = abA
+        when {
+            a == null -> {
+                abA = at
+                onNotice("A set at " + fmt(at) + " — tap again at B")
+            }
+            abB == null -> {
+                // Either order works: B before A just swaps them.
+                val lo = minOf(a, at)
+                val hi = maxOf(a, at)
+                if (hi - lo < AB_MIN_MS) {
+                    onNotice("Too short — move on a little, then tap")
+                } else {
+                    abA = lo
+                    abB = hi
+                    player.seekTo(lo)
+                    onNotice("Repeating " + fmt(lo) + "–" + fmt(hi))
+                }
+            }
+            else -> {
+                abA = null
+                abB = null
+                onNotice("A–B off")
+            }
+        }
+    }
+    // Bookmarks: a mark within a second of one already there is the same
+    // moment, so tapping twice doesn't stack duplicates.
+    val currentBookmarks by rememberUpdatedState(bookmarks)
+    val addBookmark: () -> Unit = {
+        val at = player.currentPosition.coerceAtLeast(0L)
+        if (currentBookmarks.any { abs(it - at) < 1_000L }) {
+            onNotice("Already marked here")
+        } else {
+            onBookmarksChanged((currentBookmarks + at).sorted())
+            onNotice("Marked " + fmt(at))
+        }
+    }
+
     // Clear the transient volume/brightness HUD shortly after the drag ends.
     LaunchedEffect(hud) {
         if (hud != null) { delay(900); hud = null }
@@ -623,6 +694,46 @@ fun VideoPlayer(
                     Text(fmt(durationMs), color = Color.White, fontSize = 12.sp)
                 }
 
+                // Row 1b — A-B repeat and bookmarks. Its own slim row: the
+                // button row below is full, and these are about places on
+                // the timeline, so they sit right under it.
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    val aSet = abA
+                    val bSet = abB
+                    MarkPill(
+                        when {
+                            aSet == null -> "A–B"
+                            bSet == null -> "A " + fmt(aSet) + " → B"
+                            else -> fmt(aSet) + "–" + fmt(bSet)
+                        },
+                        active = aSet != null,
+                        enabled = !slideshowActive,
+                        onClick = cycleAb,
+                    )
+                    MarkPill("+ Mark", onClick = addBookmark)
+                    // Tap a mark to jump to it, long-press to remove it.
+                    LazyRow(
+                        Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        items(bookmarks, key = { it }) { ms ->
+                            MarkPill(
+                                fmt(ms),
+                                active = true,
+                                onClick = { player.seekTo(ms) },
+                                onLongClick = {
+                                    onBookmarksChanged(currentBookmarks - ms)
+                                    onNotice("Mark at " + fmt(ms) + " removed")
+                                },
+                            )
+                        }
+                    }
+                }
+
                 // Row 2 — evenly spaced, comfortably sized actions.
                 Row(
                     Modifier.fillMaxWidth().padding(top = 2.dp),
@@ -784,6 +895,45 @@ private fun CtlText(
         }
     }
 }
+
+/**
+ * A small pill for the marks row: A–B, "+ Mark", and each bookmark. Smaller
+ * than the button row's discs on purpose — this row is a timeline, and it
+ * shouldn't compete with play controls for the thumb. Brass outline when on,
+ * following the white-off / brass-on rule.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MarkPill(
+    label: String,
+    active: Boolean = false,
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier.height(30.dp).clip(RoundedCornerShape(15.dp))
+            .background(CTL_FILL)
+            .then(if (active) Modifier.border(1.dp, Brass, RoundedCornerShape(15.dp)) else Modifier)
+            .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = when {
+                !enabled -> Color(0x66FFFFFF)
+                active -> Brass
+                else -> Color.White
+            },
+            fontSize = 12.sp,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Shortest A-B stretch worth looping; any less and it stutters on the spot. */
+private const val AB_MIN_MS = 500L
 
 /** One shape for every control-bar button, so the row stays a row. */
 private val CTL_CELL = 58.dp

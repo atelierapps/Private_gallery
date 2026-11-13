@@ -133,6 +133,10 @@ fun ViewerScreen(
     onSetNote: (id: String, note: String?) -> Unit = { _, _ -> },
     /** The item has been on screen long enough to count as seen. */
     onViewed: (id: String) -> Unit = {},
+    /** Replace a video's timeline bookmarks. */
+    onSetBookmarks: (id: String, marks: List<Long>) -> Unit = { _, _ -> },
+    /** Into or out of the watch-later queue. */
+    onToggleWatchLater: (id: String) -> Unit = {},
     /** Whether the order is currently shuffled: drives the button's brass. */
     shuffleActive: Boolean = false,
     /** Shuffle on or off around this item. Turning it on also starts the slideshow. */
@@ -285,6 +289,7 @@ fun ViewerScreen(
                 onShuffle = { toggleShuffle(media[page].media.id) },
                 shuffleActive = shuffleActive,
                 onNotice = announce,
+                onBookmarks = onSetBookmarks,
             )
         }
 
@@ -327,6 +332,12 @@ fun ViewerScreen(
                     onNote = { notingItem = current },
                     onAddToAlbum = { albumFor = current.media.id },
                     onDelete = { pendingDelete = current.media.id },
+                    inWatchLater = current.media.watchLaterAtMillis != null,
+                    onWatchLater = {
+                        val adding = current.media.watchLaterAtMillis == null
+                        onToggleWatchLater(current.media.id)
+                        announce(if (adding) "Added to Watch later" else "Removed from Watch later")
+                    },
                 )
             }
             if (chromeVisible && !isVideo) {
@@ -664,6 +675,7 @@ private fun ViewerPage(
     onShuffle: () -> Unit,
     shuffleActive: Boolean,
     onNotice: (String) -> Unit,
+    onBookmarks: (id: String, marks: List<Long>) -> Unit,
 ) {
     if (item.media.mimeType.startsWith("video/")) {
         VideoPlayer(
@@ -687,6 +699,8 @@ private fun ViewerPage(
             onResumePosition = { onResumePosition(item.media.id, it) },
             initialRotation = item.media.videoRotationDegrees ?: 0,
             onRotationChanged = { onVideoRotation(item.media.id, it) },
+            bookmarks = item.media.bookmarkList(),
+            onBookmarksChanged = { onBookmarks(item.media.id, it) },
         )
         return
     }
@@ -774,6 +788,8 @@ private fun TopBar(
     onNote: () -> Unit,
     onAddToAlbum: () -> Unit,
     onDelete: () -> Unit,
+    inWatchLater: Boolean,
+    onWatchLater: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
@@ -825,6 +841,10 @@ private fun TopBar(
                     )
                 }
                 DropdownMenuItem(text = { Text("Add to album…") }, onClick = { menu = false; onAddToAlbum() })
+                DropdownMenuItem(
+                    text = { Text(if (inWatchLater) "Remove from Watch later" else "Add to Watch later") },
+                    onClick = { menu = false; onWatchLater() },
+                )
             }
         }
     }

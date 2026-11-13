@@ -146,6 +146,9 @@ object VideoTrimmer {
             media.note?.let { repo.setNote(newId, it) }
             if (media.isPinned) repo.setPinned(newId, true)
             media.videoRotationDegrees?.let { repo.setVideoRotation(newId, it) }
+            // Its place in the watch-later queue. Not its bookmarks: they are
+            // times in the original, and the cut moved them.
+            media.watchLaterAtMillis?.let { repo.setWatchLater(listOf(newId), it) }
         }.onFailure { Log.w(TAG, "extras not carried to " + newId, it) }
 
         if (replace) repo.trashMedia(media.id)
