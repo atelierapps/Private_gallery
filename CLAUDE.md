@@ -202,15 +202,18 @@ ui/          one package per screen; ui/theme is the design system
 ## What exists now
 
 Everything in the spec, plus: recycle bin with 30-day purge, albums, tags +
-manager + auto-tag rules, duplicate finder, search, six sort orders, date
+manager + auto-tag rules, albums filled from tags (New album or album ⋮ → Add
+from tags…: any/all of the picked tags; items already in another album are
+left there unless "Also move" is on, since an item has one album —
+`ui/albums/AlbumFromTags.kt`), duplicate finder, search, six sort orders, date
 sections, fast scroller, one-tap Favourites / Untagged / Short filter chips
 (Source was dropped from the bar — it only ever said "Download"; sources now
 sit at the bottom of the Type menu), a **views row** above the filters
 (`ui/home/ViewsRow.kt`, `SavedViews.kt`): built-in Watch later (a queue,
 oldest-added first; the clock button on the viewer's top bar, brass when
 queued, or selection ⋮ → Add to Watch later; removed by hand, not on
-watching), Continue watching (videos
-with a resume point past a tenth of the clip, 3–30 s floor) and Most watched
+watching), Continue watching (the 30 most recently left videos with a resume
+point past a tenth of the clip, 3–30 s floor) and Most watched
 (the 30 most viewed among items opened at least twice — `topWatched`, applied
 over the whole list by `MediaFilter.applyTo`, which every count and list uses;
 "opened once" was 231 of 650 items),
@@ -261,7 +264,9 @@ as unwatched), storage stats (plus a Watching card: opened / never opened,
 views, left partway, queue, bookmarked, total video length, top-5 most-watched
 and most-used tags — all from existing data; watch *time* isn't recorded), camera capture, share-in target, durable
 bulk import with batch tagging, template bulk rename, image rotate/crop,
-per-video display rotation, resume playback, slideshow, shuffle, floating lock
+per-video display rotation, resume playback (only if last opened within 24 h
+— `MediaFilter.RESUME_FRESH_MILLIS`; older, or from before view history, starts
+from the top), slideshow, shuffle, floating lock
 button (with a "back to top" arrow docked to it once the home grid is a
 quarter scrolled, and the viewer's low-light button — one draggable dock,
 16 dp apart, so they can't overlap), app disguise + custom home-screen shortcut, encrypted (or plaintext)

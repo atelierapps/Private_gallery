@@ -66,6 +66,9 @@ fun AlbumsScreen(
     var showCreate by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<AlbumCard?>(null) }
     var deleting by remember { mutableStateOf<AlbumCard?>(null) }
+    var filling by remember { mutableStateOf<AlbumCard?>(null) }
+    val tags by vm.tags.collectAsState()
+    val library by vm.library.collectAsState()
 
     Box(modifier.fillMaxSize().background(Bg)) {
         Column(Modifier.fillMaxSize()) {
@@ -74,7 +77,7 @@ fun AlbumsScreen(
             if (albums.isEmpty()) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
-                        "No albums yet.\nTap + to make one, then add items from the grid.",
+                        "No albums yet.\nTap + to make one — fill it from tags, or add items from the grid.",
                         color = Muted, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center,
                     )
                 }
@@ -91,6 +94,7 @@ fun AlbumsScreen(
                             card = card,
                             onOpen = { onOpen(card.album.id, card.album.name) },
                             onRename = { renaming = card },
+                            onFill = { filling = card },
                             onDelete = { deleting = card },
                         )
                     }
@@ -107,12 +111,25 @@ fun AlbumsScreen(
     }
 
     if (showCreate) {
-        NameDialog(
+        AlbumFromTagsDialog(
             title = "New album",
-            initial = "",
-            confirmLabel = "Create",
-            onConfirm = { vm.create(it); showCreate = false },
+            askName = true,
+            albumId = null,
+            tags = tags,
+            library = library,
+            onConfirm = { name, ids -> vm.create(name, ids); showCreate = false },
             onDismiss = { showCreate = false },
+        )
+    }
+    filling?.let { card ->
+        AlbumFromTagsDialog(
+            title = "Add to “${card.album.name}”",
+            askName = false,
+            albumId = card.album.id,
+            tags = tags,
+            library = library,
+            onConfirm = { _, ids -> vm.addToAlbum(card.album.id, ids); filling = null },
+            onDismiss = { filling = null },
         )
     }
     renaming?.let { card ->
@@ -144,6 +161,7 @@ private fun AlbumTile(
     card: AlbumCard,
     onOpen: () -> Unit,
     onRename: () -> Unit,
+    onFill: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
@@ -173,6 +191,7 @@ private fun AlbumTile(
             Box {
                 VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true }, size = 36)
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text("Add from tags…") }, onClick = { menu = false; onFill() })
                     DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
                     DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; onDelete() })
                 }
