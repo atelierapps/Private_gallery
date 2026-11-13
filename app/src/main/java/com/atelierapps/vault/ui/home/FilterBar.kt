@@ -76,6 +76,7 @@ fun FilterBar(
     // Set only by a view, so they show as removable chips rather than toggles.
     onToggleInProgress: () -> Unit = {},
     onToggleWatched: () -> Unit = {},
+    onToggleWatchLater: () -> Unit = {},
 ) {
     var tagPicker by remember { mutableStateOf(false) }
 
@@ -105,6 +106,9 @@ fun FilterBar(
         }
         if (filter.watched) {
             item { ActiveChip("Watched") { onToggleWatched() } }
+        }
+        if (filter.watchLater) {
+            item { ActiveChip("Watch later") { onToggleWatchLater() } }
         }
 
         // ---- one-tap toggles: they show their own on/off, so no active chip ----

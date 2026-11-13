@@ -9,6 +9,7 @@ import com.atelierapps.vault.data.entity.MediaWithTags
 import com.atelierapps.vault.data.entity.TagEntity
 import com.atelierapps.vault.filter.DateBucket
 import com.atelierapps.vault.filter.MediaFilter
+import com.atelierapps.vault.filter.Search
 import com.atelierapps.vault.media.MediaExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +39,8 @@ enum class SortOrder(val label: String) {
     // The views row's two built-ins sort by these; they're in the menu too.
     LAST_WATCHED("Recently watched"),
     MOST_WATCHED("Most watched"),
+    // The watch-later queue's own order: first added, first up.
+    QUEUE("Watch-later order"),
 }
 
 /** A source-filter chip: an app that media came from, with its total count (spec §7). */
@@ -130,15 +133,10 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
 
     val media: StateFlow<List<MediaWithTags>> =
         combine(repo.observeAll(), _filter, sort, _query) { list, f, s, q ->
-            var out = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
-            if (q.isNotBlank()) {
-                val ql = q.trim().lowercase()
-                out = out.filter { matchesQuery(it, ql) }
-            }
-            out.sortedFor(s)
+            val out = if (f.isEmpty) list else list.filter { f.matches(it, System.currentTimeMillis()) }
+            out.searchedAndSorted(q, s)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private fun matchesQuery(item: MediaWithTags, ql: String): Boolean = item.matchesQuery(ql)
 
     // ---- views ----
 
@@ -419,6 +417,24 @@ class GridViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleUnwatched() { _filter.value = _filter.value.toggleUnwatched() }
     fun toggleInProgress() { _filter.value = _filter.value.toggleInProgress() }
     fun toggleWatched() { _filter.value = _filter.value.toggleWatched() }
+    fun toggleWatchLater() { _filter.value = _filter.value.toggleWatchLater() }
+
+    /**
+     * Queue the selection, in the order it sits on screen, after whatever is
+     * already queued. Items already in the queue keep their place.
+     */
+    fun watchLaterSelected(onDone: (Int) -> Unit = {}) {
+        val ids = selectedIds.value
+        if (ids.isEmpty()) return
+        val fresh = media.value.filter { it.media.id in ids && it.media.watchLaterAtMillis == null }
+        viewModelScope.launch {
+            // A millisecond apart, so the queue keeps the on-screen order.
+            val base = System.currentTimeMillis()
+            fresh.forEachIndexed { i, item -> repo.setWatchLater(listOf(item.media.id), base + i) }
+            clearSelection()
+            onDone(fresh.size)
+        }
+    }
 
     /** Back to everything, in the order you chose — a view's order goes with it. */
     fun clearAll() {
@@ -470,18 +486,42 @@ fun List<MediaWithTags>.sortedFor(order: SortOrder): List<MediaWithTags> {
             compareByDescending<MediaWithTags> { it.media.viewCount }
                 .thenByDescending { it.media.lastViewedAtMillis ?: 0L },
         )
+        // Anything not queued goes after the queue, newest arrivals first.
+        SortOrder.QUEUE -> sortedWith(
+            compareBy<MediaWithTags> { it.media.watchLaterAtMillis == null }
+                .thenBy { it.media.watchLaterAtMillis ?: 0L }
+                .thenByDescending { it.media.importedAtMillis },
+        )
     }
     // Pinned items float to the top (stable — keeps sort order within groups).
     return sorted.sortedByDescending { it.media.isPinned }
 }
 
-/** Name, source or tag contains [ql], which must already be lowercased. */
-fun MediaWithTags.matchesQuery(ql: String): Boolean =
-    media.originalName.lowercase().contains(ql) ||
-        media.sourceLabel?.lowercase()?.contains(ql) == true ||
-        media.sourceDomain?.lowercase()?.contains(ql) == true ||
-        media.note?.lowercase()?.contains(ql) == true ||
-        tags.any { it.name.lowercase().contains(ql) }
+/** What search looks through: name, source, note and tags. */
+fun MediaWithTags.searchFields(): List<String> = buildList {
+    add(media.originalName)
+    media.sourceLabel?.let { add(it) }
+    media.sourceDomain?.let { add(it) }
+    media.note?.let { add(it) }
+    tags.forEach { add(it.name) }
+}
+
+/**
+ * Filter by [query] (typo-tolerant, see [Search]) and sort by [order], with
+ * exact matches ahead of near misses so a forgiving search never buries what
+ * was spelled right. Shared by the grid and albums, so both answer alike.
+ */
+fun List<MediaWithTags>.searchedAndSorted(query: String, order: SortOrder): List<MediaWithTags> {
+    if (query.isBlank()) return sortedFor(order)
+    val scores = HashMap<String, Int>(size)
+    val hits = filter { item ->
+        val sc = Search.score(query, item.searchFields())
+        if (sc != Search.NONE) scores[item.media.id] = sc
+        sc != Search.NONE
+    }
+    val (exact, near) = hits.sortedFor(order).partition { scores[it.media.id] == Search.EXACT }
+    return exact + near
+}
 
 /** Deterministic, muted chip color per source package. */
 object SourceColors {

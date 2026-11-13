@@ -13,8 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.atelierapps.vault.ui.home.SortOrder
-import com.atelierapps.vault.ui.home.matchesQuery
-import com.atelierapps.vault.ui.home.sortedFor
+import com.atelierapps.vault.ui.home.searchedAndSorted
 
 /** Contents of a single album (spec §7): the member grid plus multi-select. */
 class AlbumViewModel(app: Application) : AndroidViewModel(app) {
@@ -45,12 +44,7 @@ class AlbumViewModel(app: Application) : AndroidViewModel(app) {
             if (aid == null) {
                 emptyList()
             } else {
-                var out = list.filter { it.media.albumId == aid }
-                if (q.isNotBlank()) {
-                    val ql = q.trim().lowercase()
-                    out = out.filter { it.matchesQuery(ql) }
-                }
-                out.sortedFor(s)
+                list.filter { it.media.albumId == aid }.searchedAndSorted(q, s)
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

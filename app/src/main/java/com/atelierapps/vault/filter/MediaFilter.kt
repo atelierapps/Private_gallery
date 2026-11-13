@@ -49,12 +49,14 @@ data class MediaFilter(
     val inProgress: Boolean = false,
     /** Opened at least once: the "Most watched" view, so the never-seen don't trail it. */
     val watched: Boolean = false,
+    /** In the watch-later queue. */
+    val watchLater: Boolean = false,
 ) {
     val isEmpty: Boolean
         get() = type == MediaTypeFilter.ALL && sources.isEmpty() &&
             tagNames.isEmpty() && date == DateBucket.ANY &&
             !favourites && !untagged && !shortClips && !unwatched &&
-            !inProgress && !watched
+            !inProgress && !watched && !watchLater
 
     fun matches(item: MediaWithTags, now: Long): Boolean {
         val isVideo = item.media.mimeType.startsWith("video/")
@@ -71,6 +73,7 @@ data class MediaFilter(
         if (untagged && item.tags.isNotEmpty()) return false
         if (unwatched && item.media.viewCount > 0) return false
         if (watched && item.media.viewCount == 0) return false
+        if (watchLater && item.media.watchLaterAtMillis == null) return false
         if (inProgress && !(isVideo && isInProgress(item.media.resumePositionMillis, item.media.durationMillis))) {
             return false
         }
@@ -104,6 +107,7 @@ data class MediaFilter(
     fun toggleUnwatched() = copy(unwatched = !unwatched)
     fun toggleInProgress() = copy(inProgress = !inProgress)
     fun toggleWatched() = copy(watched = !watched)
+    fun toggleWatchLater() = copy(watchLater = !watchLater)
 
     companion object {
         const val SHORT_CLIP_MILLIS = 15_000L

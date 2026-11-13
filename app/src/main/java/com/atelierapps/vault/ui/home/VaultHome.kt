@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Upload
+import androidx.compose.material.icons.outlined.WatchLater
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.size
@@ -227,6 +228,11 @@ fun VaultHome(
                     onAlbum = { showAlbumDialog = true },
                     onMove = { confirmMove = true },
                     onOrganise = { organising = true },
+                    onWatchLater = {
+                        vm.watchLaterSelected { n ->
+                            say(if (n == 0) "Already in Watch later" else if (n == 1) "1 added to Watch later" else "$n added to Watch later")
+                        }
+                    },
                     onExport = { onExportSelection(selectedIds) },
                     onDelete = { confirmDelete = true },
                 )
@@ -288,6 +294,7 @@ fun VaultHome(
                     modifier = Modifier.fillMaxWidth(),
                     onToggleInProgress = vm::toggleInProgress,
                     onToggleWatched = vm::toggleWatched,
+                    onToggleWatchLater = vm::toggleWatchLater,
                 )
                 ResultsLine(count = media.size, sort = sort, onSetSort = vm::setSort)
             }
@@ -697,6 +704,7 @@ private fun SelectionBar(
     onAlbum: () -> Unit,
     onMove: () -> Unit,
     onOrganise: () -> Unit,
+    onWatchLater: () -> Unit,
     onExport: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -728,6 +736,7 @@ private fun SelectionBar(
                     more = false
                     onOrganise()
                 }
+                MenuRow(Icons.Outlined.WatchLater, "Add to Watch later") { more = false; onWatchLater() }
                 MenuRow(Icons.Outlined.Upload, "Export selection…") { more = false; onExport() }
                 MenuRow(Icons.Outlined.PhotoLibrary, "Move back to gallery") { more = false; onMove() }
             }

@@ -28,12 +28,21 @@ object SavedViews {
 
     const val CONTINUE_ID = "builtin:continue"
     const val MOST_WATCHED_ID = "builtin:most"
+    const val WATCH_LATER_ID = "builtin:later"
 
     /**
      * Built from the view history and resume points the viewer already
      * records, so both work on day one for anything watched since schema 9.
      */
     val builtIns: List<SavedView> = listOf(
+        // First: it's the one you put there on purpose.
+        SavedView(
+            id = WATCH_LATER_ID,
+            name = "Watch later",
+            filter = MediaFilter(watchLater = true),
+            sort = SortOrder.QUEUE,
+            builtIn = true,
+        ),
         SavedView(
             id = CONTINUE_ID,
             name = "Continue watching",
@@ -73,6 +82,7 @@ object SavedViews {
             .put("unwatched", filter.unwatched)
             .put("inProgress", filter.inProgress)
             .put("watched", filter.watched)
+            .put("watchLater", filter.watchLater)
             .apply { if (sort != null) put("sort", sort.name) }
             .toString()
     }
@@ -99,6 +109,7 @@ object SavedViews {
             unwatched = o.optBoolean("unwatched"),
             inProgress = o.optBoolean("inProgress"),
             watched = o.optBoolean("watched"),
+            watchLater = o.optBoolean("watchLater"),
         )
         val sort = o.optString("sort").takeIf { it.isNotEmpty() }
             ?.let { name -> SortOrder.entries.firstOrNull { it.name == name } }
@@ -122,6 +133,7 @@ object SavedViews {
             if (filter.unwatched) add("Unwatched")
             if (filter.inProgress) add("In progress")
             if (filter.watched) add("Watched")
+            if (filter.watchLater) add("Watch later")
         }
         val what = parts.joinToString(" · ").ifEmpty { "Everything" }
         return if (sort == null) what else what + " — " + sort.label.lowercase()
