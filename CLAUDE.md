@@ -278,7 +278,8 @@ the tag row open: Tag & next / Skip / Delete with undo — `ui/triage/`), view h
 as unwatched), storage stats (plus a Watching card: opened / never opened,
 views, left partway, queue, bookmarked, total video length, top-5 most-watched
 and most-used tags — all from existing data; watch *time* isn't recorded), camera capture, share-in target, durable
-bulk import with batch tagging, template bulk rename, image rotate/crop,
+bulk import with batch tagging (and Select all / Clear for what's on screen —
+that folder, that type), template bulk rename, image rotate/crop,
 per-video display rotation, resume playback (only if last opened within 24 h
 — `MediaFilter.RESUME_FRESH_MILLIS`; older, or from before view history, starts
 from the top), slideshow, shuffle, floating lock

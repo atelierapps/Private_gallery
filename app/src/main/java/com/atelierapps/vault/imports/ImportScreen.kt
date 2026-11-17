@@ -10,6 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import com.atelierapps.vault.ui.theme.VaultActionChip
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -84,6 +86,7 @@ fun ImportScreen(
     onOpenFolder: (MediaFolder) -> Unit,
     onBackToFolders: () -> Unit,
     onToggle: (Uri) -> Unit,
+    onToggleAll: () -> Unit,
     onSetType: (MediaTypeFilter) -> Unit,
     onSetDelete: (Boolean) -> Unit,
     onSetTags: (String) -> Unit,
@@ -106,7 +109,13 @@ fun ImportScreen(
                 if (tab == ImportTab.FOLDER && currentFolder != null) {
                     FolderHeader(currentFolder, onBackToFolders)
                 }
-                TypeFilterRow(typeFilter, onSetType)
+                TypeFilterRow(
+                    current = typeFilter,
+                    onSetType = onSetType,
+                    allSelected = items.isNotEmpty() && items.all { it.uri in selected },
+                    canSelect = items.isNotEmpty() && !importing,
+                    onToggleAll = onToggleAll,
+                )
                 MediaGrid(items, selected, onToggle, Modifier.weight(1f))
             }
 
@@ -206,7 +215,13 @@ private fun TabButton(label: String, selected: Boolean, modifier: Modifier, onCl
 }
 
 @Composable
-private fun TypeFilterRow(current: MediaTypeFilter, onSetType: (MediaTypeFilter) -> Unit) {
+private fun TypeFilterRow(
+    current: MediaTypeFilter,
+    onSetType: (MediaTypeFilter) -> Unit,
+    allSelected: Boolean,
+    canSelect: Boolean,
+    onToggleAll: () -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -214,6 +229,12 @@ private fun TypeFilterRow(current: MediaTypeFilter, onSetType: (MediaTypeFilter)
         TypeChip("All", current == MediaTypeFilter.ALL) { onSetType(MediaTypeFilter.ALL) }
         TypeChip("Photos", current == MediaTypeFilter.IMAGE) { onSetType(MediaTypeFilter.IMAGE) }
         TypeChip("Videos", current == MediaTypeFilter.VIDEO) { onSetType(MediaTypeFilter.VIDEO) }
+        Spacer(Modifier.weight(1f))
+        // Everything on screen, so it follows the type chips and the folder
+        // you're in: "Videos" then "Select all" takes just the videos.
+        if (canSelect) {
+            VaultActionChip(if (allSelected) "Clear" else "Select all", onClick = onToggleAll)
+        }
     }
 }
 

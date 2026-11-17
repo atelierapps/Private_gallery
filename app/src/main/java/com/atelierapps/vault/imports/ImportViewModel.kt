@@ -117,6 +117,18 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
         selected.value = if (uri in cur) cur - uri else cur + uri
     }
 
+    /**
+     * Select everything on screen — this folder, this type — or, if that's all
+     * selected already, clear it. Anything picked elsewhere (another folder,
+     * the other type) is left as it was.
+     */
+    fun toggleAllShown() {
+        val shown = items.value.map { it.uri }
+        if (shown.isEmpty()) return
+        val cur = selected.value
+        selected.value = if (cur.containsAll(shown)) cur - shown.toSet() else cur + shown
+    }
+
     fun setDeleteOriginals(value: Boolean) { deleteOriginals.value = value }
 
     /**

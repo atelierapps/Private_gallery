@@ -109,6 +109,7 @@ class ImportActivity : ComponentActivity() {
                     onOpenFolder = vm::openFolder,
                     onBackToFolders = vm::backToFolders,
                     onToggle = vm::toggle,
+                    onToggleAll = vm::toggleAllShown,
                     onSetType = vm::setType,
                     onSetDelete = vm::setDeleteOriginals,
                     onSetTags = vm::setBatchTags,

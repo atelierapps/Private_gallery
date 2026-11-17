@@ -7,6 +7,16 @@ and where the next session should pick up.
 
 ---
 
+## Session 2026-11-17
+
+- **Select all when importing** (owner's request). The importer's type row
+  gains "Select all", which selects everything on screen — the folder you're
+  in, narrowed by All / Photos / Videos — and turns into "Clear" once all of
+  it is selected. Picks made in other folders or types are left alone.
+  `ImportViewModel.toggleAllShown`. Built, not yet tested on the phone.
+
+---
+
 ## Session ending 2026-11-13
 
 Branches: `claude/photo-video-app-specs-acawm0` (default) and
