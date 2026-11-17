@@ -3,6 +3,9 @@ package com.atelierapps.vault.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -259,44 +262,70 @@ fun VaultHome(
                         runCatching { SingletonImageLoader.get(context).memoryCache?.clear() }
                     },
                 )
-                if (searchOpen) {
-                    SearchField(query = query, onQueryChange = vm::setQuery)
+            }
+            // Everything below the top row stays put while selecting, dimmed
+            // and inert. It used to disappear, and the grid jumped up by its
+            // height the instant a long press selected something — under a
+            // finger that hadn't moved, which then read as a flick down and
+            // opened the preview every time.
+            if (searchOpen) {
+                SearchField(query = query, onQueryChange = vm::setQuery)
+            }
+            Box(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth()) {
+                    ViewsRow(
+                        views = views,
+                        counts = viewCounts,
+                        activeId = activeViewId,
+                        canSave = !filter.isEmpty && activeViewId == null,
+                        onApply = { view ->
+                            vm.applyView(view)
+                            // A different set of things: start at its top, not
+                            // wherever the last one was scrolled to.
+                            scope.launch { gridState.scrollToItem(0) }
+                        },
+                        onSave = { savingView = true },
+                        onEdit = { editingView = it },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    FilterBar(
+                        filter = filter,
+                        sources = sources,
+                        tags = tags,
+                        onSetType = vm::setType,
+                        onToggleSource = vm::toggleSource,
+                        onToggleTag = vm::toggleTag,
+                        onSetDate = vm::setDate,
+                        onToggleFavourites = vm::toggleFavourites,
+                        onToggleUntagged = vm::toggleUntagged,
+                        onToggleShortClips = vm::toggleShortClips,
+                        onToggleUnwatched = vm::toggleUnwatched,
+                        onClearAll = vm::clearAll,
+                        modifier = Modifier.fillMaxWidth(),
+                        onToggleInProgress = vm::toggleInProgress,
+                        onToggleWatched = vm::toggleWatched,
+                        onToggleWatchLater = vm::toggleWatchLater,
+                        onClearTopWatched = vm::clearTopWatched,
+                    )
+                    ResultsLine(count = media.size, sort = sort, onSetSort = vm::setSort)
                 }
-                ViewsRow(
-                    views = views,
-                    counts = viewCounts,
-                    activeId = activeViewId,
-                    canSave = !filter.isEmpty && activeViewId == null,
-                    onApply = { view ->
-                        vm.applyView(view)
-                        // A different set of things: start at its top, not
-                        // wherever the last one was scrolled to.
-                        scope.launch { gridState.scrollToItem(0) }
-                    },
-                    onSave = { savingView = true },
-                    onEdit = { editingView = it },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                FilterBar(
-                    filter = filter,
-                    sources = sources,
-                    tags = tags,
-                    onSetType = vm::setType,
-                    onToggleSource = vm::toggleSource,
-                    onToggleTag = vm::toggleTag,
-                    onSetDate = vm::setDate,
-                    onToggleFavourites = vm::toggleFavourites,
-                    onToggleUntagged = vm::toggleUntagged,
-                    onToggleShortClips = vm::toggleShortClips,
-                    onToggleUnwatched = vm::toggleUnwatched,
-                    onClearAll = vm::clearAll,
-                    modifier = Modifier.fillMaxWidth(),
-                    onToggleInProgress = vm::toggleInProgress,
-                    onToggleWatched = vm::toggleWatched,
-                    onToggleWatchLater = vm::toggleWatchLater,
-                    onClearTopWatched = vm::clearTopWatched,
-                )
-                ResultsLine(count = media.size, sort = sort, onSetSort = vm::setSort)
+                if (selectionMode) {
+                    Box(
+                        Modifier.matchParentSize()
+                            .background(Bg.copy(alpha = 0.65f))
+                            .pointerInput(Unit) {
+                                // Swallows every touch so filters can't change
+                                // the set while a selection is being made.
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false).consume()
+                                    do {
+                                        val event = awaitPointerEvent()
+                                        event.changes.forEach { it.consume() }
+                                    } while (event.changes.any { it.pressed })
+                                }
+                            },
+                    )
+                }
             }
             VaultGridScreen(
                 media = media,
@@ -723,7 +752,8 @@ private fun SelectionBar(
     // behind an overflow so the row doesn't turn into seven cramped buttons.
     var more by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().background(Surface).padding(horizontal = Space.sm, vertical = Space.sm),
+        Modifier.fillMaxWidth().background(Surface)
+            .padding(start = Space.sm, end = Space.sm, top = Space.sm, bottom = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VaultIconButton(Icons.Outlined.Close, "Clear selection", onClose)

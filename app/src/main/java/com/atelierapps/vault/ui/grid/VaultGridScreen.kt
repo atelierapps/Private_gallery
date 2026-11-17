@@ -360,6 +360,12 @@ private fun MediaTile(
                         // Not reached; the loop only leaves by returning.
                         GONE
                     }
+                    // Where the finger is on screen, not on the tile. The
+                    // grid can move under a still finger (the header above it
+                    // reflowing as selection starts); tile-relative, that
+                    // looked exactly like a drag down and opened the preview.
+                    fun onScreen(local: Offset): Offset =
+                        coords[0]?.takeIf { it.isAttached }?.localToWindow(local) ?: local
                     when (early) {
                         TAPPED -> {
                             if (inSelection) {
@@ -373,6 +379,7 @@ private fun MediaTile(
                         else -> {
                             // Held: the long press, as before.
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            val startOnScreen = onScreen(down.position)
                             currentOnLongPress(id)
                             // Now ours until the finger lifts, so the grid
                             // doesn't scroll under a flick.
@@ -381,7 +388,7 @@ private fun MediaTile(
                                 val c = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
                                 c.consume()
                                 if (!c.pressed) break
-                                val d = c.position - down.position
+                                val d = onScreen(c.position) - startOnScreen
                                 if (!previewed && d.y > flickPx && d.y > abs(d.x) * 1.5f) {
                                     currentOnPreview?.let { preview ->
                                         previewed = true

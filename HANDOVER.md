@@ -13,7 +13,7 @@ hard constraints and "verify statically, the owner builds".
   over the library both confirmed, no duplicates, albums intact.
 - Schema 12. Branch `claude/photo-video-app-specs-acawm0` (default), mirrored
   to `claude/vault-android-continuation-ye2jnk`. Nothing uncommitted.
-- Untested: **importer Select all / Clear** and the **wording pass** (both 2026-11-17).
+- Untested: the **wording pass** and the **long-press / preview fix** (2026-11-17).
 - The owner works on a **Mac** (zsh: no `#` comments in commands you hand
   them) and builds with `git pull && ./gradlew :app:installDebug`.
 - The owner has a paid **Apple Developer account** and an iPhone 18 Pro Max.

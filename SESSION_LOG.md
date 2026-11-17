@@ -9,6 +9,13 @@ and where the next session should pick up.
 
 ## Session 2026-11-17 (b) — wording pass
 
+- Owner confirmed **importer Select all / Clear** works.
+- **Fixed: long press always opened the grid preview.** Selection mode hid the
+  views row / filters / results line, the grid jumped up under the finger, and
+  the tile-relative flick test read that as a drag down. Flick is now measured
+  in window coordinates, and the header stays in place (dimmed, touch-blocked)
+  during selection; SelectionBar padding matches TopAppRow. Not yet tested on
+  the phone.
 - **In-app wording polished** (HANDOVER §1, the owner's first ask), in two
   commits: home / viewer / Settings first, then every other screen and the
   failure reasons. Paragraphs became labels or one-line fragments; "you"

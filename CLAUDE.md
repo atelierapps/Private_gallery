@@ -162,6 +162,13 @@ ui/          one package per screen; ui/theme is the design system
   key `pointerInput` on anything freshly allocated each recomposition —
   `asImageBitmap()` returns a new wrapper every call and tore down a gesture
   mid-drag.
+- **Measure a drag on screen, not on the thing being dragged.** The grid
+  preview's "long-press then flick down" compared positions in the tile's own
+  coordinates. Starting selection hid the views row and filters, the grid
+  jumped up ~100 dp under a still finger, and that read as a flick: every
+  long press opened the preview. `MediaTile` now converts with
+  `localToWindow`, and the home header stays (dimmed, inert) while selecting
+  so nothing reflows.
 - **`VaultIconButton(icon, description, onClick, ...)` takes `onClick` third,
   not last.** A trailing lambda binds to `size: Int` and fails confusingly.
 - **Don't invent Material icon names.** `DriveFileMoveOutline` doesn't exist;
