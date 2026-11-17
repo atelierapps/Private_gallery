@@ -14,6 +14,10 @@ and where the next session should pick up.
   in, narrowed by All / Photos / Videos — and turns into "Clear" once all of
   it is selected. Picks made in other folders or types are left alone.
   `ImportViewModel.toggleAllShown`. Built, not yet tested on the phone.
+- OS update on the owner's phone: the app survived with no issues.
+- **Direction set by the owner:** polish the in-app wording, then publish on
+  Google Play (accepting some sacrifices), then build an iOS version in a new
+  repo. Full plan and open decisions in `HANDOVER.md`. Session handed over.
 
 ---
 

@@ -24,6 +24,8 @@ server, no account, and no network access of any kind.
 - All work goes on `claude/photo-video-app-specs-acawm0`, which is also the
   repo's default branch. There is no PR to open.
 - Commit messages explain *why*, especially when a choice looks odd.
+- **Next phase:** [`HANDOVER.md`](HANDOVER.md) — wording polish, then Google
+  Play, then an iOS app in a new repo. Start there.
 - [`SESSION_LOG.md`](SESSION_LOG.md) records each session: what was built,
   what the owner has confirmed on the phone, what is untested, and the
   decisions they made. Read its newest entry before starting; add one before
