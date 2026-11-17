@@ -67,8 +67,8 @@ class TrimActivity : ComponentActivity() {
                             vm.trim { replaced ->
                                 Toast.makeText(
                                     this,
-                                    if (replaced) "Done. The original is in Recently deleted"
-                                    else "Done. The original is kept",
+                                    if (replaced) "Done · original in Recently deleted"
+                                    else "Done · original kept",
                                     Toast.LENGTH_LONG,
                                 ).show()
                                 setResult(RESULT_OK)
@@ -236,7 +236,7 @@ class TrimViewModel(app: Application) : AndroidViewModel(app) {
                 // offer them again.
                 parts = s.parts.drop(saved),
                 error = (if (saved == 0) "Nothing was changed" else "$saved of ${s.parts.size} parts saved") +
-                    ": part ${saved + 1} failed — $failure. The original is kept.",
+                    " · part ${saved + 1} failed: $failure. Original kept.",
             )
         }
     }

@@ -59,6 +59,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.session.AppDisguise
+import com.atelierapps.vault.ui.theme.itemCount
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -157,7 +158,7 @@ private fun ImportSummaryDialog(summary: ImportProgress, onDismiss: () -> Unit) 
                 )
                 if (summary.duplicates > 0) {
                     Text(
-                        "${summary.duplicates} skipped — already in your library",
+                        "${summary.duplicates} already here, skipped",
                         color = Muted, style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 6.dp),
                     )
@@ -404,7 +405,7 @@ private fun BottomBar(
                 // True to how it works: originals go only after each import is
                 // verified, through Android's own delete confirmation.
                 Text(
-                    "After each one is safely saved here. Your phone asks first",
+                    "Once each is saved · phone asks first",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 2.dp),
@@ -421,7 +422,7 @@ private fun BottomBar(
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(52.dp),
         ) {
-            Text(if (count == 0) "Import" else "Import $count ${if (count == 1) "item" else "items"}")
+            Text(if (count == 0) "Import" else "Import ${itemCount(count)}")
         }
     }
 }
@@ -436,7 +437,7 @@ private fun ImportingOverlay(progress: ImportProgress) {
             CircularProgressIndicator(color = Brass)
             Text("Encrypting ${progress.done} / ${progress.total}", color = Ink, style = MaterialTheme.typography.bodyMedium)
             Text(
-                "Keeps running if you leave this screen",
+                "Continues in the background",
                 color = Muted, style = MaterialTheme.typography.bodySmall,
             )
         }

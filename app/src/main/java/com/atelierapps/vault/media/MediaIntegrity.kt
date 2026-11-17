@@ -54,25 +54,25 @@ object MediaIntegrity {
     fun check(context: Context, item: MediaItemEntity): Report {
         val blob = VaultGraph.storage(context).blob(item.id)
         if (!blob.exists()) {
-            return Report(Verdict.MISSING, "its encrypted file is missing from the app's storage")
+            return Report(Verdict.MISSING, "encrypted file missing")
         }
 
         val mode = item.cryptoMode.toByte()
         val header = runCatching { EnvelopeFormat.headerLen(mode) }.getOrNull()
-            ?: return Report(Verdict.UNREADABLE, "its record names an encryption mode this app doesn't know")
+            ?: return Report(Verdict.UNREADABLE, "unknown encryption mode")
         val tag = if (mode == EnvelopeFormat.MODE_GCM) EnvelopeFormat.GCM_TAG_LEN else 0
         val expected = header + item.sizeBytes + tag
         val actual = blob.length()
         if (actual != expected) {
             return Report(
                 Verdict.WRONG_SIZE,
-                "its encrypted file is " + describeSize(actual) + " where it should be " +
-                    describeSize(expected) + " — it has been cut short or added to",
+                "encrypted file is " + describeSize(actual) + ", expected " +
+                    describeSize(expected) + " — cut short or added to",
             )
         }
 
         val recorded = item.contentHash
-            ?: return Report(Verdict.UNVERIFIABLE, "imported before content checks existed; its size is right")
+            ?: return Report(Verdict.UNVERIFIABLE, "older than content checks; size is right")
 
         val hash = try {
             plaintextHash(blob, mode)
@@ -80,14 +80,14 @@ object MediaIntegrity {
             // A GCM image whose tag no longer verifies is damage, not a read
             // problem, and should be reported as such.
             if (t.javaClass.simpleName.contains("AEADBadTag")) {
-                return Report(Verdict.CHANGED, "its encrypted file is damaged and no longer authenticates")
+                return Report(Verdict.CHANGED, "encrypted file damaged — fails authentication")
             }
             return Report(Verdict.UNREADABLE, TransferFailure.describe(t))
         }
         return if (hash == recorded) {
             Report(Verdict.OK, "")
         } else {
-            Report(Verdict.CHANGED, "it decrypts to different bytes from the ones that were imported")
+            Report(Verdict.CHANGED, "decrypts to different bytes than were imported")
         }
     }
 

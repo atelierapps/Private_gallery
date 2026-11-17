@@ -167,7 +167,7 @@ private fun Finished(state: TriageState, total: Int, onClose: () -> Unit) {
         val skipped = (total - state.tagged - state.binned).coerceAtLeast(0)
         Text(
             if (total == 0) {
-                "Everything here already has at least one tag."
+                "Everything is tagged"
             } else {
                 "" + state.tagged + " tagged · " + skipped + " skipped · " + state.binned + " deleted"
             },

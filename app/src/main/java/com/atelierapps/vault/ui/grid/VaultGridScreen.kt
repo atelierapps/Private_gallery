@@ -475,19 +475,19 @@ private fun EmptyState(modifier: Modifier, onImport: (() -> Unit)?, onCamera: ((
                 color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
             )
             Text(
-                "Everything you add is encrypted on this device.",
+                "Encrypted on this device",
                 color = Muted, fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 6.dp, bottom = 22.dp),
             )
             if (onImport != null) {
-                EmptyAction("Import from your gallery", "Pick photos and videos already on this phone", onImport)
+                EmptyAction("Import from gallery", "Photos and videos on this phone", onImport)
             }
             if (onCamera != null) {
-                EmptyAction("Take a photo or video", "Captured straight here — never touches the gallery", onCamera)
+                EmptyAction("Take a photo or video", "Saved here, not to the gallery", onCamera)
             }
             Text(
-                "Or share media to ${AppDisguise.currentLabel(LocalContext.current)} from any other app.",
+                "Or share to ${AppDisguise.currentLabel(LocalContext.current)} from any app",
                 color = Muted, fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 14.dp),

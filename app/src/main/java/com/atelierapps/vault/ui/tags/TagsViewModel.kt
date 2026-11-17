@@ -26,7 +26,7 @@ class TagsViewModel(app: Application) : AndroidViewModel(app) {
     fun rename(id: String, newName: String) {
         viewModelScope.launch {
             val ok = repo.renameTag(id, newName)
-            if (!ok) error.value = "“${newName.trim()}” already exists — merge into it instead."
+            if (!ok) error.value = "“${newName.trim()}” already exists — merge instead"
         }
     }
 

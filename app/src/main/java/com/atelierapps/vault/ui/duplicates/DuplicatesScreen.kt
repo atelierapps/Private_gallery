@@ -48,6 +48,7 @@ import com.atelierapps.vault.ui.theme.ScreenHeader
 import com.atelierapps.vault.ui.theme.Scrim
 import com.atelierapps.vault.ui.theme.Surface
 import com.atelierapps.vault.ui.theme.SurfaceHigh
+import com.atelierapps.vault.ui.theme.plural
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -79,7 +80,6 @@ fun DuplicatesScreen(
             ScreenHeader("Duplicates", onClose)
 
             if (groups.isEmpty()) {
-                ScreenCaption("Nothing here is stored twice.")
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         "No duplicates.",
@@ -90,8 +90,7 @@ fun DuplicatesScreen(
                 }
             } else {
                 ScreenCaption(
-                    "${groups.size} set(s) of identical files. The oldest copy in each is " +
-                        "kept — tap another to keep that one instead.",
+                    plural(groups.size, "set") + " of identical files · oldest kept, tap to change",
                 )
                 LazyColumn(
                     Modifier.weight(1f).fillMaxWidth(),
@@ -109,12 +108,12 @@ fun DuplicatesScreen(
                 Column(Modifier.fillMaxWidth().background(Surface).padding(14.dp)) {
                     Text(
                         if (extras == 0) "Nothing selected"
-                        else "$extras extra copies · ${formatBytes(reclaimable)} to reclaim",
+                        else "${plural(extras, "extra copy", "extra copies")} · ${formatBytes(reclaimable)} to reclaim",
                         color = Ink,
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        "They go to Recently deleted, so you keep 30 days to change your mind.",
+                        "Kept in Recently deleted for 30 days",
                         color = Muted,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 2.dp, bottom = 10.dp),
@@ -138,11 +137,10 @@ fun DuplicatesScreen(
     if (confirm) {
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Delete $extras extra copies?") },
+            title = { Text("Delete ${plural(extras, "extra copy", "extra copies")}?") },
             text = {
                 Text(
-                    "One copy of each is kept. The rest move to Recently deleted, where " +
-                        "you can restore them for 30 days.",
+                    "One of each is kept. The rest stay in Recently deleted for 30 days.",
                 )
             },
             confirmButton = {

@@ -153,7 +153,7 @@ fun AlbumFromTagsDialog(
                     )
                 }
                 Text(
-                    if (askName) "Fill it from tags (optional)" else "Add everything with",
+                    if (askName) "Fill from tags (optional)" else "Add everything with",
                     color = Muted,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(top = if (askName) 14.dp else 0.dp, bottom = 6.dp),
@@ -184,8 +184,7 @@ fun AlbumFromTagsDialog(
                     Text(
                         when (match.free.size) {
                             0 -> "Nothing new to add"
-                            1 -> "1 item will be added"
-                            else -> "${match.free.size} items will be added"
+                            else -> "${match.free.size} to add"
                         } + if (match.already > 0) " · ${match.already} already here" else "",
                         color = Ink,
                         style = MaterialTheme.typography.bodyMedium,
@@ -210,9 +209,7 @@ fun AlbumFromTagsDialog(
                         }
                     }
                     Text(
-                        "The album keeps following these tags: anything tagged like this later is offered " +
-                            "when you open it. Anything that doesn't belong: select it in the album and " +
-                            "Remove — it stays in your library and isn't offered again.",
+                        "Follows these tags — new matches are offered when you open it.",
                         color = Muted,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 8.dp),

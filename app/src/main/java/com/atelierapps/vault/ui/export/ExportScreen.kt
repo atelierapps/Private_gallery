@@ -40,6 +40,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.atelierapps.vault.ui.theme.FailureList
+import com.atelierapps.vault.ui.theme.itemCount
+import com.atelierapps.vault.ui.theme.plural
 
 /** Biometric gate shown before the export flow (spec §11). */
 @Composable
@@ -56,8 +58,7 @@ fun ExportAuthGate(
         ) {
             Text("Confirm it's you", color = Ink, style = MaterialTheme.typography.titleLarge)
             Text(
-                "Exporting decrypts media to a folder in the clear. " +
-                    "Confirm with your fingerprint or device PIN to continue.",
+                "Fingerprint or device PIN to export.",
                 color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
             )
             if (error != null) {
@@ -100,7 +101,7 @@ fun ExportScreen(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 40.dp),
         ) {
             Text(
-                if (scopedCount == null) "Export library" else "Export $scopedCount item(s)",
+                if (scopedCount == null) "Back up library" else "Export ${itemCount(scopedCount)}",
                 color = Ink, style = MaterialTheme.typography.titleLarge,
             )
             when (phase) {
@@ -112,14 +113,8 @@ fun ExportScreen(
                     val ready = !protect || (phrase.length >= MIN_PASSPHRASE && phrase == confirm)
 
                     Text(
-                        "Everything is written out to a folder you choose, with a manifest " +
-                            "that restores tags and sources later.\n\nA local folder or SD " +
-                            "card takes minutes; a cloud folder like Drive uploads every " +
-                            "file and can take hours. Leave this screen on — the phone can " +
-                            "stop a backup that is running in the background, and it will " +
-                            "not tell you it did.\n\nUse an empty folder. A folder that " +
-                            "already holds a backup can only hold one, and the new run " +
-                            "replaces it.",
+                        "Pick an empty folder. Keep this screen on until it finishes — " +
+                            "cloud folders take hours.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
 
@@ -131,11 +126,9 @@ fun ExportScreen(
                             Text("Protect with a passphrase", color = Ink, style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 if (protect) {
-                                    "Files and the manifest are encrypted, and named so the " +
-                                        "folder gives nothing away."
+                                    "Files and names encrypted"
                                 } else {
-                                    "Written in the clear — anyone who finds the folder can " +
-                                        "read all of it."
+                                    "Unencrypted — anyone with the folder can see everything"
                                 },
                                 color = if (protect) Muted else Danger,
                                 style = MaterialTheme.typography.bodySmall,
@@ -171,9 +164,7 @@ fun ExportScreen(
                                 phrase.isNotEmpty() && phrase.length < MIN_PASSPHRASE ->
                                     "At least $MIN_PASSPHRASE characters."
                                 else ->
-                                    "Write it down somewhere. If you lose it this backup is " +
-                                        "lost with it — the key is made from the passphrase " +
-                                        "and nothing else, so there is nothing to recover from."
+                                    "No recovery. Lose it and this backup is lost."
                             },
                             color = if (mismatch) Danger else Muted,
                             style = MaterialTheme.typography.bodySmall,
@@ -189,7 +180,7 @@ fun ExportScreen(
                 }
                 ExportPhase.CONFIRM_REPLACE -> {
                     Text(
-                        "There's already a backup here",
+                        "Folder already has a backup",
                         color = Ink, style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center,
                     )
@@ -197,20 +188,17 @@ fun ExportScreen(
                         buildString {
                             append(
                                 if (existing?.encrypted == true) {
-                                    "That folder holds an encrypted backup"
+                                    "Encrypted backup"
                                 } else {
-                                    "That folder holds a backup"
+                                    "Backup"
                                 },
                             )
                             val n = existing?.items ?: 0
-                            if (n > 0) append(" of $n file(s)")
+                            if (n > 0) append(" of ${plural(n, "file")}")
                             append(
-                                ".\n\nA folder can only hold one. Every export makes a new " +
-                                    "key, so the moment this run starts the old backup stops " +
-                                    "opening — with the same passphrase or any other. There " +
-                                    "is no way to undo that and no way to read it afterwards." +
-                                    "\n\nIf the old one still matters, cancel and pick an " +
-                                    "empty folder instead.",
+                                ".\n\nReplacing it makes the old one unreadable for good, " +
+                                    "with any passphrase. To keep it, cancel and pick an " +
+                                    "empty folder.",
                             )
                         },
                         color = Muted, style = MaterialTheme.typography.bodyMedium,
@@ -249,11 +237,8 @@ fun ExportScreen(
                         }
                     }
                     Text(
-                        "That folder is independent of this app now — it survives an " +
-                            "uninstall, and copying it off the phone is what makes it a " +
-                            "real backup.\n\nTo bring it back on a fresh install: menu → " +
-                            "Restore from backup, then pick this folder. If you set a " +
-                            "passphrase you will need it then, and only then.",
+                        "Survives uninstalling. Copy it off the phone to be safe.\n" +
+                            "To restore: menu → Restore from backup.",
                         color = Muted,
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,

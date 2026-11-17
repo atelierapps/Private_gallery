@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.MoreVert
 import com.atelierapps.vault.ui.theme.ScreenHeader
 import com.atelierapps.vault.ui.theme.ScreenCaption
 import com.atelierapps.vault.ui.theme.Hairline
+import com.atelierapps.vault.ui.theme.itemCount
 import androidx.compose.material3.MaterialTheme
 
 @Composable
@@ -62,7 +63,6 @@ fun TagsScreen(vm: TagsViewModel, onClose: () -> Unit, modifier: Modifier = Modi
 
     Column(modifier.fillMaxSize().background(Bg)) {
         ScreenHeader("Tags", onClose)
-        ScreenCaption("Counts are live items. Deleting a tag keeps the items — it only removes the label.")
 
         if (tags.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -104,7 +104,7 @@ fun TagsScreen(vm: TagsViewModel, onClose: () -> Unit, modifier: Modifier = Modi
         AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text("Delete “${tag.name}”?") },
-            text = { Text("The label is removed from ${tag.liveCount} item(s). The items stay in your library.") },
+            text = { Text("Removed from ${itemCount(tag.liveCount)}. The items stay.") },
             confirmButton = {
                 TextButton(onClick = { vm.delete(tag.id); deleting = null }) { Text("Delete", color = Danger) }
             },
@@ -135,7 +135,7 @@ private fun TagRow(tag: TagUsage, onRename: () -> Unit, onMerge: () -> Unit, onD
         )
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text("#${tag.name}", color = Ink, style = MaterialTheme.typography.bodyLarge)
-            Text("${tag.liveCount} item(s)", color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text(itemCount(tag.liveCount), color = Muted, style = MaterialTheme.typography.bodySmall)
         }
         Box {
             VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true }, size = 36)
@@ -160,11 +160,11 @@ private fun MergeDialog(
         title = { Text("Merge “${source.name}” into…") },
         text = {
             if (candidates.isEmpty()) {
-                Text("There's no other tag to merge into.", color = Muted)
+                Text("No other tags", color = Muted)
             } else {
                 Column {
                     Text(
-                        "Its ${source.liveCount} item(s) get the tag you pick, and “${source.name}” is removed.",
+                        "${itemCount(source.liveCount)} move to the tag you pick",
                         color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp),
                     )
                     // Every other tag you have, so this is the list most likely

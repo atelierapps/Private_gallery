@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.atelierapps.vault.ui.theme.VaultTheme
 import com.atelierapps.vault.ui.lock.FinishOnLock
+import com.atelierapps.vault.ui.theme.plural
 
 /**
  * Hosts the importer (spec §4, §4.1). Owns the read-media permission request and
@@ -127,7 +128,7 @@ class ImportActivity : ComponentActivity() {
     private fun launchDeleteRequest(uris: List<android.net.Uri>?) {
         val toDelete = uris ?: return
         try {
-            Toast.makeText(this, "Requesting deletion of ${toDelete.size} original(s)…", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Deleting ${plural(toDelete.size, "original")}…", Toast.LENGTH_SHORT).show()
             Log.i("VaultImport", "launching createDeleteRequest for ${toDelete.size} uris: ${toDelete.take(3)}")
             val request = MediaStore.createDeleteRequest(contentResolver, toDelete)
             deleteLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())

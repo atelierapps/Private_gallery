@@ -233,14 +233,8 @@ private fun RestoreBody(
             when (phase) {
                 RestorePhase.PICK -> {
                     Text(
-                        "Choose the folder your backup was written to. Everything in it is " +
-                            "saved back in with its tags and source, and anything already " +
-                            "here is skipped.\n\nIf it was made with a passphrase you'll be " +
-                            "asked for it next.\n\nReading from a cloud folder is slow — " +
-                            "minutes per file is normal for Drive, against seconds from an " +
-                            "SD card. Leave this screen on — the phone can stop a " +
-                            "transfer that is running in the background, and it will " +
-                            "not tell you it did.",
+                        "Items already here are skipped. Keep this screen on until it " +
+                            "finishes — cloud folders are slow; copy to the phone first.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
                     Button(onClick = onPick) { Text("Choose backup folder") }
@@ -249,8 +243,7 @@ private fun RestoreBody(
                 RestorePhase.PASSPHRASE -> {
                     var entry by remember { mutableStateOf("") }
                     Text(
-                        "This backup is encrypted. Enter the passphrase you set when you " +
-                            "made it — there is no way to open it without one.",
+                        "Encrypted backup. Enter its passphrase.",
                         color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     )
                     OutlinedTextField(
@@ -263,7 +256,7 @@ private fun RestoreBody(
                     )
                     if (wrongPassphrase) {
                         Text(
-                            "That passphrase doesn't open this backup.",
+                            "Wrong passphrase",
                             color = Danger, style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -284,9 +277,9 @@ private fun RestoreBody(
                     val r = result
                     val msg = when {
                         r == null -> "Done"
-                        !r.hadManifest -> "No manifest.json found in that folder."
+                        !r.hadManifest -> "No backup in that folder (manifest.json missing)"
                         else -> "Restored ${r.imported} of ${r.total}" +
-                            (if (r.failed > 0) " · ${r.failed} skipped/failed" else "") +
+                            (if (r.failed > 0) " · ${r.failed} failed" else "") +
                             organisedLine(r)
                     }
                     Text(msg, color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)

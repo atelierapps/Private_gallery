@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.MoreVert
 import com.atelierapps.vault.ui.theme.ScreenHeader
 import com.atelierapps.vault.ui.theme.BrassInk
 import com.atelierapps.vault.ui.theme.SurfaceHigh
+import com.atelierapps.vault.ui.theme.itemCount
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.Add
@@ -77,7 +78,7 @@ fun AlbumsScreen(
             if (albums.isEmpty()) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
-                        "No albums yet.\nTap + to make one — fill it from tags, or add items from the grid.",
+                        "No albums yet\nTap + to make one",
                         color = Muted, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center,
                     )
                 }
@@ -145,7 +146,7 @@ fun AlbumsScreen(
         AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text("Delete “${card.album.name}”?") },
-            text = { Text("The album is removed. Its ${card.count} item(s) stay in your library.") },
+            text = { Text("Its ${itemCount(card.count)} stay in the library.") },
             confirmButton = {
                 TextButton(onClick = { vm.delete(card.album.id); deleting = null }) {
                     Text("Delete", color = Danger)
@@ -186,7 +187,7 @@ private fun AlbumTile(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
             Column(Modifier.weight(1f)) {
                 Text(card.album.name, color = Ink, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
-                Text("${card.count} item(s)", color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text(itemCount(card.count), color = Muted, style = MaterialTheme.typography.bodySmall)
             }
             Box {
                 VaultIconButton(Icons.Outlined.MoreVert, "More", { menu = true }, size = 36)

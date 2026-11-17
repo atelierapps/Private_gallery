@@ -321,8 +321,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                     VaultActionChip("+1s", { stepBy(1_000L) })
                 }
                 Text(
-                    "Drag to get close, then step a frame at a time to the one you want. " +
-                        "Only the tile changes — the video itself isn't touched.",
+                    "Tile only — the video isn't changed.",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -385,8 +384,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
-                    "Cuts land on the nearest keyframe, so it may start a second or two earlier. " +
-                        "Nothing is re-encoded: the kept part loses no quality.",
+                    "Cuts snap to keyframes — may start a second early. No quality loss.",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp),
@@ -400,8 +398,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        if (state.parts.isEmpty()) "Want more than one part? Add this range, then pick the next."
-                        else "" + state.parts.size + (if (state.parts.size == 1) " part" else " parts") + " — each becomes its own video",
+                        if (state.parts.isEmpty()) "Split: add this range, then pick the next"
+                        else "" + state.parts.size + (if (state.parts.size == 1) " part" else " parts") + " — each saved as its own video",
                         color = Muted,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f).padding(end = 8.dp),
@@ -438,8 +436,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                         Text("Replace the original", color = Ink, style = MaterialTheme.typography.bodyLarge)
                         Text(
                             if (state.replace) {
-                                if (state.parts.isEmpty()) "The original goes to Recently deleted, only once the trimmed copy is checked"
-                                else "The original goes to Recently deleted, only once every part is checked"
+                                if (state.parts.isEmpty()) "Original to Recently deleted once the copy verifies"
+                                else "Original to Recently deleted once every part verifies"
                             } else {
                                 "Both are kept"
                             },
@@ -486,7 +484,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TrimBody(
                         Text(
                             when {
                                 splitting -> "Save " + state.parts.size + (if (state.parts.size == 1) " part" else " parts")
-                                whole -> "Move a handle to choose what to keep"
+                                whole -> "Drag a handle to trim"
                                 tooShort -> "Keep at least a second"
                                 else -> "Trim"
                             },

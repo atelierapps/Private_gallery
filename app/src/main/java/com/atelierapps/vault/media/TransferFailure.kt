@@ -34,31 +34,28 @@ data class TransferFailure(val name: String, val reason: String) {
                 // used to say "the app locked", which sent people looking for
                 // a lock that never happened.
                 name.contains("UserNotAuthenticated") ->
-                    "the unlock had timed out (it lasts five minutes) — lock, unlock and run it again"
+                    "the unlock had timed out — lock, unlock and retry"
                 name.contains("KeyPermanentlyInvalidated") ->
-                    "this phone's encryption key no longer works, so this file can't be decrypted"
+                    "encryption key no longer valid — can't decrypt"
                 // CipherInputStream reports a bad GCM tag as end-of-stream, so a
                 // wrong key surfaces here as a short read rather than as a tag
                 // error. Both mean the same thing to the person reading it.
                 name.contains("AEADBadTag") || message.contains("truncated") ->
-                    "this file doesn't match this backup's passphrase — most likely it is " +
-                        "left over from an earlier backup written to the same folder"
+                    "doesn't match this passphrase — likely left from an older backup in this folder"
                 message.startsWith("blob length") ->
-                    "the encrypted copy came out the wrong size, so it was thrown away " +
-                        "rather than trusted"
+                    "encrypted copy was the wrong size — discarded"
                 message.startsWith("spool missing") || message.startsWith("blob missing") ->
-                    "the file wasn't there when it was needed — it may have been removed " +
-                        "while the run was going"
+                    "file went missing during the run"
                 error is OutOfMemoryError ->
-                    "too large for this phone to process in one piece"
+                    "too large to process on this phone"
                 error is SecurityException ->
-                    "permission for that folder has lapsed — choose the folder again"
+                    "folder access lapsed — choose it again"
                 message.contains("ENOSPC") || message.contains("No space left") ->
                     "the destination is full"
                 error is java.io.FileNotFoundException ->
-                    "the folder wouldn't let a file be created there"
+                    "folder refused to create the file"
                 error is NullPointerException ->
-                    "the folder wouldn't open a file for writing"
+                    "folder refused to open the file for writing"
                 error is java.io.IOException ->
                     "the storage refused it" + shortDetail(message)
                 else -> "unexpected error" + shortDetail(name)

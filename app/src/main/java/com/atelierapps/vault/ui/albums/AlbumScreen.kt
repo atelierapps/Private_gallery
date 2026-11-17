@@ -51,6 +51,7 @@ import com.atelierapps.vault.ui.home.GridPreview
 import com.atelierapps.vault.ui.home.SortOrder
 import com.atelierapps.vault.ui.theme.Hairline
 import com.atelierapps.vault.ui.theme.Muted
+import com.atelierapps.vault.ui.theme.itemCount
 
 @Composable
 fun AlbumScreen(
@@ -249,8 +250,8 @@ fun AlbumScreen(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete ${selectedIds.size} item(s)?") },
-            text = { Text("They move to Recently deleted. Removing from the album instead keeps them in your library.") },
+            title = { Text("Delete ${itemCount(selectedIds.size)}?") },
+            text = { Text("Kept in Recently deleted for 30 days. Remove from album keeps them in the library.") },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; vm.deleteSelected() }) {
                     Text("Delete", color = Danger)

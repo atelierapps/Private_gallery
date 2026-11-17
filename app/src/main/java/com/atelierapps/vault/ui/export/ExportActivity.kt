@@ -122,7 +122,7 @@ class ExportActivity : FragmentActivity() {
             onSuccess = { authed = true },
             onError = { msg -> authError = msg.toString() },
             title = "Confirm export",
-            subtitle = "Exporting decrypts your whole library to a folder",
+            subtitle = "Decrypts to a folder",
         )
     }
 }

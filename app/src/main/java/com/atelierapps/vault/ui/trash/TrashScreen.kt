@@ -66,6 +66,8 @@ import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.Icon
 import com.atelierapps.vault.ui.theme.BrassInk
 import com.atelierapps.vault.ui.theme.Surface
+import com.atelierapps.vault.ui.theme.itemCount
+import com.atelierapps.vault.ui.theme.plural
 
 @Composable
 fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
@@ -120,8 +122,7 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
                     }
                 }
                 ScreenCaption(
-                    "Items are kept for 30 days, then deleted forever. " +
-                        "Long-press to pick several at once.",
+                    "Deleted forever after 30 days",
                 )
             }
 
@@ -176,8 +177,8 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
     if (confirmPurge) {
         AlertDialog(
             onDismissRequest = { confirmPurge = false },
-            title = { Text("Delete ${selectedIds.size} item(s) forever?") },
-            text = { Text("These leave the disk for good. This can't be undone.") },
+            title = { Text("Delete ${itemCount(selectedIds.size)} forever?") },
+            text = { Text("Can't be undone.") },
             confirmButton = {
                 TextButton(onClick = { confirmPurge = false; vm.purgeSelected() }) {
                     Text("Delete forever", color = Danger)
@@ -191,7 +192,7 @@ fun TrashScreen(vm: TrashViewModel, onClose: () -> Unit, modifier: Modifier = Mo
         AlertDialog(
             onDismissRequest = { confirmEmpty = false },
             title = { Text("Empty the bin?") },
-            text = { Text("All ${items.size} item(s) will be permanently deleted. This can't be undone.") },
+            text = { Text("${itemCount(items.size)} deleted forever. Can't be undone.") },
             confirmButton = {
                 TextButton(onClick = { confirmEmpty = false; vm.purgeAll() }) {
                     Text("Delete all", color = Danger)
@@ -260,7 +261,7 @@ private fun ItemActionDialog(
         title = { Text(item.media.originalName, style = MaterialTheme.typography.bodyLarge) },
         text = {
             Text(
-                if (days <= 0) "Deleted forever soon." else "Deleted forever in $days day(s).",
+                if (days <= 0) "Deleted forever soon" else "Deleted forever in ${plural(days, "day")}",
                 color = Muted,
             )
         },

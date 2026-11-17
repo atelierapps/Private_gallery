@@ -44,6 +44,8 @@ import com.atelierapps.vault.ui.theme.Hairline
 import androidx.compose.material3.MaterialTheme
 import com.atelierapps.vault.ui.theme.Danger
 import com.atelierapps.vault.ui.theme.FailureList
+import com.atelierapps.vault.ui.theme.itemCount
+import com.atelierapps.vault.ui.theme.plural
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.DisposableEffect
@@ -88,7 +90,7 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
                     color = Ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Encrypted size of everything stored here",
+                    "Encrypted size",
                     color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
                 )
                 Breakdown(stats)
@@ -126,8 +128,7 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
                     }
                 }
                 Text(
-                    "Views are counted after two seconds on screen, and only since view " +
-                        "history began, so older favourites may be under-counted.",
+                    "A view counts after 2 s on screen.",
                     color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp),
                 )
             }
@@ -137,8 +138,7 @@ fun StorageScreen(vm: StorageViewModel, onClose: () -> Unit, modifier: Modifier 
                 StatRow("Space held", formatBytes(stats.trashBytes))
                 if (stats.trashCount > 0) {
                     Text(
-                        "Deleted items keep their space until they're purged — " +
-                            "emptying the bin frees it immediately.",
+                        "Freed when the bin is emptied",
                         color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp),
                     )
                 }
@@ -167,12 +167,12 @@ private fun LibraryCheck(check: CheckState, onRun: () -> Unit) {
             )
             if (check.problems.isNotEmpty()) {
                 Text(
-                    "" + check.problems.size + " problem(s) so far",
+                    plural(check.problems.size, "problem") + " so far",
                     color = Danger, style = MaterialTheme.typography.bodySmall,
                 )
             }
             Text(
-                "Keep this screen open — leaving it stops the check.",
+                "Leaving this screen stops the check",
                 color = Muted, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
             )
@@ -189,20 +189,17 @@ private fun LibraryCheck(check: CheckState, onRun: () -> Unit) {
             )
             Text(
                 if (check.problems.isEmpty()) {
-                    "Every file decrypts to exactly the bytes that were imported. " +
-                        "If something won't play, the file isn't damaged — the player " +
-                        "will say why when it fails."
+                    "Every file matches what was imported. " +
+                        "A video that won't play is not damaged."
                 } else {
-                    "Each one is named below with what is wrong. Anything not listed " +
-                        "decrypts to exactly what was imported."
+                    "Everything not listed matches what was imported."
                 },
                 color = Muted, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
             )
             if (check.sizeOnly > 0) {
                 Text(
-                    "" + check.sizeOnly + " item(s) predate content checks: their size " +
-                        "is right, but their content couldn't be compared.",
+                    itemCount(check.sizeOnly) + " older than content checks — size verified only",
                     color = Muted, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 6.dp),
                 )
@@ -212,9 +209,8 @@ private fun LibraryCheck(check: CheckState, onRun: () -> Unit) {
         }
         else -> {
             Text(
-                "Decrypts every item and compares it with the fingerprint taken when " +
-                    "it was imported. A match means the file is exactly what came in.\n\n" +
-                    "Reads every file in full, so a large library takes a few minutes.",
+                "Decrypts every item and compares it with its import fingerprint. " +
+                    "Takes a few minutes.",
                 color = Muted, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(bottom = 10.dp),
             )

@@ -68,7 +68,7 @@ fun LockScreen(onUnlock: () -> Unit, modifier: Modifier = Modifier) {
             }
             Text("Locked", color = Ink, style = MaterialTheme.typography.titleLarge)
             Text(
-                "Unlock with your fingerprint or device PIN.",
+                "Fingerprint or device PIN",
                 color = Muted,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,

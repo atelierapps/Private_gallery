@@ -70,7 +70,7 @@ fun AlbumReview(
         Column(Modifier.fillMaxSize()) {
             ScreenHeader("New for $albumName", onClose)
             Text(
-                "Tagged " + rule.describe() + ". Untick what doesn't belong — it won't be offered again.",
+                "Tagged " + rule.describe() + " · unticked items won't be offered again",
                 color = Muted,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),

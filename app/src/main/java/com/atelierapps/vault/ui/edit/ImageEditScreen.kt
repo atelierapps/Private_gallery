@@ -130,8 +130,7 @@ fun ImageEditScreen(
             }
 
             Text(
-                "Replace keeps the original in Recently deleted for 30 days — a crop " +
-                    "can't be undone from the pixels, so that window is the only way back.",
+                "Replace keeps the original in Recently deleted for 30 days.",
                 color = Muted,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 8.dp),

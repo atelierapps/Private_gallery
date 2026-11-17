@@ -141,7 +141,7 @@ fun TagPicker(
                 Text(
                     when {
                         !allowCreate -> "Search tags"
-                        tags.isEmpty() -> "New tag(s), comma-separated"
+                        tags.isEmpty() -> "New tags, comma-separated"
                         else -> "Find or add tags"
                     },
                 )
@@ -151,7 +151,7 @@ fun TagPicker(
         )
         if (allowCreate && searching && !exact) {
             Text(
-                "“$token” is new — it will be created when you save.",
+                "“$token” — new tag",
                 color = Muted,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
