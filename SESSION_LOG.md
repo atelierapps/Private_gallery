@@ -7,6 +7,28 @@ and where the next session should pick up.
 
 ---
 
+## Session 2026-11-17 (b) — wording pass
+
+- **In-app wording polished** (HANDOVER §1, the owner's first ask), in two
+  commits: home / viewer / Settings first, then every other screen and the
+  failure reasons. Paragraphs became labels or one-line fragments; "you"
+  lectures and explanations removed. "3 item(s)" is now "3 items" through
+  `ui/theme/Wording.kt` (`plural`, `itemCount`).
+- Kept, tightened: delete / move-to-gallery / empty-bin confirmations, the
+  uninstall warning, the passphrase "no recovery" line, "replacing a backup
+  makes the old one unreadable", "keep this screen on" for export/restore,
+  and every error that names a cause.
+- Small corrections found on the way: "Mute videos" no longer mentions the
+  removed swipe-volume gesture; restore's "skipped/failed" now says "failed"
+  (already-held items count as restored).
+- Text only, no behaviour change. **Not yet built or checked on the phone** —
+  the owner wants to look at every screen.
+- Next: owner reviews the wording on the phone; then Google Play (HANDOVER §2),
+  starting with the owner's decisions (media permissions, disguises, public
+  name) and product flavors that keep `com.atelierapps.vault` for their phone.
+
+---
+
 ## Session 2026-11-17
 
 - **Select all when importing** (owner's request). The importer's type row
