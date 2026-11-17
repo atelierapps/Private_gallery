@@ -521,7 +521,7 @@ fun ViewerScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("Delete this item?") },
-            text = { Text("It moves to Recently deleted, where you can restore it for 30 days.") },
+            text = { Text("Kept in Recently deleted for 30 days.") },
             confirmButton = {
                 TextButton(onClick = { pendingDelete = null; onDelete(id) }) {
                     Text("Delete", color = Danger)
@@ -580,7 +580,7 @@ private fun ViewerTagDialog(
             }
             if (allTags.isEmpty()) {
                 Text(
-                    "No tags yet — name one below.",
+                    "No tags yet",
                     color = Muted,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 6.dp),
@@ -661,7 +661,7 @@ private fun ViewerAlbumDialog(
         text = {
             Column {
                 if (albums.isEmpty()) {
-                    Text("No albums yet — name one below.", color = Muted, fontSize = 13.sp)
+                    Text("No albums yet", color = Muted, fontSize = 13.sp)
                 } else {
                     // Bounded and scrollable: AlertDialog gives its body
                     // `weight(1f, fill = false)` and no scroll of its own, so a
@@ -999,7 +999,7 @@ private fun NoteDialog(initial: String, onSave: (String?) -> Unit, onDismiss: ()
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                placeholder = { Text("Anything worth remembering about this one") },
+                placeholder = { Text("Add a note") },
                 minLines = 3,
                 maxLines = 6,
                 modifier = Modifier.fillMaxWidth(),

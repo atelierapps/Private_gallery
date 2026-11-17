@@ -95,12 +95,6 @@ fun SaveViewDialog(summary: String, onSave: (String) -> Unit, onDismiss: () -> U
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 )
-                Text(
-                    "It updates itself: anything added later that fits shows up in it.",
-                    color = Muted,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
             }
         },
         confirmButton = {
@@ -131,7 +125,7 @@ fun EditViewDialog(
         text = {
             if (confirmDelete) {
                 Text(
-                    "Only the view goes. Nothing in it is deleted, tagged or moved.",
+                    "Items in it are not affected.",
                     color = Muted,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -143,12 +137,6 @@ fun EditViewDialog(
                         onValueChange = { name = it },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    )
-                    Text(
-                        "To change what it shows, adjust the filters and save a new view.",
-                        color = Muted,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp),
                     )
                     TextButton(onClick = { confirmDelete = true }, modifier = Modifier.padding(top = 4.dp)) {
                         Text("Delete view", color = Danger)

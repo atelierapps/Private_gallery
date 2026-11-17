@@ -33,6 +33,7 @@ import com.atelierapps.vault.ui.theme.Ink
 import com.atelierapps.vault.ui.theme.Muted
 import com.atelierapps.vault.ui.theme.SectionLabel
 import com.atelierapps.vault.ui.theme.TagPicker
+import com.atelierapps.vault.ui.theme.itemCount
 
 /**
  * Name, tag and file a selection in one pass.
@@ -69,13 +70,12 @@ fun OrganiseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Organise ${selection.size} item(s)") },
+        title = { Text("Organise ${itemCount(selection.size)}") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 SectionLabel("Name")
                 Text(
-                    "Tap a piece to add it. Everything else you type is kept as-is, " +
-                        "and the extension is never touched.",
+                    "Tap a piece to insert it. Extension kept.",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
@@ -91,7 +91,7 @@ fun OrganiseDialog(
                 OutlinedTextField(
                     value = template,
                     onValueChange = { template = it },
-                    placeholder = { Text("Leave empty to keep current names") },
+                    placeholder = { Text("Empty keeps current names") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
@@ -144,8 +144,7 @@ fun OrganiseDialog(
                     }
                     if (NameTemplate.isAmbiguous(template.text)) {
                         Text(
-                            "Every item would get the same name. Add Number or Original " +
-                                "so they stay tellable apart.",
+                            "All would share one name — add Number or Original.",
                             color = Danger,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 6.dp),
@@ -177,7 +176,7 @@ fun OrganiseDialog(
                 OutlinedTextField(
                     value = source,
                     onValueChange = { source = it },
-                    placeholder = { Text("Leave empty to keep what's recorded") },
+                    placeholder = { Text("Empty keeps current source") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                 )

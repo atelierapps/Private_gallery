@@ -69,6 +69,7 @@ import com.atelierapps.vault.ui.theme.VaultIconButton
 import com.atelierapps.vault.ui.theme.Bg
 import com.atelierapps.vault.ui.theme.BrassInk
 import com.atelierapps.vault.ui.theme.Scrim
+import com.atelierapps.vault.ui.theme.itemCount
 import androidx.compose.material.icons.outlined.Add
 import com.atelierapps.vault.session.TileAnchor
 import com.atelierapps.vault.session.AppDisguise
@@ -408,8 +409,8 @@ fun VaultHome(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete ${selectedIds.size} item(s)?") },
-            text = { Text("They move to Recently deleted, where you can restore them for 30 days.") },
+            title = { Text("Delete ${itemCount(selectedIds.size)}?") },
+            text = { Text("Kept in Recently deleted for 30 days.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
@@ -432,11 +433,10 @@ fun VaultHome(
     if (confirmMove) {
         AlertDialog(
             onDismissRequest = { confirmMove = false },
-            title = { Text("Move ${selectedIds.size} item(s) out?") },
+            title = { Text("Move ${itemCount(selectedIds.size)} to gallery?") },
             text = {
                 Text(
-                    "They're decrypted into your device gallery and removed from here. " +
-                        "This does not go to Recently deleted and can't be undone.",
+                    "Decrypted into the phone gallery and removed here. Can't be undone.",
                 )
             },
             confirmButton = {
@@ -444,8 +444,8 @@ fun VaultHome(
                     confirmMove = false
                     vm.moveSelectedToGallery { moved, failed ->
                         say(
-                            if (failed == 0) "$moved moved to your gallery"
-                            else "$moved moved, $failed couldn't be",
+                            if (failed == 0) "$moved moved to gallery"
+                            else "$moved moved · $failed failed",
                         )
                     }
                 }) {
@@ -459,16 +459,12 @@ fun VaultHome(
     if (backupNotice) {
         AlertDialog(
             onDismissRequest = { backupNotice = false; BackupPrefs.setWarned(context) },
-            title = { Text("If you uninstall, this is gone") },
+            title = { Text("Uninstalling erases everything") },
             text = {
                 Text(
-                    "Your ${media.size} items live in this app's private storage, and the " +
-                        "key that decrypts them belongs to this install. Uninstalling " +
-                        "deletes both. There is no cloud copy, no account, and no way to " +
-                        "get any of it back afterwards — not by reinstalling, not by any " +
-                        "other means.\n\nAn export writes everything to a folder you " +
-                        "choose, which survives on its own and can be restored later. " +
-                        "It's the only copy that outlives the app.",
+                    "${itemCount(media.size)} and their key exist only in this install. " +
+                        "No cloud copy, no account — reinstalling won't bring them back.\n\n" +
+                        "A backup to a folder is the only copy that survives.",
                 )
             },
             confirmButton = {
@@ -491,7 +487,7 @@ fun VaultHome(
             onApply = { template, dateFormat, tagNames, source ->
                 organising = false
                 vm.organiseSelected(template, dateFormat, tagNames, source) { n ->
-                    say("$n item(s) organised")
+                    say("${itemCount(n)} organised")
                 }
             },
             onDismiss = { organising = false },
@@ -502,7 +498,7 @@ fun VaultHome(
         TagDialog(
             existingTags = tags,
             onApply = { names ->
-                vm.tagSelected(names) { n -> say("Tagged $n item(s)") }
+                vm.tagSelected(names) { n -> say("Tagged ${itemCount(n)}") }
                 showTagDialog = false
             },
             onDismiss = { showTagDialog = false },
@@ -542,7 +538,7 @@ private fun AlbumPickerDialog(
         text = {
             Column {
                 if (albums.isEmpty()) {
-                    Text("No albums yet — name one below.", color = Muted, fontSize = 13.sp)
+                    Text("No albums yet", color = Muted, fontSize = 13.sp)
                 } else {
                     // Bounded and scrollable: AlertDialog gives its body
                     // `weight(1f, fill = false)` and no scroll of its own, so a
@@ -588,7 +584,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
     androidx.compose.material3.OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text("Search name, tag, note, or source", color = Muted) },
+        placeholder = { Text("Search", color = Muted) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
     )

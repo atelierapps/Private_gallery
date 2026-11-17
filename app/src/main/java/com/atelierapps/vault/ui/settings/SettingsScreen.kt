@@ -121,8 +121,7 @@ fun SettingsScreen(
                     Text(
                         when (addedSince) {
                             0 -> "Nothing added since"
-                            1 -> "1 item added since — not in that backup"
-                            else -> "$addedSince items added since — not in that backup"
+                            else -> "$addedSince new since — not backed up"
                         },
                         color = if (addedSince > 0) Danger else Muted,
                         style = MaterialTheme.typography.bodySmall,
@@ -130,9 +129,7 @@ fun SettingsScreen(
                     )
                 }
                 Text(
-                    "Everything lives in this app's storage, under a key that belongs " +
-                        "to this install. Uninstalling deletes both, with no way back. " +
-                        "An export is the only copy that survives.",
+                    "Uninstalling erases everything. Only a backup survives.",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 8.dp),
@@ -147,21 +144,19 @@ fun SettingsScreen(
             SettingsCard("Playback") {
                 ToggleRow(
                     title = "Autoplay videos",
-                    subtitle = "Start playing as soon as a video opens",
                     checked = autoplay,
                     onCheckedChange = { autoplay = it; VideoPrefs.setAutoplay(context, it) },
                 )
                 HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 10.dp))
                 ToggleRow(
                     title = "Mute videos",
-                    subtitle = "Silences playback and disables the swipe volume gesture",
                     checked = muted,
                     onCheckedChange = { muted = it; VideoPrefs.setMuted(context, it) },
                 )
                 HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 10.dp))
                 ToggleRow(
                     title = "Loop videos",
-                    subtitle = "Every video repeats until you swipe on. A slideshow still moves to the next by itself",
+                    subtitle = "Slideshows still advance",
                     checked = loopVideos,
                     onCheckedChange = { loopVideos = it; VideoPrefs.setLoop(context, it) },
                 )
@@ -170,15 +165,14 @@ fun SettingsScreen(
             SettingsCard("Display") {
                 ToggleRow(
                     title = "Date sections",
-                    subtitle = "Group the grid by Today / This week / …",
+                    subtitle = "Today, This week, …",
                     checked = dateHeaders,
                     onCheckedChange = { dateHeaders = it; DisplayPrefs.setDateHeaders(context, it) },
                 )
                 HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 10.dp))
-                Text("Grid columns", color = Ink, style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "Default tile density (pinch on the grid still adjusts live)",
-                    color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
+                    "Grid columns", color = Ink, style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (n in DisplayPrefs.MIN_COLUMNS..DisplayPrefs.MAX_COLUMNS) {
@@ -196,21 +190,13 @@ fun SettingsScreen(
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text("Home screen name & icon", color = Ink, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "Currently \u201c${disguise.label}\u201d",
+                            disguise.label,
                             color = Muted, style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 2.dp),
                         )
                     }
                     Icon(Icons.Outlined.KeyboardArrowRight, null, tint = Muted, modifier = Modifier.size(20.dp))
                 }
-                Text(
-                    "Changes what the launcher and your app list show. Your library, " +
-                        "the encryption key and every setting are untouched — only the " +
-                        "label on the icon changes.",
-                    color = Muted, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 10.dp),
-                )
-
                 HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 12.dp))
 
                 Row(
@@ -218,9 +204,9 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Any name you like", color = Ink, style = MaterialTheme.typography.bodyLarge)
+                        Text("Custom shortcut", color = Ink, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "Add a home screen icon with a name you type yourself",
+                            "Any name, on the home screen",
                             color = Muted, style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 2.dp),
                         )
@@ -232,7 +218,7 @@ fun SettingsScreen(
             SettingsCard("Security") {
                 Text("Auto-lock", color = Ink, style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "Lock the app after it's been in the background",
+                    "After leaving the app",
                     color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
                 )
                 LockPrefs.Delay.entries.forEach { d ->
@@ -242,21 +228,15 @@ fun SettingsScreen(
                 HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 10.dp))
                 ToggleRow(
                     title = "Floating lock button",
-                    subtitle = "A lock within thumb reach. Drag it anywhere; it fades " +
-                        "away a couple of seconds after a photo or video opens",
+                    subtitle = "Drag to move · fades while viewing",
                     checked = lockButton,
                     onCheckedChange = { lockButton = it; LockButtonPrefs.setEnabled(context, it) },
                 )
                 if (lockButton) {
                     Text(
-                        "How visible",
+                        "Opacity",
                         color = Ink, style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(top = 10.dp),
-                    )
-                    Text(
-                        "Faint enough to ignore, solid enough to find",
-                        color = Muted, style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 2.dp),
                     )
                     Slider(
                         value = lockOpacity,
@@ -275,7 +255,7 @@ fun SettingsScreen(
                     Column(Modifier.weight(1f)) {
                         Text("Storage & stats", color = Ink, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "What's stored here and what it costs on disk",
+                            "Space used · check library",
                             color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp),
                         )
                     }
@@ -294,8 +274,7 @@ fun SettingsScreen(
                     Text("Version $version", color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
                 }
                 Text(
-                    "No internet access. Everything stays encrypted on this device — " +
-                        "no cloud, no accounts, no analytics.",
+                    "Offline. Encrypted on this device.",
                     color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp),
                 )
             }
@@ -364,7 +343,7 @@ private fun CustomNameDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Name it yourself") },
+        title = { Text("Custom shortcut") },
         text = {
             Column {
                 OutlinedTextField(
@@ -407,11 +386,9 @@ private fun CustomNameDialog(
                 }
                 Text(
                     if (canPin) {
-                        "This adds a home screen icon. Your app list still shows the name " +
-                            "picked above — a launcher entry can't be renamed from inside the app."
+                        "App list keeps the name above."
                     } else {
-                        "This launcher won't let apps place icons. You may need to allow " +
-                            "shortcuts for this app in your launcher or system settings first."
+                        "Launcher blocks shortcuts. Allow them in system settings."
                     },
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
@@ -456,8 +433,7 @@ private fun DisguiseDialog(current: Disguise, onPick: (Disguise) -> Unit, onDism
                     }
                 }
                 Text(
-                    "The icon can take a moment to change, and some launchers only " +
-                        "pick it up after a restart.",
+                    "Some launchers update after a restart.",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 10.dp),
@@ -487,11 +463,13 @@ private fun SettingsCard(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun ToggleRow(title: String, subtitle: String? = null, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, color = Ink, style = MaterialTheme.typography.bodyLarge)
-            Text(subtitle, color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+            if (subtitle != null) {
+                Text(subtitle, color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+            }
         }
         Switch(
             checked = checked,

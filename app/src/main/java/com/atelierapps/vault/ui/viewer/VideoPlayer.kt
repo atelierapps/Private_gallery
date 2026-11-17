@@ -409,7 +409,7 @@ fun VideoPlayer(
                 val lo = minOf(a, at)
                 val hi = maxOf(a, at)
                 if (hi - lo < AB_MIN_MS) {
-                    onNotice("Too short — move on a little, then tap")
+                    onNotice("Too short — play on, then tap")
                 } else {
                     abA = lo
                     abB = hi
@@ -1004,16 +1004,15 @@ private fun describePlayback(error: PlaybackException): PlaybackProblem {
         val msg = cause.message.orEmpty()
         when {
             name.contains("UserNotAuthenticated") -> return PlaybackProblem(
-                "This needs a fresh unlock before it can open. Lock the app, " +
-                    "unlock it, and it will play. The file is fine.",
+                "Unlock timed out. Lock and unlock to play — the file is fine.",
                 code,
             )
             name.contains("KeyPermanentlyInvalidated") -> return PlaybackProblem(
-                "This phone's encryption key no longer works, so this video can't be decrypted.",
+                "Encryption key no longer valid — can't decrypt.",
                 code,
             )
             msg.startsWith("blob missing") -> return PlaybackProblem(
-                "This video's file is missing from the app's storage.",
+                "File missing from storage.",
                 code,
             )
         }
@@ -1022,16 +1021,15 @@ private fun describePlayback(error: PlaybackException): PlaybackProblem {
     val message = when (error.errorCode) {
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ->
-            "This doesn't read as a video the player understands. It may be damaged, or " +
-                "an unusual format — Settings → Storage → Check library will say which."
+            "Unreadable video — damaged or an unusual format. " +
+                "Settings → Storage → Check library tells which."
         PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
         PlaybackException.ERROR_CODE_DECODING_FAILED,
         PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
         PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ->
-            "This phone's video decoder couldn't play it. That's a limit of the phone, " +
-                "not damage to the file."
+            "Format not supported by this phone's decoder. The file is fine."
         PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
-            "This video's file is missing from the app's storage."
+            "File missing from storage."
         else -> "Playback failed."
     }
     return PlaybackProblem(message, code)
