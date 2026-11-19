@@ -9,6 +9,8 @@ and where the next session should pick up.
 
 ## Session 2026-11-17 (b) — wording pass
 
+- **Double-tap zooms into the spot tapped** (owner's request), on photos and
+  on a video's middle third, instead of always the centre. Not yet tested.
 - Owner confirmed **importer Select all / Clear** works.
 - **Fixed: long press always opened the grid preview.** Selection mode hid the
   views row / filters / results line, the grid jumped up under the finger, and

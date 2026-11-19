@@ -617,7 +617,15 @@ fun VideoPlayer(
                                 player.seekTo(player.currentPosition + 10_000)
                                 hud = "+ 10s"
                             }
-                            else -> if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2f
+                            else -> if (scale > 1f) {
+                                scale = 1f; offset = Offset.Zero
+                            } else {
+                                // Into the spot tapped, as the pinch does.
+                                val zoomTo = 2f
+                                val centre = Offset(w / 2f, size.height / 2f)
+                                offset = (pos - centre) * (1f - zoomTo)
+                                scale = zoomTo
+                            }
                         }
                     },
                 )

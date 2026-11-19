@@ -777,8 +777,20 @@ private fun ViewerPage(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onTap() },
-                    onDoubleTap = {
-                        if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2.5f
+                    onDoubleTap = { tap ->
+                        if (scale > 1f) {
+                            scale = 1f; offset = Offset.Zero
+                        } else {
+                            // Zoom into the spot tapped, not the middle. The
+                            // layer scales about the centre, so shift it by
+                            // how far the tap sits from the centre, times the
+                            // growth — the tapped point then stays under the
+                            // finger. Same maths as the video's pinch.
+                            val zoomTo = 2.5f
+                            val centre = Offset(size.width / 2f, size.height / 2f)
+                            offset = (tap - centre) * (1f - zoomTo)
+                            scale = zoomTo
+                        }
                     },
                 )
             }
